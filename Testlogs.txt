@@ -1,0 +1,35 @@
+Compile:
+javac ServerTest.java
+gcc ClientTest.c -o ClientTest
+
+Run:
+java ServerTest
+./ClientTest
+
+SERVER OUTPUT REPORT:
+Servidor esperando conexiones en puerto 12345...
+Cliente Conectado
+Client: Hola desde C, mensaje #0
+Client: Hola desde C, mensaje #1
+Client: Hola desde C, mensaje #2
+Client: Hola desde C, mensaje #3
+Client: Hola desde C, mensaje #4
+
+CLIENT OUTPUT REPORT:
+Conectado al servidor!
+Enviado: Hola desde C, mensaje #0
+Servidor responde: Server received: Hola desde C, mensaje #0
+
+Enviado: Hola desde C, mensaje #1
+Servidor responde: Server received: Hola desde C, mensaje #1
+
+Enviado: Hola desde C, mensaje #2
+Servidor responde: Server received: Hola desde C, mensaje #2
+
+Enviado: Hola desde C, mensaje #3
+Servidor responde: Server received: Hola desde C, mensaje #3
+
+Enviado: Hola desde C, mensaje #4
+Servidor responde: Server received: Hola desde C, mensaje #4
+
+Desconectado
