@@ -1,4 +1,4 @@
-package server;
+package server.src;
 
 import server.src.network.GameServer;
 

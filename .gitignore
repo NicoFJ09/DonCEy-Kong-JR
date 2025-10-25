@@ -58,11 +58,6 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Ignore files without extension (posible C excecutables)
-*
-!*/
-!*.*
-
 # ==========================
 # Java / JVM artifacts
 # ==========================
