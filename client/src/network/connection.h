@@ -3,21 +3,45 @@
 
 #include <stdbool.h>
 
+/**
+ * Connection - TCP socket connection state
+ */
 typedef struct {
     int socket_fd;
     bool connected;
 } Connection;
 
-// Initialize connection to server
+/**
+ * Create connection to server
+ * @param ip Server IP address (e.g. "127.0.0.1")
+ * @param port Server port number
+ * @return Connection pointer or NULL on failure
+ */
 Connection* connection_create(const char* ip, int port);
 
-// Send message to server
+/**
+ * Send message to server
+ * Automatically appends newline
+ * @param conn Connection pointer
+ * @param message Null-terminated string to send
+ * @return true on success, false on failure
+ */
 bool connection_send(Connection* conn, const char* message);
 
-// Receive message from server (blocking)
+/**
+ * Receive message from server (blocking)
+ * Strips trailing newline
+ * @param conn Connection pointer
+ * @param buffer Buffer to store received data
+ * @param buffer_size Size of buffer
+ * @return Pointer to buffer on success, NULL on failure
+ */
 char* connection_receive(Connection* conn, char* buffer, int buffer_size);
 
-// Close connection
+/**
+ * Close connection and free resources
+ * @param conn Connection pointer to close
+ */
 void connection_close(Connection* conn);
 
 #endif

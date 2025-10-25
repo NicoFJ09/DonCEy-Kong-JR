@@ -1,6 +1,6 @@
 package server.src.network;
 
 public enum ClientType {
-    PLAYER,
-    SPECTATOR
+    PLAYER,      // Active game participant
+    SPECTATOR    // Read-only observer
 }
