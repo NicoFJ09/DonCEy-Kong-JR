@@ -144,7 +144,7 @@ public class GameServer {
             
             // Notify spectators that their player disconnected (Observer pattern)
             if (!orphanedSpectators.isEmpty()) {
-                System.out.println("  ⚠️ Notifying " + orphanedSpectators.size() + " spectator(s)");
+                System.out.println("  Notifying " + orphanedSpectators.size() + " spectator(s)");
                 
                 for (Integer spectatorId : orphanedSpectators) {
                     spectators.remove(spectatorId);

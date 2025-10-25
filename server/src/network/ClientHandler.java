@@ -231,7 +231,7 @@ public class ClientHandler extends Thread {
      * - Handle watched player disconnect
      * @throws IOException on network error
      */
-    
+
     private void handleSpectatorSession() throws IOException {
         output.println("ACCEPTED:SPECTATOR");
         output.println("CLIENT_ID:" + id);

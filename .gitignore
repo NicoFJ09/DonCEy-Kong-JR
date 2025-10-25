@@ -101,5 +101,6 @@ build/
 
 # Other
 .DS_Store
+.vscode/settings.json
 
 .fake
