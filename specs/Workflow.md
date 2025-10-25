@@ -399,7 +399,3 @@ project/
 - Make sure you're in the `client/` directory
 - Check that src/network/ and src/utils/ folders exist
 - Verify all .h files are in correct locations
-
----
-
-**End of Workflow Documentation**

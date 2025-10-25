@@ -1,3 +1,5 @@
+# Proposal for future reference
+
 donceykong-jr/
 ├── README.md
 ├── .gitignore
