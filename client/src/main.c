@@ -14,12 +14,15 @@ void print_header() {
 void display_lobby_menu(Connection* conn, char* buffer) {
     // Read and display lobby menu from server
     while (connection_receive(conn, buffer, BUFFER_SIZE)) {
-        printf("%s\n", buffer);
-        
-        // Check if we reached the prompt
+        // Check if this is the prompt line
         if (strstr(buffer, "> ") != NULL) {
+            printf("%s", buffer);  // Print without newline
+            fflush(stdout);        // Force immediate display
             break;
         }
+        
+        // For all other lines, print normally with newline
+        printf("%s\n", buffer);
     }
 }
 
@@ -44,6 +47,7 @@ bool handle_lobby_selection(Connection* conn, char* buffer) {
     if (strcmp(input, TYPE_EXIT) == 0) {
         connection_receive(conn, buffer, BUFFER_SIZE);
         printf("%s\n", buffer);
+        conn->connected = false;  // Mark connection as closed
         return false;
     }
     
@@ -62,7 +66,28 @@ void handle_lobby(Connection* conn, char* buffer) {
         
         // Check server response
         while (connection_receive(conn, buffer, BUFFER_SIZE)) {
+            // Check for player selection prompt FIRST (before printing)
+            if (strstr(buffer, "Enter player ID") != NULL) {
+                // This is a prompt line, print without extra newline and handle input
+                printf("%s", buffer);
+                fflush(stdout);
+                
+                // Get user input for player ID
+                char input[100];
+                if (fgets(input, sizeof(input), stdin) != NULL) {
+                    input[strcspn(input, "\n")] = 0;  // Remove newline
+                    connection_send(conn, input);      // Send to server
+                }
+                // Continue receiving server response
+                continue;
+            }
+            
             printf("%s\n", buffer);
+            
+            // Check if server returned to lobby (user typed 'back')
+            if (strncmp(buffer, "========", 8) == 0 || strcmp(buffer, "LOBBY") == 0) {
+                break; // Return to lobby menu
+            }
             
             // Check if accepted
             if (strncmp(buffer, "ACCEPTED:", 9) == 0) {
@@ -81,11 +106,6 @@ void handle_lobby(Connection* conn, char* buffer) {
                 printf("\n"); // Add spacing before next menu
                 break; // Return to lobby menu
             }
-            
-            // Check for player selection prompt
-            if (strstr(buffer, "Enter player ID") != NULL) {
-                break; // Let user input player ID
-            }
         }
     }
 }
@@ -94,7 +114,11 @@ void handle_game_session(Connection* conn, char* buffer) {
     printf("\n========================================\n");
     printf("Game Session Active\n");
     printf("========================================\n");
-    printf("Type 'exit' to disconnect\n\n");
+    
+    // Read initial message from server (INFO:Connected...)
+    if (connection_receive(conn, buffer, BUFFER_SIZE)) {
+        printf("%s\n\n", buffer);
+    }
     
     char input[BUFFER_SIZE];
     
@@ -111,6 +135,7 @@ void handle_game_session(Connection* conn, char* buffer) {
     
     while (conn->connected) {
         printf("> ");
+        fflush(stdout);  // ← AGREGAR: Para que el prompt aparezca inmediatamente
         
         if (fgets(input, sizeof(input), stdin) == NULL) {
             break;

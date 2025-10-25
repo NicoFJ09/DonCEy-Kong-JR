@@ -30,14 +30,12 @@ public class ClientHandler extends Thread {
             input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             output = new PrintWriter(socket.getOutputStream(), true);
             
-            // Phase 1: Client type selection
             type = selectClientType();
             if (type == null) {
                 System.out.println("✗ Client #" + id + " disconnected during selection");
                 return;
             }
             
-            // Phase 2: Handle based on type
             if (type == ClientType.PLAYER) {
                 handlePlayerSession();
             } else {
@@ -113,7 +111,9 @@ public class ClientHandler extends Thread {
         output.println("  1 - Join as PLAYER");
         output.println("  2 - Join as SPECTATOR");
         output.println("  exit - Quit");
-        output.print("\n> ");
+        output.println();
+        output.print("> ");
+        output.flush();  // Explicit flush
     }
     
     private Integer selectPlayer() throws IOException {
@@ -130,7 +130,9 @@ public class ClientHandler extends Thread {
                          " [" + player.getSpectatorCount() + "/" +
                          Config.SPECTATORS_PER_PLAYER + " spectators]");
         }
-        output.print("\nEnter player ID (or 'back'): ");
+        output.println();
+        output.print("Enter player ID (or 'back'): ");
+        output.flush();  // Explicit flush
         
         String response = input.readLine();
         if (response == null || response.trim().equalsIgnoreCase("back")) {
@@ -166,10 +168,6 @@ public class ClientHandler extends Thread {
         
         System.out.println("✓ Client #" + id + " joined as PLAYER");
         
-        // ═══════════════════════════════════════════════════════════
-        // TODO: PLAYER GAME LOGIC GOES HERE
-        // ═══════════════════════════════════════════════════════════
-        
         placeholderGameLoop();
     }
     
@@ -179,10 +177,6 @@ public class ClientHandler extends Thread {
         output.println("SESSION_START");
         
         System.out.println("✓ Client #" + id + " joined as SPECTATOR");
-        
-        // ═══════════════════════════════════════════════════════════
-        // TODO: SPECTATOR LOGIC GOES HERE
-        // ═══════════════════════════════════════════════════════════
         
         placeholderGameLoop();
     }
@@ -200,11 +194,10 @@ public class ClientHandler extends Thread {
         }
     }
     
-    // Called by server when watched player disconnects
     public void notifyPlayerDisconnected(Integer playerId) {
         if (output != null) {
-            output.println("PLAYER_DISCONNECTED:" + playerId);
-            output.println("INFO:Returning to lobby...");
+            output.println("PLAYER: " + playerId + " DISCONECTED");
+            output.println("INFO: Connection closing...");
         }
         running = false;
         close();
