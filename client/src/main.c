@@ -51,7 +51,7 @@ void display_lobby_menu(Connection* conn, char* buffer) {
  * @return true to continue, false to exit
  */
 bool handle_lobby_selection(Connection* conn, char* buffer) {
-    char input[100];
+    char input[BUFFER_SIZE];
     
     if (fgets(input, sizeof(input), stdin) == NULL) {
         return false;
@@ -99,7 +99,7 @@ void handle_lobby(Connection* conn, char* buffer) {
                 fflush(stdout);
                 
                 // Get player ID input
-                char input[100];
+                char input[BUFFER_SIZE];
                 if (fgets(input, sizeof(input), stdin) != NULL) {
                     input[strcspn(input, "\n")] = 0;
                     connection_send(conn, input);
