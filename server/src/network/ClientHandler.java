@@ -94,12 +94,12 @@ public class ClientHandler extends Thread {
         output.println("LOBBY");
         output.println("========================================");
         
-        Map<Integer, Player> players = server.getPlayers();
+        Map<Integer, NetworkPlayer> players = server.getPlayers();
         output.println("Players: " + players.size() + "/" + Config.MAX_PLAYERS);
         
         if (!players.isEmpty()) {
             output.println("\nActive players:");
-            for (Player player : players.values()) {
+            for (NetworkPlayer player : players.values()) {
                 String status = player.canAcceptSpectator() ? "✓" : "✗";
                 output.println("  Player #" + player.getId() +
                              " [" + player.getSpectatorCount() + "/" +
@@ -117,7 +117,7 @@ public class ClientHandler extends Thread {
     }
     
     private Integer selectPlayer() throws IOException {
-        Map<Integer, Player> players = server.getPlayers();
+        Map<Integer, NetworkPlayer> players = server.getPlayers();
         
         if (players.isEmpty()) {
             output.println("REJECTED:No players to spectate");
@@ -125,7 +125,7 @@ public class ClientHandler extends Thread {
         }
         
         output.println("\nSelect player to spectate:");
-        for (Player player : players.values()) {
+        for (NetworkPlayer player : players.values()) {
             output.println("  Player #" + player.getId() +
                          " [" + player.getSpectatorCount() + "/" +
                          Config.SPECTATORS_PER_PLAYER + " spectators]");
@@ -141,7 +141,7 @@ public class ClientHandler extends Thread {
         
         try {
             Integer playerId = Integer.parseInt(response.trim());
-            Player player = server.getPlayer(playerId);
+            NetworkPlayer player = server.getPlayer(playerId);
             
             if (player == null) {
                 output.println("ERROR:Player not found");
@@ -161,6 +161,7 @@ public class ClientHandler extends Thread {
         }
     }
     
+    // Similar functions, these are different to handle actual different behaviours between player and spectator
     private void handlePlayerSession() throws IOException {
         output.println("ACCEPTED:PLAYER");
         output.println("CLIENT_ID:" + id);

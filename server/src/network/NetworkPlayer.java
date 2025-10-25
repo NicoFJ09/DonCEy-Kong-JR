@@ -3,12 +3,12 @@ package server.src.network;
 import server.src.utils.Config;
 import java.util.*;
 
-public class Player {
+public class NetworkPlayer {
     private Integer id;
     private String address;
     private List<Integer> spectatorIds;
     
-    public Player(Integer id, String address) {
+    public NetworkPlayer(Integer id, String address) {
         this.id = id;
         this.address = address;
         this.spectatorIds = new ArrayList<>();

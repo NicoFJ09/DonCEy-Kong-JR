@@ -12,7 +12,7 @@ public class GameServer {
     private Integer nextClientId;
     
     // Active players: key=playerId, value=Player
-    private Map<Integer, Player> players;
+    private Map<Integer, NetworkPlayer> players;
     
     // Active spectators: key=spectatorId, value=playerId watching
     private Map<Integer, Integer> spectators;
@@ -71,13 +71,13 @@ public class GameServer {
         if (players.size() >= Config.MAX_PLAYERS) {
             return false;
         }
-        Player player = new Player(id, address);
+        NetworkPlayer player = new NetworkPlayer(id, address);
         players.put(id, player);
         return true;
     }
     
     public synchronized boolean registerSpectator(Integer spectatorId, Integer playerId) {
-        Player player = players.get(playerId);
+        NetworkPlayer player = players.get(playerId);
         if (player == null || !player.canAcceptSpectator()) {
             return false;
         }
@@ -90,7 +90,7 @@ public class GameServer {
         clientHandlers.remove(id);
         
         // Check if disconnecting client is a player
-        Player player = players.remove(id);
+        NetworkPlayer player = players.remove(id);
         if (player != null) {
             System.out.println("✗ Player #" + id + " disconnected");
             
@@ -123,7 +123,7 @@ public class GameServer {
         // Check if disconnecting client is a spectator
         Integer watchedPlayerId = spectators.remove(id);
         if (watchedPlayerId != null) {
-            Player watchedPlayer = players.get(watchedPlayerId);
+            NetworkPlayer watchedPlayer = players.get(watchedPlayerId);
             if (watchedPlayer != null) {
                 watchedPlayer.removeSpectator(id);
             }
@@ -132,11 +132,11 @@ public class GameServer {
         }
     }
     
-    public synchronized Map<Integer, Player> getPlayers() {
+    public synchronized Map<Integer, NetworkPlayer> getPlayers() {
         return new HashMap<>(players);
     }
     
-    public synchronized Player getPlayer(Integer playerId) {
+    public synchronized NetworkPlayer getPlayer(Integer playerId) {
         return players.get(playerId);
     }
     
