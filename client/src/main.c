@@ -2,17 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
-// Platform-specific includes
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <windows.h>
-    #define STDIN_FILENO 0
-#else
-    #include <unistd.h>
-    #include <sys/select.h>
-#endif
-
 #include "network/connection.h"
 #include "utils/constants.h"
 
@@ -148,9 +137,8 @@ void handle_lobby(Connection* conn, char* buffer) {
 // === Game Session Phase ===
 
 /**
- * Handle game session
- * Uses select() to monitor both socket and stdin simultaneously
- * This allows immediate response to server messages (like player disconnect or game frame updates in the future)
+ * Handle game session - Placeholder until Raylib
+ * Uses simple blocking I/O for cross-platform compatibility
  * 
  * TODO: Replace with Raylib game window:
  * - Initialize Raylib window
@@ -161,73 +149,67 @@ void handle_lobby(Connection* conn, char* buffer) {
  * @param conn Connection pointer
  * @param buffer Buffer for communication
  */
-
 void handle_game_session(Connection* conn, char* buffer) {
     printf("\n========================================\n");
     printf("Game Session Active\n");
     printf("========================================\n");
     
+    // Read initial server message
     if (connection_receive(conn, buffer, BUFFER_SIZE)) {
         printf("%s\n\n", buffer);
     }
     
     char input[BUFFER_SIZE];
-    bool should_exit = false;
     
-    while (conn->connected && !should_exit) {
+    // Simple placeholder loop until Raylib replaces this
+    while (conn->connected) {
         printf("> ");
         fflush(stdout);
         
-        fd_set read_fds;
-        FD_ZERO(&read_fds);
-        FD_SET(STDIN_FILENO, &read_fds);
-        FD_SET(conn->socket_fd, &read_fds);
-        
-        int max_fd = (conn->socket_fd > STDIN_FILENO) ? conn->socket_fd : STDIN_FILENO;
-        
-        int activity = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
-        
-        if (activity < 0) {
-            printf("Error in select()\n");
+        // Read user input (blocking, but works on all platforms)
+        if (fgets(input, sizeof(input), stdin) == NULL) {
             break;
         }
         
-        if (FD_ISSET(conn->socket_fd, &read_fds)) {
-            if (connection_receive(conn, buffer, BUFFER_SIZE)) {
-                if (strncmp(buffer, "PLAYER_DISCONNECTED:", 20) == 0) {
-                    printf("\n %s\n", buffer);
-                    if (connection_receive(conn, buffer, BUFFER_SIZE)) {
-                        printf("%s\n", buffer);
-                    }
-                    should_exit = true;
-                    continue;
-                }
-                
-                if (strcmp(buffer, "BYE") == 0) {
-                    printf("\nServer closed connection\n");
-                    should_exit = true;
-                    continue;
-                }
-                
-                printf("\n%s\n", buffer);
-            } else {
-                printf("\nConnection lost\n");
-                should_exit = true;
-            }
+        input[strcspn(input, "\n")] = 0;  // Strip newline
+        
+        // Skip empty input
+        if (strlen(input) == 0) {
+            continue;
         }
         
-        if (FD_ISSET(STDIN_FILENO, &read_fds)) {
-            if (fgets(input, sizeof(input), stdin) == NULL) {
-                should_exit = true;
-                continue;
+        // Send message to server
+        if (!connection_send(conn, input)) {
+            printf("Error sending message\n");
+            break;
+        }
+        
+        // Receive server response
+        if (connection_receive(conn, buffer, BUFFER_SIZE)) {
+            // Handle player disconnect notification
+            if (strncmp(buffer, "PLAYER_DISCONNECTED:", 20) == 0) {
+                printf("\n⚠️  %s\n", buffer);
+                
+                // Read additional info message
+                if (connection_receive(conn, buffer, BUFFER_SIZE)) {
+                    printf("%s\n", buffer);
+                }
+                break;
             }
             
-            input[strcspn(input, "\n")] = 0;
-            
-            if (!connection_send(conn, input)) {
-                printf("Error sending message\n");
-                should_exit = true;
+            // Handle server shutdown
+            if (strcmp(buffer, "BYE") == 0) {
+                printf("\nServer closed connection\n");
+                break;
             }
+            
+            // Display regular message
+            printf("%s\n", buffer);
+            
+        } else {
+            // Connection lost
+            printf("Connection lost\n");
+            break;
         }
     }
 }

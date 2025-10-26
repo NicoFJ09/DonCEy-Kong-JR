@@ -29,6 +29,10 @@ SOURCES = src/main.c \
 OBJECTS = $(OBJ_DIR)/main.o \
           $(OBJ_DIR)/connection.o
 
+# Header dependencies
+HEADERS = src/network/connection.h \
+          src/utils/constants.h
+
 # Main target
 all: directories $(TARGET)
 
@@ -36,17 +40,17 @@ all: directories $(TARGET)
 directories:
 	$(MKDIR)
 
-# Link executable (FIXED: LDFLAGS at the end)
+# Link executable
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 	@echo "Build successful: $(TARGET)"
 
-# Compile main.o
-$(OBJ_DIR)/main.o: src/main.c src/network/connection.h src/utils/constants.h
+# Compile main.o (depends on all headers)
+$(OBJ_DIR)/main.o: src/main.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compile connection.o
-$(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h src/utils/constants.h
+# Compile connection.o (depends on all headers)
+$(OBJ_DIR)/connection.o: src/network/connection.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Clean build files
