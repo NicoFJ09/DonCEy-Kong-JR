@@ -255,7 +255,7 @@ java -cp bin server.src.Main
 cd server
 
 # Limpiar
-rm -rf bin/*
+Remove-Item -Recurse -Force bin\* -ErrorAction SilentlyContinue
 
 # Compilar
 javac -d bin src\Main.java src\network\*.java src\utils\*.java
@@ -296,9 +296,9 @@ make rebuild
 ./build/client
 
 # Run Windows
-build\client.exe
+.\build\client.exe
 ```
-
+F
 
 **Expected output:**
 ```

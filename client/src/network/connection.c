@@ -8,16 +8,17 @@
 #ifdef _WIN32
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    #pragma comment(lib, "ws2_32.lib")
 #else
     #include <unistd.h>
     #include <arpa/inet.h>
+    #include <sys/socket.h>
 #endif
 
 // === Connection Management ===
 
 /**
  * Create and connect to server
+ * Cross-platform implementation for Windows, Linux, and macOS
  */
 Connection* connection_create(const char* ip, int port) {
     #ifdef _WIN32
@@ -41,6 +42,7 @@ Connection* connection_create(const char* ip, int port) {
     
     // Create TCP socket
     conn->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    
     #ifdef _WIN32
     if (conn->socket_fd == INVALID_SOCKET) {
     #else
@@ -87,7 +89,7 @@ Connection* connection_create(const char* ip, int port) {
     }
     
     conn->connected = true;
-    printf("✓ Connected to server!\n\n");
+    printf("Connected to server!\n\n");
     
     return conn;
 }
@@ -107,7 +109,12 @@ bool connection_send(Connection* conn, const char* message) {
     char buffer[BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer), "%s\n", message);
     
+    #ifdef _WIN32
+    int sent = send(conn->socket_fd, buffer, (int)strlen(buffer), 0);
+    #else
     ssize_t sent = send(conn->socket_fd, buffer, strlen(buffer), 0);
+    #endif
+    
     return sent > 0;
 }
 

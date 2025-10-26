@@ -132,7 +132,7 @@ public class GameServer {
         // Case 1: Disconnecting client is a player
         NetworkPlayer player = players.remove(id);
         if (player != null) {
-            System.out.println("✗ Player #" + id + " disconnected");
+            System.out.println("Player #" + id + " disconnected");
             
             // Find all spectators watching this player
             List<Integer> orphanedSpectators = new ArrayList<>();
@@ -167,7 +167,7 @@ public class GameServer {
             if (watchedPlayer != null) {
                 watchedPlayer.removeSpectator(id);
             }
-            System.out.println("✗ Spectator #" + id + " disconnected");
+            System.out.println("Spectator #" + id + " disconnected");
             printStatus();
         }
     }

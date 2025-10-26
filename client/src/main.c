@@ -7,7 +7,6 @@
 #ifdef _WIN32
     #include <winsock2.h>
     #include <windows.h>
-    #pragma comment(lib, "ws2_32.lib")  // Link Winsock library
     #define STDIN_FILENO 0
 #else
     #include <unistd.h>
@@ -31,7 +30,7 @@
 
 void print_header() {
     printf("========================================\n");
-    printf("🎮 DonCEy Kong Jr - Client\n");
+    printf("DonCEy Kong Jr - Client\n");
     printf("========================================\n\n");
 }
 
@@ -256,7 +255,7 @@ int main() {
     
     // Phase 4: Cleanup
     connection_close(conn);
-    printf("\n✓ Disconnected\n");
+    printf("\nDisconnected\n");
     
     return 0;
 }

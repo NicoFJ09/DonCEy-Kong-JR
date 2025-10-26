@@ -3,11 +3,19 @@
 
 #include <stdbool.h>
 
+// Platform-specific socket type
+#ifdef _WIN32
+    #include <winsock2.h>
+    typedef SOCKET socket_t;
+#else
+    typedef int socket_t;
+#endif
+
 /**
  * Connection - TCP socket connection state
  */
 typedef struct {
-    int socket_fd;
+    socket_t socket_fd;
     bool connected;
 } Connection;
 

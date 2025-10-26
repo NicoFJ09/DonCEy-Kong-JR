@@ -49,7 +49,7 @@ public class ClientHandler extends Thread {
             // Phase 2: Lobby - client type selection
             type = selectClientType();
             if (type == null) {
-                System.out.println("✗ Client #" + id + " disconnected during selection");
+                System.out.println("Client #" + id + " disconnected during selection");
                 return;
             }
             
@@ -218,7 +218,7 @@ public class ClientHandler extends Thread {
         output.println("CLIENT_ID:" + id);
         output.println("SESSION_START");
         
-        System.out.println("✓ Client #" + id + " joined as PLAYER");
+        System.out.println("Client #" + id + " joined as PLAYER");
         
         placeholderGameLoop();
     }
@@ -237,7 +237,7 @@ public class ClientHandler extends Thread {
         output.println("CLIENT_ID:" + id);
         output.println("SESSION_START");
         
-        System.out.println("✓ Client #" + id + " joined as SPECTATOR");
+        System.out.println("Client #" + id + " joined as SPECTATOR");
         
         placeholderGameLoop();
     }
