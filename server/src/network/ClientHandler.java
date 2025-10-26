@@ -133,7 +133,7 @@ public class ClientHandler extends Thread {
         if (!players.isEmpty()) {
             output.println("\nActive players:");
             for (NetworkPlayer player : players.values()) {
-                String status = player.canAcceptSpectator() ? "✓" : "✗";
+                String status = player.canAcceptSpectator() ? "JOIN" : "FULL";
                 output.println("  Player #" + player.getId() +
                              " [" + player.getSpectatorCount() + "/" +
                              Config.SPECTATORS_PER_PLAYER + " spectators] " + status);
