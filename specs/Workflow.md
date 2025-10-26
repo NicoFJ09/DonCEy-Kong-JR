@@ -236,7 +236,7 @@ INFO:Returning to lobby...
 
 ## Running the System
 
-### Terminal 1: Start Server (Java)
+### Terminal 1: Start Server (Java) ON MACOS AND LINUX
 ```bash
 cd server
 
@@ -245,6 +245,20 @@ rm -rf bin/*
 
 # Compilar
 javac -d bin src/Main.java src/network/*.java src/utils/*.java
+
+# Ejecutar
+java -cp bin server.src.Main
+```
+
+### Terminal 1: Start Server (Java) ON WINDOWS
+```bash
+cd server
+
+# Limpiar
+rm -rf bin/*
+
+# Compilar
+javac -d bin src\Main.java src\network\*.java src\utils\*.java
 
 # Ejecutar
 java -cp bin server.src.Main
@@ -262,7 +276,7 @@ Spectators per Player: 2
 Waiting for connections...
 ```
 
-### Terminal 2+: Start Client(s) (C)
+### Terminal 2+: Start Client(s) (C) ON MACOS AND LINUX
 ```bash
 cd client
 
@@ -278,9 +292,13 @@ make run
 # Recompilar desde cero
 make rebuild
 
-# Run
+# Run linux/macos
 ./build/client
+
+# Run Windows
+build\client.exe
 ```
+
 
 **Expected output:**
 ```

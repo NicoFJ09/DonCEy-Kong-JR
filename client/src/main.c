@@ -2,8 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
-#include <sys/select.h>
+
+// Platform-specific includes
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <windows.h>
+    #pragma comment(lib, "ws2_32.lib")  // Link Winsock library
+    #define STDIN_FILENO 0
+#else
+    #include <unistd.h>
+    #include <sys/select.h>
+#endif
+
 #include "network/connection.h"
 #include "utils/constants.h"
 
