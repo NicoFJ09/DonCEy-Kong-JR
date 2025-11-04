@@ -1,100 +1,150 @@
-# Proposal for future reference
+# DonCEy Kong Jr - Project Structure
 
-donceykong-jr/
+## 📂 Current Structure
+
+```
+DonCEy-Kong-JR/
 ├── README.md
 ├── .gitignore
 │
-├── server/                          # Proyecto Java
+├── server/                          # Java Server
 │   ├── src/
-│   │   └── com/
-│   │       └── donceykong/
-│   │           ├── Main.java        # Entry point del servidor
-│   │           │
-│   │           ├── core/            # Núcleo del servidor
-│   │           │   ├── GameServer.java
-│   │           │   └── GameLoop.java (futuro)
-│   │           │
-│   │           ├── network/         # Todo lo relacionado con red
-│   │           │   ├── GameObserver.java
-│   │           │   ├── ClientHandler.java
-│   │           │   └── MessageProtocol.java (futuro)
-│   │           │
-│   │           ├── commands/        # Command Pattern
-│   │           │   ├── Command.java
-│   │           │   ├── MoveCommand.java (futuro)
-│   │           │   └── JumpCommand.java (futuro)
-│   │           │
-│   │           ├── entities/        # Entidades del juego (futuro)
-│   │           │   ├── Entity.java
-│   │           │   ├── Player.java
-│   │           │   ├── Crocodile.java
-│   │           │   └── Fruit.java
-│   │           │
-│   │           ├── managers/        # Gestores (futuro)
-│   │           │   ├── EntityManager.java
-│   │           │   └── CollisionManager.java
-│   │           │
-│   │           └── utils/           # Utilidades
-│   │               ├── Config.java
-│   │               └── Logger.java
+│   │   ├── Main.java               # Server entry point
+│   │   │
+│   │   ├── network/                # Network layer ✅
+│   │   │   ├── GameServer.java    # Main server logic
+│   │   │   ├── ClientHandler.java # Thread-per-connection
+│   │   │   └── NetworkPlayer.java # Player DTO
+│   │   │
+│   │   └── utils/                  # Utilities ✅
+│   │       └── Config.java        # Server configuration
 │   │
-│   ├── bin/                         # Compilados (.class)
-│   └── lib/                         # Librerías externas (si usas)
+│   └── bin/                        # Compiled .class files
 │
-├── client/                          # Proyecto C
+├── client/                         # C Client
 │   ├── src/
-│   │   ├── main.c                   # Entry point jugador
-│   │   ├── spectator_main.c         # Entry point espectador
+│   │   ├── main.c                 # Client entry point ✅
 │   │   │
-│   │   ├── network/                 # Comunicación con servidor
-│   │   │   ├── connection.c
-│   │   │   ├── connection.h
-│   │   │   ├── message_handler.c
-│   │   │   └── message_handler.h
+│   │   ├── network/               # Network layer ✅
+│   │   │   ├── connection.c/h     # Socket connection
+│   │   │   ├── lobby_handler.c/h  # Lobby phase logic
+│   │   │   └── session_handler.c/h # Game session logic
 │   │   │
-│   │   ├── game/                    # Lógica local del juego
-│   │   │   ├── game_state.c
-│   │   │   ├── game_state.h
-│   │   │   ├── entities.c
-│   │   │   └── entities.h
-│   │   │
-│   │   ├── rendering/               # Todo lo gráfico
-│   │   │   ├── renderer.c
-│   │   │   ├── renderer.h
-│   │   │   ├── sprite_manager.c
-│   │   │   ├── sprite_manager.h
-│   │   │   ├── animation.c
-│   │   │   └── animation.h
-│   │   │
-│   │   ├── input/                   # Manejo de teclado
-│   │   │   ├── keyboard.c
-│   │   │   ├── keyboard.h
-│   │   │   ├── input_handler.c
-│   │   │   └── input_handler.h
-│   │   │
-│   │   └── utils/                   # Utilidades
-│   │       ├── constants.h
-│   │       ├── types.h
-│   │       └── logger.c/h
+│   │   └── utils/                 # Utilities ✅
+│   │       └── constants.h        # Protocol & config constants
 │   │
-│   ├── include/                     # Headers de librerías externas
-│   │   └── raylib.h (si no está en sistema)
+│   ├── build/                     # Compiled executables
+│   │   └── client
 │   │
-│   ├── assets/                      # Recursos gráficos
+│   └── Makefile                   # Build system ✅
+│
+├── test/                          # Test files ✅
+│   ├── ServerTest.java           # Java server test
+│   └── ClientTest.c              # C client test
+│
+└── specs/                         # Documentation ✅
+    ├── Arquitecture.md           # Architecture proposal
+    ├── Patterns.md               # Design patterns used
+    └── Tasks.md                  # Team task distribution
+```
+
+---
+
+## 🚀 Future Structure (Game Implementation)
+
+```
+DonCEy-Kong-JR/
+├── server/
+│   ├── src/
+│   │   ├── Main.java               ✅ Current
+│   │   │
+│   │   ├── network/                ✅ Current
+│   │   │   ├── GameServer.java
+│   │   │   ├── ClientHandler.java  🔧 Needs modification for commands
+│   │   │   └── NetworkPlayer.java
+│   │   │
+│   │   ├── game/                   🆕 NEW - Game Logic Layer
+│   │   │   │
+│   │   │   ├── entities/           🆕 Person A (Tamara)
+│   │   │   │   ├── Entity.java           # Abstract base class
+│   │   │   │   ├── Position.java         # Position/velocity data
+│   │   │   │   ├── GamePlayer.java       # Player entity (not NetworkPlayer)
+│   │   │   │   ├── Crocodile.java        # Abstract enemy
+│   │   │   │   │   ├── RedCrocodile.java # Vertical patrol
+│   │   │   │   │   └── BlueCrocodile.java# Falling enemy
+│   │   │   │   └── Fruit.java            # Collectible item
+│   │   │   │
+│   │   │   ├── state/              🆕 Person A (Tamara)
+│   │   │   │   └── GameState.java        # Central game state manager
+│   │   │   │
+│   │   │   ├── commands/           🆕 Person B (David)
+│   │   │   │   ├── Command.java          # Command interface
+│   │   │   │   ├── MoveCommand.java      # UP/DOWN/LEFT/RIGHT
+│   │   │   │   ├── JumpCommand.java      # Space bar action
+│   │   │   │   └── ClimbCommand.java     # Grab vine action
+│   │   │   │
+│   │   │   ├── managers/           🆕 Person A & C
+│   │   │   │   ├── CollisionManager.java # Person A - Collision detection
+│   │   │   │   └── EntityManager.java    # Person C - Entity CRUD
+│   │   │   │
+│   │   │   └── GameLoop.java       🆕 Person B (David)
+│   │   │                                 # Main game loop (60 FPS)
+│   │   │
+│   │   ├── admin/                  🆕 Person C (Fabiola)
+│   │   │   ├── AdminConsole.java         # Admin command interface
+│   │   │   └── EntityFactory.java        # Factory pattern for entities
+│   │   │
+│   │   └── utils/                  ✅ Current
+│   │       └── Config.java
+│   │
+│   └── bin/
+│
+├── client/
+│   ├── src/
+│   │   ├── main.c                  🔧 Needs modification for game loop
+│   │   │
+│   │   ├── network/                ✅ Current
+│   │   │   ├── connection.c/h
+│   │   │   ├── lobby_handler.c/h
+│   │   │   └── session_handler.c/h 🔧 Will call game rendering
+│   │   │
+│   │   ├── game/                   🆕 Person D (Nicolás) - Game State
+│   │   │   ├── entities.h/c              # Player, Crocodile, Fruit structs
+│   │   │   ├── game_state.h/c            # Local game state mirror
+│   │   │   └── state_parser.h/c          # Parse server protocol
+│   │   │
+│   │   ├── rendering/              🆕 Person D (Nicolás) - Graphics
+│   │   │   ├── renderer.h/c              # Main render loop
+│   │   │   ├── sprite_manager.h/c        # Load/manage sprites
+│   │   │   └── animation.h/c             # Animation system
+│   │   │
+│   │   ├── input/                  🆕 Person D (Nicolás) - Input
+│   │   │   ├── input_handler.h/c         # Keyboard input detection
+│   │   │   └── command_builder.h/c       # Convert input → protocol
+│   │   │
+│   │   └── utils/                  ✅ Current
+│   │       ├── constants.h         🔧 Will add game constants
+│   │       └── types.h             🆕 Common type definitions
+│   │
+│   ├── assets/                     🆕 Person D (Nicolás) - Resources
 │   │   ├── sprites/
-│   │   │   ├── player/
-│   │   │   ├── enemies/
-│   │   │   ├── environment/
-│   │   │   └── items/
-│   │   ├── fonts/
-│   │   └── sounds/ (opcional)
+│   │   │   ├── player/                   # Player sprite sheets
+│   │   │   ├── enemies/                  # Crocodile sprites
+│   │   │   ├── environment/              # Vines, platforms
+│   │   │   └── items/                    # Fruit sprites
+│   │   │
+│   │   └── fonts/                        # UI fonts
 │   │
-│   ├── build/                       # Ejecutables compilados
-│   │
-│   └── Makefile                     # Build system
+│   ├── build/
+│   └── Makefile                    🔧 Will add Raylib linking
 │
-├── specs/                            # Documentación
-│   ├── architecture.md
-│   ├── protocol.md
-│   ├── manual_usuario.md
-│   └── bitacora.md
+├── test/                           ✅ Current
+│   ├── ServerTest.java
+│   └── ClientTest.c
+│
+└── specs/                          ✅ Current
+    ├── Arquitecture.md
+    ├── Patterns.md
+    └── Tasks.md
+```
+---

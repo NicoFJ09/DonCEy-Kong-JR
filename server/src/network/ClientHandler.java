@@ -14,6 +14,7 @@ import java.util.Map;
  * 3. Game Session: Handle based on type
  * 4. Cleanup: Close resources and notify server
  */
+
 public class ClientHandler extends Thread {
     private Socket socket;
     private Integer id;
@@ -22,9 +23,14 @@ public class ClientHandler extends Thread {
     
     private BufferedReader input;
     private PrintWriter output;
-    private ClientType type;
     private volatile boolean running;  // volatile for thread visibility
-    
+
+    private enum ClientType {
+    PLAYER,      // Active game participant
+    SPECTATOR    // Read-only observer
+    }
+    private ClientType type;
+
     public ClientHandler(Socket socket, Integer id, String address, GameServer server) {
         this.socket = socket;
         this.id = id;
