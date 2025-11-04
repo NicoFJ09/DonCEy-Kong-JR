@@ -40,7 +40,7 @@ Spectators per Player: 2
 Waiting for connections...
 ```
 
-### Terminal 2+: Start Client(s) (C) ON MACOS AND LINUX
+### Terminal 2+: Start Client(s) (C)
 ```bash
 cd client
 
@@ -55,11 +55,17 @@ make run
 
 # Recompilar desde cero
 make rebuild
+```
 
-# Run linux/macos
+#### Run compiled binary
+
+**Linux/macOS:**
+```bash
 ./build/client
+```
 
-# Run Windows
+**Windows:**
+```bash
 .\build\client.exe
 ```
 
