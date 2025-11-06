@@ -86,5 +86,5 @@ void session_handle(Connection* conn) {
 }
 
 // ============================================================
-// TODO: Implement game functions here
+// TODO: Call game functions here
 // ============================================================
