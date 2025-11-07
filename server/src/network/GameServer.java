@@ -198,6 +198,16 @@ public class GameServer {
         System.out.println("===========================================");
         System.out.println("🎮 DonCEy Kong Jr - Server");
         System.out.println("===========================================");
+        
+        // Print server IP address
+        try {
+            InetAddress localHost = InetAddress.getLocalHost();
+            String serverIP = localHost.getHostAddress();
+            System.out.println("Server IP: " + serverIP);
+        } catch (UnknownHostException e) {
+            System.err.println("Could not determine server IP address");
+        }
+        
         System.out.println("Port: " + Config.SERVER_PORT);
         System.out.println("Max Players: " + Config.MAX_PLAYERS);
         System.out.println("Spectators per Player: " + Config.SPECTATORS_PER_PLAYER);

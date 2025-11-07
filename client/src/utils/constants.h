@@ -2,7 +2,6 @@
 #define CONSTANTS_H
 
 // Network configuration
-#define SERVER_IP "172.18.150.65"
 #define SERVER_PORT 12345
 #define BUFFER_SIZE 1024
 
