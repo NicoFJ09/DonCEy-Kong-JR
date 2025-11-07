@@ -1,18 +1,5 @@
 # DonCEy Kong Jr - Project Analysis & Team Meeting Preparation
 
-## 📋 Executive Summary
-
-The project is a **client-server implementation of Donkey Kong Jr** with:
-- **Server**: Java (imperative + OOP paradigms)
-- **Client**: C (imperative paradigm) 
-- **Protocol**: TCP Sockets
-- **Due Date**: November 21, 2025
-- **Grade Weight**: 20% (7.5% C, 7.5% Java, 5% Documentation)
-
-Current status: **Network infrastructure complete**, ready for game logic implementation.
-
----
-
 ## 🎮 Game Requirements Analysis
 
 ### Core Gameplay Elements
@@ -446,8 +433,16 @@ US5.3: As a spectator, I want notification when player disconnects
 *Use this space during the meeting to capture decisions and action items*
 
 ### Decisions Made:
-- 
-
+- Pantalla principal del juego (seleccion jugador y espectador, inputs individuales a server).
+- Espectador abre pantalla de jugador a visualizar. (inputs inidviduales a server)
+- Administrador Server, interfaz en java, panel con casillas de selección, dropdown con tipos de enemigos y botón de selección.
+- Handle sending client inputs to server (move up, down, left right, mensajes individuales y espacio para saltar).
+- Handle floor colission, if player is at a lower or equal corrdinate than the floor it will move the player a few pixels higher than the block.
+- Lianas se crean como nodos, conectas liana a con b con c, las lianas impares son invisibles, representan estado en el que donkey kong jr se agarra a la derecha a la izquierda (cuando pasa esto la colision derecha e izquierda aplican para el punto central).
+- Cocodrilos, rojos spawnean en las lianas, arriba y abajo y nunca caen, los azules, llegan a una liana y caen hasta atravesar el piso y caer al agua. eliminamos instancias de ambos. Preguntar a profe, para spawnear cocodrilos, escogemos posicion en y? los azules spanean desde arriba o directo en la liana? Y para las frutas si escogemos la posicion en y o solo la liana.
+- Colisiones en las invisibles funcionan de tal forma que colisiones en el nodo izquierdo y derecho las afectan. Para montarme a la liana tengo que saltar. Frutas solo pueden spawnear en las lianas, y donkey puede estar, ademas hay lianas invisibles a la derecha de la liana derecha y a la izquierda de la liana izquierda, solo te puedes bajar de las lianas si le das abajo hasta no tocar ninguna o yendo a los lados hasta soltarte de la invisible. Agarrarse a los lados de la liana invisible requiere que al menos una de las 2 lianas laterales este tan abajo como la coord x de donkey kong jr
+- Llegar a la cima no es meta, es especificamente la jaula de donkey kong
+- Se debe crear un handler para cada sprite segun el estado actual, esto incluye la ultima direccion del mono, si estas colgado, si llegas, movimiento de los enemigos, etc.
 ### Action Items:
 - 
 
@@ -459,6 +454,3 @@ US5.3: As a spectator, I want notification when player disconnects
 - Topics:
 
 ---
-
-*Document prepared for DonCEy Kong Jr Team Meeting*
-*Last updated: November 2025*
