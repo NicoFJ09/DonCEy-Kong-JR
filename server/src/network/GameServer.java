@@ -199,19 +199,51 @@ public class GameServer {
         System.out.println("🎮 DonCEy Kong Jr - Server");
         System.out.println("===========================================");
         
-        // Print server IP address
-        try {
-            InetAddress localHost = InetAddress.getLocalHost();
-            String serverIP = localHost.getHostAddress();
+        // Get the actual network IP (not loopback)
+        String serverIP = getNetworkIP();
+        if (serverIP != null) {
             System.out.println("Server IP: " + serverIP);
-        } catch (UnknownHostException e) {
-            System.err.println("Could not determine server IP address");
+        } else {
+            System.out.println("Server IP: Could not determine (check network connection)");
         }
         
         System.out.println("Port: " + Config.SERVER_PORT);
         System.out.println("Max Players: " + Config.MAX_PLAYERS);
         System.out.println("Spectators per Player: " + Config.SPECTATORS_PER_PLAYER);
         System.out.println("\nWaiting for connections...\n");
+    }
+    
+    /**
+     * Get the actual network IP address (not loopback)
+     * Returns the first non-loopback IPv4 address found
+     */
+    private String getNetworkIP() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                
+                // Skip loopback and inactive interfaces
+                if (iface.isLoopback() || !iface.isUp()) {
+                    continue;
+                }
+                
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    
+                    // Only return IPv4 addresses (not IPv6)
+                    if (addr instanceof Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            System.err.println("Error retrieving network interfaces: " + e.getMessage());
+        }
+        
+        return null;
     }
     
     private void printStatus() {
