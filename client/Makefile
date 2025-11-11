@@ -1,83 +1,108 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -Isrc
+CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
+RAYLIB_FLAGS = -lraylib -lm
 
-# Platform detection
 ifeq ($(OS),Windows_NT)
-    LDFLAGS = -lws2_32
+    LDFLAGS = -lws2_32 $(RAYLIB_FLAGS) -lopengl32 -lgdi32 -lwinmm
     TARGET = build/client.exe
     RM = cmd /C "if exist build rmdir /S /Q build"
     MKDIR = cmd /C "if not exist build mkdir build && if not exist build\obj mkdir build\obj"
-    RUN = build\client.exe
 else
-    LDFLAGS =
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Darwin)
+        LDFLAGS = $(RAYLIB_FLAGS) -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+    else
+        LDFLAGS = $(RAYLIB_FLAGS) -lpthread -ldl -lrt -lX11
+    endif
     TARGET = build/client
     RM = rm -rf build
     MKDIR = mkdir -p build/obj
-    RUN = ./build/client
 endif
 
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
-# Source files
-SOURCES = src/main.c \
-          src/network/connection.c \
-          src/network/message_handler.c \
-          src/network/lobby_handler.c \
-          src/network/session_handler.c
+# Network layer
+NETWORK_SOURCES = src/network/connection.c \
+                  src/network/message_handler.c \
+                  src/network/lobby_handler.c \
+                  src/network/session_handler.c
+
+# Rendering layer
+RENDERING_SOURCES = src/rendering/sprite_manager.c \
+                    src/rendering/animation.c \
+                    src/rendering/renderer.c \
+                    src/rendering/sprite_test.c
+
+MAIN_SOURCE = src/main.c
+SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES)
 
 # Object files
-OBJECTS = $(OBJ_DIR)/main.o \
-          $(OBJ_DIR)/connection.o \
-          $(OBJ_DIR)/message_handler.o \
-          $(OBJ_DIR)/lobby_handler.o \
-          $(OBJ_DIR)/session_handler.o
+NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
+                  $(OBJ_DIR)/message_handler.o \
+                  $(OBJ_DIR)/lobby_handler.o \
+                  $(OBJ_DIR)/session_handler.o
 
-# Header dependencies
+RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
+                    $(OBJ_DIR)/animation.o \
+                    $(OBJ_DIR)/renderer.o \
+                    $(OBJ_DIR)/sprite_test.o
+
+OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS)
+
 HEADERS = src/network/connection.h \
           src/network/message_handler.h \
           src/network/lobby_handler.h \
           src/network/session_handler.h \
+          src/rendering/sprite_manager.h \
+          src/rendering/animation.h \
+          src/rendering/renderer.h \
+          src/rendering/sprite_test.h \
           src/utils/constants.h
 
-# Main target
 all: directories $(TARGET)
 
-# Create directories
 directories:
 	$(MKDIR)
 
-# Link executable
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
-	@echo "Build successful: $(TARGET)"
+	@echo "✓ Build successful: $(TARGET)"
 
-# Compile object files
 $(OBJ_DIR)/main.o: src/main.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h src/utils/constants.h
+$(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/message_handler.o: src/network/message_handler.c src/network/message_handler.h src/utils/constants.h
+$(OBJ_DIR)/message_handler.o: src/network/message_handler.c src/network/message_handler.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/lobby_handler.o: src/network/lobby_handler.c src/network/lobby_handler.h $(HEADERS)
+$(OBJ_DIR)/lobby_handler.o: src/network/lobby_handler.c src/network/lobby_handler.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/session_handler.o: src/network/session_handler.c src/network/session_handler.h $(HEADERS)
+$(OBJ_DIR)/session_handler.o: src/network/session_handler.c src/network/session_handler.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean build files
+$(OBJ_DIR)/sprite_manager.o: src/rendering/sprite_manager.c src/rendering/sprite_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/animation.o: src/rendering/animation.c src/rendering/animation.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/renderer.o: src/rendering/renderer.c src/rendering/renderer.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
 	$(RM)
-	@echo "Cleaned build directory"
+	@echo "✓ Cleaned"
 
-# Run client
 run: all
-	$(RUN)
+	$(TARGET)
 
-# Rebuild from scratch
 rebuild: clean all
 
 .PHONY: all clean run rebuild directories

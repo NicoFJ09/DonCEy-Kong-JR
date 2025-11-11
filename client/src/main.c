@@ -4,6 +4,8 @@
 #include "network/lobby_handler.h"
 #include "network/session_handler.h"
 #include "utils/constants.h"
+#include "rendering/renderer.h"
+#include "rendering/sprite_test.h"
 
 static void print_header(void) {
     printf("========================================\n");
@@ -12,17 +14,15 @@ static void print_header(void) {
 }
 
 static bool get_server_ip(char* ip_buffer, size_t buffer_size) {
-    printf("Enter server IP address: ");
+    printf("Enter server IP address (or 'test' for sprite test): ");
     fflush(stdout);
     
     if (fgets(ip_buffer, buffer_size, stdin) == NULL) {
         return false;
     }
     
-    // Remove trailing newline
     ip_buffer[strcspn(ip_buffer, "\n")] = '\0';
     
-    // Basic validation: not empty
     if (strlen(ip_buffer) == 0) {
         printf("Error: IP address cannot be empty\n");
         return false;
@@ -37,17 +37,29 @@ int main(void) {
     char server_ip[256];
     Connection* conn = NULL;
     
-    // Phase 1: Get server IP and connect (with retry)
+    // Initialize graphics FIRST
+    printf("Initializing graphics...\n");
+    renderer_init("DonCEy Kong Jr - Client", "assets/");
+    printf("✓ Graphics window opened\n\n");
+    
+    // Get server IP
     while (conn == NULL) {
         if (!get_server_ip(server_ip, sizeof(server_ip))) {
             printf("Invalid input. Try again.\n\n");
             continue;
         }
         
+        // SPECIAL: If user types "test", run isolated sprite test
+        if (strcmp(server_ip, "test") == 0) {
+            sprite_test_run();
+            renderer_cleanup();
+            return 0;
+        }
+        
         conn = connection_create(server_ip, SERVER_PORT);
         
         if (!conn) {
-            printf("\nConnection failed. Please check the IP address and try again.\n");
+            printf("\nConnection failed. Check IP and try again.\n");
             printf("Press Enter to retry, or type 'quit' to exit: ");
             fflush(stdout);
             
@@ -56,6 +68,7 @@ int main(void) {
                 retry[strcspn(retry, "\n")] = '\0';
                 if (strcmp(retry, "quit") == 0 || strcmp(retry, "exit") == 0) {
                     printf("Exiting...\n");
+                    renderer_cleanup();
                     return 1;
                 }
             }
@@ -63,17 +76,18 @@ int main(void) {
         }
     }
     
-    // Phase 2: Lobby selection
+    // Lobby selection
     bool accepted = lobby_handle(conn);
     
-    // Phase 3: Game session
+    // Game session
     if (accepted && conn->connected) {
         session_handle(conn);
     }
     
-    // Phase 4: Cleanup
+    // Cleanup
     connection_close(conn);
     printf("\nDisconnected\n");
+    renderer_cleanup();
     
     return 0;
 }
