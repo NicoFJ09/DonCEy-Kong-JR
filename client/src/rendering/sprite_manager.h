@@ -38,6 +38,7 @@ typedef enum {
     SPRITE_POINTS_400,
     SPRITE_POINTS_800,
     SPRITE_LIFE,
+    SPRITE_LOGO,
     SPRITE_COUNT
 } SpriteType;
 

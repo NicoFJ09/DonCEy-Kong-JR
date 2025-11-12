@@ -68,6 +68,7 @@ static const struct {
     
     // UI
     [SPRITE_LIFE] = {"ui/lives/life.png", 16, 16, 1, 0},
+    [SPRITE_LOGO] = {"ui/logo/logo.png", 310, 84, 1, 0},
 };
 
 bool sprite_manager_init(const char* assets_path) {
@@ -235,7 +236,8 @@ const char* sprite_manager_get_name(SpriteType type) {
         
         // UI
         case SPRITE_LIFE: return "Life";
-        
+        case SPRITE_LOGO: return "Logo";
+
         // Catch-all
         case SPRITE_COUNT:
         default:
