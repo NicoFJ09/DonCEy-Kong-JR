@@ -433,16 +433,266 @@ US5.3: As a spectator, I want notification when player disconnects
 *Use this space during the meeting to capture decisions and action items*
 
 ### Decisions Made:
-- Pantalla principal del juego (seleccion jugador y espectador, inputs individuales a server).
-- Espectador abre pantalla de jugador a visualizar. (inputs inidviduales a server)
-- Administrador Server, interfaz en java, panel con casillas de selección, dropdown con tipos de enemigos y botón de selección.
-- Handle sending client inputs to server (move up, down, left right, mensajes individuales y espacio para saltar).
-- Handle floor colission, if player is at a lower or equal corrdinate than the floor it will move the player a few pixels higher than the block.
-- Lianas se crean como nodos, conectas liana a con b con c, las lianas impares son invisibles, representan estado en el que donkey kong jr se agarra a la derecha a la izquierda (cuando pasa esto la colision derecha e izquierda aplican para el punto central).
-- Cocodrilos, rojos spawnean en las lianas, arriba y abajo y nunca caen, los azules, llegan a una liana y caen hasta atravesar el piso y caer al agua. eliminamos instancias de ambos. Preguntar a profe, para spawnear cocodrilos, escogemos posicion en y? los azules spanean desde arriba o directo en la liana? Y para las frutas si escogemos la posicion en y o solo la liana.
-- Colisiones en las invisibles funcionan de tal forma que colisiones en el nodo izquierdo y derecho las afectan. Para montarme a la liana tengo que saltar. Frutas solo pueden spawnear en las lianas, y donkey puede estar, ademas hay lianas invisibles a la derecha de la liana derecha y a la izquierda de la liana izquierda, solo te puedes bajar de las lianas si le das abajo hasta no tocar ninguna o yendo a los lados hasta soltarte de la invisible. Agarrarse a los lados de la liana invisible requiere que al menos una de las 2 lianas laterales este tan abajo como la coord x de donkey kong jr
-- Llegar a la cima no es meta, es especificamente la jaula de donkey kong
-- Se debe crear un handler para cada sprite segun el estado actual, esto incluye la ultima direccion del mono, si estas colgado, si llegas, movimiento de los enemigos, etc.
+
+## 🖥️ SERVIDOR (Java)
+
+### Conexiones
+- Aceptar conexiones TCP en puerto 12345
+- Validar tipo de cliente (jugador/espectador)
+- Máximo 2 jugadores simultáneos
+- Máximo 2 espectadores por jugador
+- Asociar espectadores con jugadores específicos
+
+### Admin UI (Java Swing)
+- Panel con dropdown de tipos de enemigo (Rojo/Azul)
+- Dropdown de número de liana (1-5)
+- Campo de texto para posición Y de frutas
+- Botón "Crear Enemigo"
+- Botón "Crear Fruta"
+- Botón "Eliminar Fruta"
+- Lista visual de frutas creadas
+- Lista de jugadores conectados con sus IPs
+
+### Lógica de Enemigos
+- **Cocodrilos Rojos**: Spawnan en liana específica, suben y bajan entre límites de la liana, nunca caen
+- **Cocodrilos Azules**: Spawnan desde los pies de Mario (parte superior), caen verticalmente hasta atravesar el piso y llegar al agua
+- Actualizar posiciones de enemigos a 60 FPS
+- Broadcast de posiciones cada 100ms (10 Hz)
+- Eliminar enemigos azules cuando caen al agua
+- Aumentar velocidad de enemigos después de cada nivel completado
+
+### Comunicación
+- Broadcast inicial de estructura de nivel (lianas, plataformas, posición de jaula)
+- Broadcast cuando admin crea/elimina entidades
+- Retransmitir estado de jugadores a sus espectadores
+- Recibir eventos de clientes (muerte, frutas, nivel completado) para logging
+
+### Patrones de Diseño (mínimo 2)
+- **Observer**: Espectadores observan jugadores
+- **Factory**: EntityFactory para crear enemigos/frutas
+- **Thread-per-Connection**: ClientHandler por cliente
+
+### Estructura OO
+- Paquetes: `network`, `game`, `ui`, `utils`
+- Clases: `GameServer`, `ClientHandler`, `Enemy`, `Fruit`, `EntityFactory`, `ServerUI`
+- Sin tipos primitivos (usar wrappers: Integer, Float, Boolean)
+
+---
+
+## 💻 CLIENTE (C + Raylib)
+
+### Lobby
+- Mostrar menú: 1) Jugador, 2) Espectador, 3) Salir
+- Enviar selección al servidor
+- Si espectador: mostrar lista de jugadores disponibles
+- Esperar confirmación de aceptación/rechazo
+
+### Input (solo para jugadores)
+- Flechas izquierda/derecha: Movimiento horizontal
+- Flecha arriba: Trepar liana (si está agarrado)
+- Flecha abajo: Bajar liana / soltar
+- Espacio: Saltar / agarrar liana cercana
+
+### Física del Jugador (local)
+- Gravedad constante cuando no está en piso ni trepando
+- Velocidad horizontal constante al moverse
+- Velocidad de trepar constante
+- Snap a plataforma cuando aterriza
+- Detener movimiento horizontal al chocar con pared
+
+### Sistema de Lianas
+- Recibir estructura de lianas del servidor al inicio
+- Guardar posiciones de lianas visibles e invisibles
+- Detectar lianas cercanas para agarrar (radio de alcance)
+- Permitir agarrar lianas invisibles solo si lianas laterales están suficientemente bajas
+- Soltar liana al presionar abajo hasta no tocar ninguna
+- Soltar liana al moverse lateralmente fuera de rango
+
+### Detección de Colisiones (local)
+- **Piso/Plataformas**: Si Y del jugador >= Y del piso → snap arriba del piso
+- **Enemigos**: Si distancia < radio de colisión → pierde vida, respawn
+- **Frutas**: Si overlap → agrega puntos, elimina fruta localmente
+- **Agua**: Si Y > nivel del agua → muerte, respawn
+- **Jaula de Donkey Kong**: Si overlap → victoria, +1 vida, reset nivel
+
+### Sistema de Vidas y Puntuación (local)
+- Empezar con 3 vidas
+- Perder vida al: chocar enemigo, caer al agua
+- Ganar vida al: completar nivel
+- Sumar puntos al: recoger frutas
+- Mostrar UI: vidas restantes, puntuación actual
+
+### Renderizado
+- Sprites según estado: idle, caminando, saltando, trepando, muerto
+- Sprites según dirección: izquierda, derecha
+- Animación de caminar (4 frames)
+- Animación de trepar (2 frames)
+- Renderizar lianas visibles (las invisibles no se dibujan)
+- Renderizar plataformas
+- Renderizar enemigos con interpolación
+- Renderizar frutas
+- Renderizar jaula de Donkey Kong
+- Renderizar UI (vidas, score)
+
+### Comunicación
+- Recibir estructura de nivel al inicio
+- Recibir posiciones de enemigos (10 Hz) y interpolar para 60 FPS
+- Recibir notificaciones de nuevas entidades (enemigos/frutas)
+- Enviar estado propio cada 50-100ms: posición, estado, vidas, score
+- Enviar eventos importantes: muerte, fruta recogida, nivel completado
+
+### Espectador (modo read-only)
+- NO procesar input de teclado
+- Recibir estado del jugador observado
+- Renderizar estado recibido
+- Mostrar notificación si jugador se desconecta
+
+### Estructura Imperativa
+- Usar structs para: Player, Enemy, Fruit, Vine, Platform, GameState
+- Archivo `constants.h` separado con todas las constantes
+- Sin clases ni POO
+- Funciones puras que operan sobre structs
+
+---
+
+## 🌐 PROTOCOLO DE RED
+
+### Cliente → Servidor
+```
+"JOIN:PLAYER"
+"JOIN:SPECTATOR:<playerId>"
+"STATE:<x>,<y>:<estado>:<facing>:<vidas>:<score>"
+"EVENT:DIED:ENEMY"
+"EVENT:DIED:FALL"
+"EVENT:FRUIT:<puntos>"
+"EVENT:LEVEL_COMPLETE"
+```
+
+### Servidor → Todos los Clientes
+```
+"LEVEL_DATA:<json>"
+"ENEMY_SPAWNED:<tipo>:<lianaId>:<y>"
+"FRUIT_SPAWNED:<lianaId>:<altura>:<puntos>"
+"FRUIT_REMOVED:<lianaId>:<altura>"
+"ENEMIES:<id>,<x>,<y>|<id>,<x>,<y>|..."
+```
+
+### Servidor → Espectadores Específicos
+```
+"PLAYER_STATE:<x>,<y>:<estado>:<facing>:<vidas>:<score>"
+"PLAYER_EVENT:DIED"
+"PLAYER_EVENT:LEVEL_COMPLETE"
+"PLAYER_DISCONNECTED"
+```
+
+---
+
+## 🎮 MECÁNICAS DE JUEGO
+
+### Enemigos
+- **Rojos**: Patrullan verticalmente en una liana, cambian dirección al llegar a límites
+- **Azules**: Spawnan arriba (pies de Mario), caen hasta agua, no caminan, no rebotan
+- Velocidad base: configurable
+- Multiplicador de velocidad: incrementa +20% cada nivel completado
+
+### Frutas
+- Posicionadas en lianas específicas con altura relativa (0.0 = arriba, 1.0 = abajo)
+- Puntos configurables por fruta
+- Se eliminan al ser recogidas (no reaparecen)
+
+### Win Condition
+- Llegar específicamente a la jaula de Donkey Kong (no solo la cima)
+- Otorga +1 vida
+- Reinicia nivel con enemigos más rápidos
+- Frutas reaparecen en posiciones originales
+
+### Pérdida
+- Perder todas las vidas = Game Over
+- Game Over permite reiniciar o volver al lobby
+
+---
+
+## 📁 ESTRUCTURA DE ARCHIVOS
+
+### Servidor
+```
+server/
+├── src/
+│   ├── Main.java
+│   ├── network/
+│   │   ├── GameServer.java
+│   │   ├── ClientHandler.java
+│   │   └── NetworkPlayer.java
+│   ├── game/
+│   │   ├── entities/
+│   │   │   ├── Enemy.java
+│   │   │   ├── RedEnemy.java
+│   │   │   ├── BlueEnemy.java
+│   │   │   └── Fruit.java
+│   │   └── managers/
+│   │       └── EntityFactory.java
+│   ├── ui/
+│   │   └── ServerUI.java
+│   └── utils/
+│       └── Config.java
+└── bin/
+```
+
+### Cliente
+```
+client/
+├── src/
+│   ├── main.c
+│   ├── network/
+│   │   ├── connection.c/h
+│   │   ├── lobby_handler.c/h
+│   │   └── session_handler.c/h
+│   ├── game/
+│   │   ├── entities.c/h
+│   │   ├── physics.c/h
+│   │   ├── collision.c/h
+│   │   └── state_parser.c/h
+│   ├── rendering/
+│   │   ├── renderer.c/h
+│   │   └── sprites.c/h
+│   ├── input/
+│   │   └── input_handler.c/h
+│   └── utils/
+│       ├── constants.h
+│       └── types.h
+├── assets/
+│   └── sprites/
+└── Makefile
+```
+
+---
+
+## ✅ CUMPLIMIENTO DE RÚBRICA
+
+### Servidor (Puntos 1-9)
+- ✅ Crear enemigos rojos (admin UI)
+- ✅ Crear enemigos azules (admin UI)
+- ✅ Crear/eliminar frutas (admin UI)
+- ✅ Velocidad de enemigos (IA + multiplicador)
+- ✅ OO (paquetes, clases)
+- ✅ Patrones (mínimo 2)
+- ✅ Ejecutable
+
+### Cliente (Puntos 10-18)
+- ✅ Control de Donkey (input + física)
+- ✅ 2 jugadores activos
+- ✅ 2 espectadores por jugador
+- ✅ Interpretación de estructura servidor
+- ✅ Informa muerte/frutas (eventos)
+- ✅ Archivo constantes
+- ✅ Imperativo (structs)
+- ✅ Ejecutable
+
+### Comunicación (Punto 22)
+- ✅ Sockets TCP bidireccional
+
+
+
 ### Action Items:
 - 
 
