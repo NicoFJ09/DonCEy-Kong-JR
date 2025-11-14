@@ -210,7 +210,7 @@ public class ServerUI extends JFrame {
         //                       ELIMINAR ELEMENTOS
         //_____________________________________________________________
 
-        JLabel removeLabel = new JLabel("Eliminar Elemento");
+        JLabel removeLabel = new JLabel("Eliminar Fruta");
         removeLabel.setFont(new Font("Arial", Font.BOLD, 18));
         removeLabel.setBounds(120, 615, 200, 25);
         mainPanel.add(removeLabel);

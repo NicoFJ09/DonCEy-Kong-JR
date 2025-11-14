@@ -33,25 +33,11 @@
 
 ## 📝 User Stories for Sprint 1
 
-### Epic 1: Game State Management
-```
-US1.1: As a server, I need to maintain game state with all entity positions
-US1.2: As a server, I need to detect collisions between entities
-US1.3: As a server, I need to track player lives and scores
-```
-
 ### Epic 2: Player Control
 ```
 US2.1: As a player, I want to move using arrow keys
 US2.2: As a player, I want to jump to grab vines
 US2.3: As a player, I want to see my lives and score
-```
-
-### Epic 3: Enemy Behavior
-```
-US3.1: As a server, I need red crocodiles to patrol vertically on vines
-US3.2: As a server, I need blue crocodiles to fall down vines
-US3.3: As a server, I need to increase enemy speed after level completion
 ```
 
 ### Epic 4: Admin Controls
