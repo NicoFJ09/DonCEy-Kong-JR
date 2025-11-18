@@ -124,7 +124,7 @@ static void draw_ip_input_screen(InputState* state) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
     // Title
-    const char* title = "Enter IP:";
+    const char* title = "ENTER IP:";
     int title_width = measure_text_ex(title, UI_FONT_SIZE_TITLE);
     int title_x = (UI_WINDOW_WIDTH - title_width) / 2;
     int title_y = 300;
