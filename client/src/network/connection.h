@@ -17,7 +17,21 @@
 typedef struct {
     socket_t socket_fd;
     bool connected;
+    int client_id;  // Server-assigned client ID
 } Connection;
+
+/**
+ * Initialize network subsystem (Windows WSA)
+ * Must be called before any connection operations
+ * @return true on success, false on failure
+ */
+bool connection_init(void);
+
+/**
+ * Cleanup network subsystem (Windows WSA)
+ * Should be called at program exit
+ */
+void connection_cleanup_global(void);
 
 /**
  * Create connection to server
@@ -45,6 +59,13 @@ bool connection_send(Connection* conn, const char* message);
  * @return Pointer to buffer on success, NULL on failure
  */
 char* connection_receive(Connection* conn, char* buffer, int buffer_size);
+
+/**
+ * Check if there is data available to read (non-blocking)
+ * @param conn Connection pointer
+ * @return true if data is available, false otherwise
+ */
+bool connection_has_data(Connection* conn);
 
 /**
  * Close connection and free resources

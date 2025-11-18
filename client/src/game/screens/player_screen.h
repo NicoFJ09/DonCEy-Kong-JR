@@ -6,7 +6,8 @@
  * Black background, hidden 10-second timer
  * Automatically transitions to lose screen after timer expires
  * No user input - just waits for timer
+ * @param client_id Client ID to display
  */
-void show_player_screen(void);
+void show_player_screen(int client_id);
 
 #endif

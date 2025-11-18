@@ -5,8 +5,18 @@
 #include "raylib.h"
 #include <stdio.h>
 
-static void draw_title_screen(MenuOption selected) {
+static void draw_title_screen(MenuOption selected, int client_id, const char* error_message) {
     ClearBackground(UI_COLOR_BACKGROUND);
+    
+    // Draw client ID at top center
+    font_manager_draw_client_id(client_id, "Client");
+    
+    // Draw error message if present
+    if (error_message && error_message[0] != '\0') {
+        int error_width = font_manager_measure_text(error_message, UI_FONT_SIZE_ERROR);
+        int error_x = (UI_WINDOW_WIDTH - error_width) / 2;
+        font_manager_draw_text(error_message, error_x, 700, UI_FONT_SIZE_ERROR, UI_COLOR_ERROR);
+    }
     
     // Draw logo (centered at top)
     SpriteSheet* logo_sprite = sprite_manager_get(SPRITE_LOGO);
@@ -40,7 +50,7 @@ static void draw_title_screen(MenuOption selected) {
     }
 }
 
-MenuOption show_title_screen(void) {
+MenuOption show_title_screen(int client_id, const char* error_message) {
     MenuOption selected = MENU_PLAY;
     bool done = false;
     
@@ -60,7 +70,7 @@ MenuOption show_title_screen(void) {
         
         // Render
         BeginDrawing();
-            draw_title_screen(selected);
+            draw_title_screen(selected, client_id, error_message);
         EndDrawing();
     }
     

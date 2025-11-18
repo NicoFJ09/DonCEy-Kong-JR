@@ -4,90 +4,233 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
-// Mock player data (Phase 4 - hardcoded)
+#define MAX_PLAYERS 2
+
 typedef struct {
     int id;
-    const char* ip;
+    char ip[64];
     int spectator_count;
     int max_spectators;
-} MockPlayer;
+} PlayerInfo;
 
-static MockPlayer mock_players[] = {
-    {1, "192.168.1.100", 1, 2},
-    {2, "192.168.1.105", 0, 2}
-};
-static const int mock_player_count = 2;
+typedef struct {
+    PlayerInfo players[MAX_PLAYERS];
+    int count;
+    char error_message[256];
+    bool show_error;
+} PlayerList;
 
-// Selection indices
-#define SELECTION_RETURN (mock_player_count)
-#define SELECTION_REFRESH (mock_player_count + 1)
+static bool fetch_player_list(Connection* conn, PlayerList* list) {
+    // Clear previous state
+    list->show_error = false;
+    list->error_message[0] = '\0';
+    list->count = 0;
+    
+    // Check connection is still valid
+    if (!conn || !conn->connected) {
+        printf("ERROR: Connection not valid\n");
+        strcpy(list->error_message, "Connection lost");
+        list->show_error = true;
+        return false;
+    }
+    
+    printf("DEBUG: Sending LIST_PLAYERS request\n");
+    
+    if (!connection_send(conn, CMD_LIST_PLAYERS)) {
+        printf("ERROR: Failed to send LIST_PLAYERS request\n");
+        strcpy(list->error_message, "Send failed");
+        list->show_error = true;
+        return false;
+    }
+    
+    char buffer[BUFFER_SIZE];
+    
+    // Wait for PLAYER_LIST_START
+    if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
+        printf("ERROR: Failed to receive PLAYER_LIST_START\n");
+        strcpy(list->error_message, "Network error");
+        list->show_error = true;
+        return false;
+    }
+    
+    printf("DEBUG: Received: %s\n", buffer);
+    
+    if (strcmp(buffer, PROTO_PLAYER_LIST_START) != 0) {
+        printf("ERROR: Expected PLAYER_LIST_START, got: %s\n", buffer);
+        strcpy(list->error_message, "Protocol error");
+        list->show_error = true;
+        return false;
+    }
+    
+    printf("DEBUG: Started reading player list\n");
+    
+    // Read player entries until PLAYER_LIST_END
+    bool list_ended = false;
+    int safety_counter = 0;
+    const int MAX_READS = 100; // Prevent infinite loop
+    
+    while (!list_ended && safety_counter < MAX_READS) {
+        safety_counter++;
+        
+        if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
+            printf("ERROR: Connection lost while reading list\n");
+            strcpy(list->error_message, "Connection lost");
+            list->show_error = true;
+            return false;
+        }
+        
+        printf("DEBUG: Received: %s\n", buffer);
+        
+        if (strcmp(buffer, PROTO_PLAYER_LIST_END) == 0) {
+            printf("DEBUG: Finished reading player list (%d players)\n", list->count);
+            list_ended = true;
+            break;
+        }
+        
+        if (strncmp(buffer, PROTO_PLAYER_INFO, strlen(PROTO_PLAYER_INFO)) == 0) {
+            if (list->count >= MAX_PLAYERS) {
+                printf("WARNING: Too many players, skipping\n");
+                continue;
+            }
+            
+            char temp[BUFFER_SIZE];
+            strncpy(temp, buffer, BUFFER_SIZE - 1);
+            temp[BUFFER_SIZE - 1] = '\0';
+            
+            char* saveptr = NULL;
+            char* token = strtok_r(temp + strlen(PROTO_PLAYER_INFO), ":", &saveptr);
+            
+            if (token) {
+                PlayerInfo* player = &list->players[list->count];
+                player->id = atoi(token);
+                
+                token = strtok_r(NULL, ":", &saveptr);
+                if (token) {
+                    strncpy(player->ip, token, sizeof(player->ip) - 1);
+                    player->ip[sizeof(player->ip) - 1] = '\0';
+                }
+                
+                token = strtok_r(NULL, ":", &saveptr);
+                if (token) player->spectator_count = atoi(token);
+                
+                token = strtok_r(NULL, ":", &saveptr);
+                if (token) player->max_spectators = atoi(token);
+                
+                printf("DEBUG: Parsed player #%d: %s [%d/%d]\n", 
+                       player->id, player->ip, player->spectator_count, player->max_spectators);
+                
+                list->count++;
+            }
+        }
+    }
+    
+    if (!list_ended) {
+        printf("ERROR: Player list did not end properly\n");
+        strcpy(list->error_message, "Incomplete data");
+        list->show_error = true;
+        return false;
+    }
+    
+    printf("DEBUG: Fetch complete - %d players\n", list->count);
+    return true;
+}
 
-static void draw_player_selection_screen(int selected_index) {
+static void draw_player_selection_screen(PlayerList* list, int selected_index, int client_id) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
-    // Title: "ONLINE PLAYERS"
+    // Draw client ID at top center
+    font_manager_draw_client_id(client_id, "Spectator");
+    
     const char* title = "ONLINE PLAYERS";
     int title_width = font_manager_measure_text(title, UI_FONT_SIZE_TITLE);
     int title_x = (UI_WINDOW_WIDTH - title_width) / 2;
     int title_y = 100;
     font_manager_draw_text(title, title_x, title_y, UI_FONT_SIZE_TITLE, UI_COLOR_TEXT);
     
-    // Player list (centered)
+    if (list->show_error) {
+        int error_width = font_manager_measure_text(list->error_message, UI_FONT_SIZE_ERROR);
+        int error_x = (UI_WINDOW_WIDTH - error_width) / 2;
+        font_manager_draw_text(list->error_message, error_x, 200, UI_FONT_SIZE_ERROR, UI_COLOR_ERROR);
+    }
+    
     int start_y = 300;
     int spacing = 60;
     
-    for (int i = 0; i < mock_player_count; i++) {
-        MockPlayer* player = &mock_players[i];
-        
-        // Format: "Player #1 - 192.168.1.100 [1/2 spectators]"
-        char player_text[256];
-        snprintf(player_text, sizeof(player_text), 
-                 "Player #%d - %s [%d/%d spectators]",
-                 player->id, player->ip, player->spectator_count, player->max_spectators);
-        
-        // Selected = yellow, unselected = white
-        Color color = (selected_index == i) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
-        
-        int text_width = font_manager_measure_text(player_text, UI_FONT_SIZE_NORMAL);
+    if (list->count == 0 && !list->show_error) {
+        const char* no_players = "No players online";
+        int text_width = font_manager_measure_text(no_players, UI_FONT_SIZE_NORMAL);
         int text_x = (UI_WINDOW_WIDTH - text_width) / 2;
-        int text_y = start_y + (i * spacing);
-        
-        font_manager_draw_text(player_text, text_x, text_y, UI_FONT_SIZE_NORMAL, color);
+        font_manager_draw_text(no_players, text_x, start_y, UI_FONT_SIZE_NORMAL, GRAY);
+    } else {
+        for (int i = 0; i < list->count; i++) {
+            PlayerInfo* player = &list->players[i];
+            
+            char player_text[256];
+            snprintf(player_text, sizeof(player_text), 
+                     "Player #%d - %s [%d/%d spectators]",
+                     player->id, player->ip, player->spectator_count, player->max_spectators);
+            
+            Color color = (selected_index == i) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
+            
+            int text_width = font_manager_measure_text(player_text, UI_FONT_SIZE_NORMAL);
+            int text_x = (UI_WINDOW_WIDTH - text_width) / 2;
+            int text_y = start_y + (i * spacing);
+            
+            font_manager_draw_text(player_text, text_x, text_y, UI_FONT_SIZE_NORMAL, color);
+        }
     }
     
-    // Bottom buttons: [Return] (left) and [Refresh] (right)
     int button_y = UI_WINDOW_HEIGHT - 120;
+    int selection_return = list->count;
+    int selection_refresh = list->count + 1;
     
-    // [Return] button (bottom left)
     const char* return_text = "[Return]";
-    Color return_color = (selected_index == SELECTION_RETURN) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
-    int return_x = 100;
-    font_manager_draw_text(return_text, return_x, button_y, UI_FONT_SIZE_NORMAL, return_color);
+    Color return_color = (selected_index == selection_return) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
+    font_manager_draw_text(return_text, 100, button_y, UI_FONT_SIZE_NORMAL, return_color);
     
-    // [Refresh] button (bottom right)
     const char* refresh_text = "[Refresh]";
-    Color refresh_color = (selected_index == SELECTION_REFRESH) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
+    Color refresh_color = (selected_index == selection_refresh) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
     int refresh_width = font_manager_measure_text(refresh_text, UI_FONT_SIZE_NORMAL);
-    int refresh_x = UI_WINDOW_WIDTH - refresh_width - 100;
-    font_manager_draw_text(refresh_text, refresh_x, button_y, UI_FONT_SIZE_NORMAL, refresh_color);
+    font_manager_draw_text(refresh_text, UI_WINDOW_WIDTH - refresh_width - 100, button_y, UI_FONT_SIZE_NORMAL, refresh_color);
 }
 
-int show_player_selection_screen(void) {
+int show_player_selection_screen(Connection* conn, int client_id, const char* error_message) {
     printf("\n========================================\n");
     printf("Player Selection Screen Active\n");
     printf("========================================\n");
-    printf("Mock data: %d players online\n", mock_player_count);
-    printf("Use arrow keys to navigate\n");
-    printf("Press ENTER to select\n");
-    printf("Options: Players, [Return], [Refresh]\n\n");
+    
+    PlayerList list = {0};
+    
+    // Add small random delay to avoid thundering herd problem
+    // when multiple clients join simultaneously
+    double random_delay = ((double)(GetTime() * 1000) - (int)(GetTime() * 1000)) * 0.2; // 0-200ms
+    WaitTime(random_delay);
+    
+    printf("Fetching player list from server...\n\n");
+    fetch_player_list(conn, &list);
+    
+    // Set external error message if provided
+    bool show_external_error = false;
+    double external_error_time = 0.0;
+    if (error_message && strlen(error_message) > 0) {
+        show_external_error = true;
+        external_error_time = GetTime();
+        printf("DEBUG: External error to display: %s\n", error_message);
+    }
     
     int selected_index = 0;
-    int total_options = mock_player_count + 2; // players + return + refresh
+    int total_options = list.count + 2;
     bool done = false;
     int result = 0;
     
-    while (!done && !WindowShouldClose()) {
+    double last_manual_refresh = 0.0;
+    const double MANUAL_REFRESH_COOLDOWN = 1.0;
+    
+    while (!done && conn->connected && !WindowShouldClose()) {
+        double current_time = GetTime();
+        
         // Handle input
         if (IsKeyPressed(KEY_DOWN)) {
             selected_index = (selected_index + 1) % total_options;
@@ -97,42 +240,74 @@ int show_player_selection_screen(void) {
             selected_index = (selected_index - 1 + total_options) % total_options;
         }
         
-        // Left/Right to jump between Return and Refresh
         if (IsKeyPressed(KEY_LEFT)) {
-            if (selected_index >= SELECTION_RETURN) {
-                selected_index = SELECTION_RETURN;
+            if (selected_index >= list.count) {
+                selected_index = list.count;
             }
         }
         
         if (IsKeyPressed(KEY_RIGHT)) {
-            if (selected_index >= SELECTION_RETURN) {
-                selected_index = SELECTION_REFRESH;
+            if (selected_index >= list.count) {
+                selected_index = list.count + 1;
             }
         }
         
         if (IsKeyPressed(KEY_ENTER)) {
-            if (selected_index < mock_player_count) {
+            if (selected_index < list.count) {
                 // Selected a player
-                result = mock_players[selected_index].id;
+                result = list.players[selected_index].id;
                 printf("DEBUG: Selected Player #%d\n", result);
-            } else if (selected_index == SELECTION_RETURN) {
-                // Selected [Return]
+                done = true;
+            } else if (selected_index == list.count) {
+                // Return button
                 result = 0;
                 printf("DEBUG: Return button pressed\n");
-            } else if (selected_index == SELECTION_REFRESH) {
-                // Selected [Refresh]
-                result = -1;
-                printf("DEBUG: Refresh button pressed\n");
+                done = true;
+            } else {
+                // Refresh button
+                if (current_time - last_manual_refresh >= MANUAL_REFRESH_COOLDOWN) {
+                    printf("DEBUG: Manual refresh triggered\n");
+                    if (!fetch_player_list(conn, &list)) {
+                        printf("ERROR: Refresh failed, connection may be lost\n");
+                    } else {
+                        total_options = list.count + 2;
+                        if (selected_index >= total_options) {
+                            selected_index = total_options - 1;
+                        }
+                    }
+                    last_manual_refresh = current_time;
+                } else {
+                    printf("DEBUG: Refresh on cooldown (%.1fs remaining)\n", 
+                           MANUAL_REFRESH_COOLDOWN - (current_time - last_manual_refresh));
+                }
             }
+        }
+        
+        // Also allow R key to return quickly
+        if (IsKeyPressed(KEY_R)) {
+            result = 0;
+            printf("DEBUG: R key pressed - returning to title\n");
             done = true;
+        }
+        
+        // Check if external error should still be displayed (3 seconds)
+        if (show_external_error && (current_time - external_error_time >= 3.0)) {
+            show_external_error = false;
         }
         
         // Render
         BeginDrawing();
-            draw_player_selection_screen(selected_index);
+            draw_player_selection_screen(&list, selected_index, client_id);
+            
+            // Draw external error message at bottom if active
+            if (show_external_error) {
+                int error_width = font_manager_measure_text(error_message, UI_FONT_SIZE_ERROR);
+                int error_x = (UI_WINDOW_WIDTH - error_width) / 2;
+                int error_y = UI_WINDOW_HEIGHT - 50;
+                font_manager_draw_text(error_message, error_x, error_y, UI_FONT_SIZE_ERROR, UI_COLOR_ERROR);
+            }
         EndDrawing();
     }
     
-    printf("DEBUG: Exiting player_selection_screen, returning: %d\n", result);
     return result;
 }

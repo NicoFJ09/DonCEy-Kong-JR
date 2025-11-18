@@ -115,6 +115,52 @@ public class GameServer {
         return true;
     }
     
+    /**
+     * Unregister player from session (returning to lobby, NOT disconnecting)
+     * @param id Player's client ID
+     */
+    public synchronized void unregisterPlayerFromSession(Integer id) {
+        NetworkPlayer player = players.remove(id);
+        if (player != null) {
+            System.out.println("  Player #" + id + " left session (staying connected)");
+            
+            // Notify spectators that this player left the session
+            List<Integer> watchingSpectators = new ArrayList<>();
+            for (Map.Entry<Integer, Integer> entry : spectators.entrySet()) {
+                if (entry.getValue().equals(id)) {
+                    watchingSpectators.add(entry.getKey());
+                }
+            }
+            
+            if (!watchingSpectators.isEmpty()) {
+                System.out.println("  Notifying " + watchingSpectators.size() + " spectator(s) that player left");
+                
+                for (Integer spectatorId : watchingSpectators) {
+                    spectators.remove(spectatorId);
+                    
+                    ClientHandler spectatorHandler = clientHandlers.get(spectatorId);
+                    if (spectatorHandler != null) {
+                        spectatorHandler.notifyPlayerLeftSession(id);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Unregister spectator from session (returning to lobby, NOT disconnecting)
+     * @param spectatorId Spectator's client ID
+     * @param playerId Player they were watching
+     */
+    public synchronized void unregisterSpectatorFromSession(Integer spectatorId, Integer playerId) {
+        spectators.remove(spectatorId);
+        NetworkPlayer player = players.get(playerId);
+        if (player != null) {
+            player.removeSpectator(spectatorId);
+            System.out.println("  Spectator #" + spectatorId + " left session (staying connected)");
+        }
+    }
+    
     // === Disconnection Handling ===
     
     /**

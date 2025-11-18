@@ -6,16 +6,19 @@
 #define BUFFER_SIZE 1024
 
 // ============================================================
-// LOBBY PHASE PROTOCOL
+// CLIENT → SERVER COMMANDS
 // ============================================================
 
-#define TYPE_PLAYER "1"
-#define TYPE_SPECTATOR "2"
-#define TYPE_EXIT "exit"
-
-#define CMD_BACK "back"
+#define CMD_LIST_PLAYERS "LIST_PLAYERS"
+#define CMD_JOIN_PLAYER "1"
+#define CMD_JOIN_SPECTATOR_PREFIX "JOIN_SPECTATOR:"
+#define CMD_DISCONNECT "DISCONNECT"
+#define CMD_PLAY_AGAIN "PLAY_AGAIN"
 #define CMD_EXIT "exit"
-#define CMD_QUIT "quit"
+
+// ============================================================
+// SERVER → CLIENT PROTOCOL
+// ============================================================
 
 #define PROTO_ACCEPTED "ACCEPTED:"
 #define PROTO_REJECTED "REJECTED:"
@@ -24,7 +27,12 @@
 #define PROTO_BYE "BYE"
 #define PROTO_CLIENT_ID "CLIENT_ID:"
 #define PROTO_PLAYER_DISCONNECTED "PLAYER_DISCONNECTED:"
-#define PROTO_LOBBY "LOBBY"
+#define PROTO_PLAYER_LEFT_SESSION "PLAYER_LEFT_SESSION:"
+
+// Player list protocol
+#define PROTO_PLAYER_LIST_START "PLAYER_LIST_START"
+#define PROTO_PLAYER_LIST_END "PLAYER_LIST_END"
+#define PROTO_PLAYER_INFO "PLAYER:"
 
 // ============================================================
 // UI CONSTANTS
@@ -39,6 +47,7 @@
 #define UI_FONT_SIZE_NORMAL 24
 #define UI_FONT_SIZE_INPUT 20
 #define UI_FONT_SIZE_ERROR 18
+#define UI_FONT_SIZE_SMALL 16
 
 // Colors (Raylib color definitions)
 #define UI_COLOR_BACKGROUND (Color){0, 0, 0, 255}      // Black

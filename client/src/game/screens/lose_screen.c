@@ -4,8 +4,11 @@
 #include "raylib.h"
 #include <stdio.h>
 
-static void draw_lose_screen(LoseOption selected) {
+static void draw_lose_screen(LoseOption selected, int client_id) {
     ClearBackground(UI_COLOR_BACKGROUND);
+    
+    // Draw client ID at top center
+    font_manager_draw_client_id(client_id, "Player");
     
     // Title: "YOU LOST"
     const char* title = "YOU LOST";
@@ -35,7 +38,7 @@ static void draw_lose_screen(LoseOption selected) {
     }
 }
 
-LoseOption show_lose_screen(void) {
+LoseOption show_lose_screen(int client_id) {
     printf("\n========================================\n");
     printf("Lose Screen Active\n");
     printf("========================================\n");
@@ -61,7 +64,7 @@ LoseOption show_lose_screen(void) {
         
         // Render
         BeginDrawing();
-            draw_lose_screen(selected);
+            draw_lose_screen(selected, client_id);
         EndDrawing();
     }
     

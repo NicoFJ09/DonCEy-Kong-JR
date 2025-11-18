@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "rendering/renderer.h"
 #include "game/game_flow.h"
+#include "network/connection.h"
 
 static void print_header(void) {
     printf("========================================\n");
@@ -10,6 +11,12 @@ static void print_header(void) {
 
 int main(void) {
     print_header();
+    
+    // Initialize network subsystem
+    if (!connection_init()) {
+        printf("Failed to initialize network\n");
+        return 1;
+    }
     
     // Initialize graphics
     printf("Initializing graphics...\n");
@@ -21,6 +28,7 @@ int main(void) {
     
     // Cleanup
     renderer_cleanup();
+    connection_cleanup_global();
     
     return 0;
 }
