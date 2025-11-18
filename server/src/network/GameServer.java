@@ -217,7 +217,7 @@ public class GameServer {
      * Get the actual network IP address (not loopback)
      * Returns the first non-loopback IPv4 address found
      */
-    private String getNetworkIP() {
+    public String getNetworkIP() {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
             
