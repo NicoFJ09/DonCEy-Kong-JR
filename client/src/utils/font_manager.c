@@ -46,3 +46,14 @@ int font_manager_measure_text(const char* text, int font_size) {
     }
     return MeasureText(text, font_size);
 }
+
+void font_manager_draw_client_id(int client_id, const char* role_name) {
+    if (client_id > 0) {
+        char id_text[64];
+        snprintf(id_text, sizeof(id_text), "%s #%d", role_name, client_id);
+        int text_width = font_manager_measure_text(id_text, 16);
+        int text_x = (1200 - text_width) / 2;  // UI_WINDOW_WIDTH
+        font_manager_draw_text(id_text, text_x, 20, 16, YELLOW);
+    }
+}
+

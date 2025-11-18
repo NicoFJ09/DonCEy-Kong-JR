@@ -13,8 +13,9 @@ typedef enum {
  * Display lose screen after player loses
  * Shows "YOU LOST" title and 2 options
  * Arrow keys to navigate, ENTER to select
+ * @param client_id Client ID to display
  * @return Selected LoseOption (PLAY_AGAIN or RETURN_TITLE)
  */
-LoseOption show_lose_screen(void);
+LoseOption show_lose_screen(int client_id);
 
 #endif

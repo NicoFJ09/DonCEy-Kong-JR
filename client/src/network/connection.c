@@ -14,29 +14,43 @@
     #include <sys/socket.h>
 #endif
 
+// === Global Initialization ===
+
+/**
+ * Initialize network subsystem (Windows only)
+ */
+bool connection_init(void) {
+    #ifdef _WIN32
+    WSADATA wsa_data;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
+        printf("Error: WSAStartup failed\n");
+        return false;
+    }
+    #endif
+    return true;
+}
+
+/**
+ * Cleanup network subsystem (Windows only)
+ */
+void connection_cleanup_global(void) {
+    #ifdef _WIN32
+    WSACleanup();
+    #endif
+}
+
 // === Connection Management ===
 
 /**
  * Create and connect to server
  * Cross-platform implementation for Windows, Linux, and macOS
+ * Note: connection_init() must be called first
  */
 Connection* connection_create(const char* ip, int port) {
-    #ifdef _WIN32
-    // Initialize Winsock on Windows
-    WSADATA wsa_data;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-        printf("Error: WSAStartup failed\n");
-        return NULL;
-    }
-    #endif
-    
     // Allocate connection structure
     Connection* conn = malloc(sizeof(Connection));
     if (!conn) {
         printf("Error: Could not allocate memory for connection\n");
-        #ifdef _WIN32
-        WSACleanup();
-        #endif
         return NULL;
     }
     
@@ -50,9 +64,6 @@ Connection* connection_create(const char* ip, int port) {
     #endif
         printf("Error: Could not create socket\n");
         free(conn);
-        #ifdef _WIN32
-        WSACleanup();
-        #endif
         return NULL;
     }
     
@@ -66,7 +77,6 @@ Connection* connection_create(const char* ip, int port) {
         printf("Error: Invalid server IP address\n");
         #ifdef _WIN32
         closesocket(conn->socket_fd);
-        WSACleanup();
         #else
         close(conn->socket_fd);
         #endif
@@ -89,6 +99,7 @@ Connection* connection_create(const char* ip, int port) {
     }
     
     conn->connected = true;
+    conn->client_id = -1;  // Not assigned yet
     printf("Connected to server!\n\n");
     
     return conn;
@@ -115,7 +126,13 @@ bool connection_send(Connection* conn, const char* message) {
     ssize_t sent = send(conn->socket_fd, buffer, strlen(buffer), 0);
     #endif
     
-    return sent > 0;
+    if (sent <= 0) {
+        // Connection lost
+        conn->connected = false;
+        return false;
+    }
+    
+    return true;
 }
 
 /**
@@ -148,6 +165,33 @@ char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
     }
     
     return buffer;
+}
+
+/**
+ * Check if data is available without blocking
+ */
+bool connection_has_data(Connection* conn) {
+    if (!conn || !conn->connected) {
+        return false;
+    }
+    
+    #ifdef _WIN32
+    u_long available = 0;
+    ioctlsocket(conn->socket_fd, FIONREAD, &available);
+    return available > 0;
+    #else
+    fd_set read_fds;
+    struct timeval timeout;
+    
+    FD_ZERO(&read_fds);
+    FD_SET(conn->socket_fd, &read_fds);
+    
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    
+    int result = select(conn->socket_fd + 1, &read_fds, NULL, NULL, &timeout);
+    return result > 0;
+    #endif
 }
 
 // === Cleanup ===

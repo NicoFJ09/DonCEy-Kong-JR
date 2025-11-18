@@ -24,9 +24,7 @@ OBJ_DIR = $(BUILD_DIR)/obj
 
 # Network layer
 NETWORK_SOURCES = src/network/connection.c \
-                  src/network/message_handler.c \
-                  src/network/lobby_handler.c \
-                  src/network/session_handler.c
+                  src/network/message_handler.c
 
 # Rendering layer
 RENDERING_SOURCES = src/rendering/sprite_manager.c \
@@ -43,16 +41,15 @@ GAME_SOURCES = src/game/game_flow.c \
                src/game/screens/title_screen.c \
                src/game/screens/player_screen.c \
                src/game/screens/lose_screen.c \
-               src/game/screens/player_selection_screen.c
+               src/game/screens/player_selection_screen.c \
+               src/game/screens/spectator_screen.c
 
 MAIN_SOURCE = src/main.c
 SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(UTILS_SOURCES) $(GAME_SOURCES)
 
 # Object files
 NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
-                  $(OBJ_DIR)/message_handler.o \
-                  $(OBJ_DIR)/lobby_handler.o \
-                  $(OBJ_DIR)/session_handler.o
+                  $(OBJ_DIR)/message_handler.o
 
 RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
                     $(OBJ_DIR)/animation.o \
@@ -66,14 +63,13 @@ GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
                $(OBJ_DIR)/title_screen.o \
                $(OBJ_DIR)/player_screen.o \
                $(OBJ_DIR)/lose_screen.o \
-               $(OBJ_DIR)/player_selection_screen.o
+               $(OBJ_DIR)/player_selection_screen.o \
+               $(OBJ_DIR)/spectator_screen.o
 
 OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(UTILS_OBJECTS) $(GAME_OBJECTS)
 
 HEADERS = src/network/connection.h \
           src/network/message_handler.h \
-          src/network/lobby_handler.h \
-          src/network/session_handler.h \
           src/rendering/sprite_manager.h \
           src/rendering/animation.h \
           src/rendering/renderer.h \
@@ -85,7 +81,8 @@ HEADERS = src/network/connection.h \
           src/game/screens/title_screen.h \
           src/game/screens/player_screen.h \
           src/game/screens/lose_screen.h \
-          src/game/screens/player_selection_screen.h
+          src/game/screens/player_selection_screen.h \
+          src/game/screens/spectator_screen.h
 
 all: directories $(TARGET)
 
@@ -103,12 +100,6 @@ $(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/message_handler.o: src/network/message_handler.c src/network/message_handler.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/lobby_handler.o: src/network/lobby_handler.c src/network/lobby_handler.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/session_handler.o: src/network/session_handler.c src/network/session_handler.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/sprite_manager.o: src/rendering/sprite_manager.c src/rendering/sprite_manager.h
@@ -142,6 +133,9 @@ $(OBJ_DIR)/lose_screen.o: src/game/screens/lose_screen.c src/game/screens/lose_s
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/player_selection_screen.o: src/game/screens/player_selection_screen.c src/game/screens/player_selection_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/spectator_screen.o: src/game/screens/spectator_screen.c src/game/screens/spectator_screen.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

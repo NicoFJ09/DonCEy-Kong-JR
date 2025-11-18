@@ -36,4 +36,11 @@ void font_manager_draw_text(const char* text, int x, int y, int font_size, Color
  */
 int font_manager_measure_text(const char* text, int font_size);
 
+/**
+ * Helper: Draw client ID at top center of screen
+ * @param client_id Client ID to display (or -1 if not assigned)
+ * @param role_name Role name to display ("Client", "Player", "Spectator")
+ */
+void font_manager_draw_client_id(int client_id, const char* role_name);
+
 #endif
