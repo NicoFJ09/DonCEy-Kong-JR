@@ -1,203 +1,5 @@
 # DonCEy Kong Jr - Project Analysis & Team Meeting Preparation
 
-## 🎮 Game Requirements Analysis
-
-### Core Gameplay Elements
-
-1. **Player Character**: Donkey Kong Jr
-   - Movement: Arrow keys (up/down/left/right)
-   - Actions: Jump (to grab vines)
-   - Lives system
-   - Death conditions: Hit by crocodile OR fall to abyss
-
-2. **Enemies**: 
-   - **Red Crocodiles**: Move up/down on single vine (stay on vine)
-   - **Blue Crocodiles**: Fall vertically down vines
-   - Speed increases with each level completion
-
-3. **Collectibles**: Fruits
-   - Give points when collected
-   - Admin-created with position (vine, height) and point value
-
-4. **Level Progression**:
-   - Rescue Donkey Kong = +1 life & restart level
-   - Enemy speed increases each completion
-
-5. **Admin Controls** (Console/App):
-   - Create crocodiles (type, vine position)
-   - Create fruits (vine, height, points)
-   - Delete fruits
-
-### System Architecture Requirements
-
-1. **Max Concurrent Users**:
-   - 2 Players (different machines, not same screen)
-   - 2 Spectators per Player (4 total spectators max)
-
-2. **Required Design Patterns** (Java):
-   - At least 2 patterns (excluding Singleton)
-   - Current: Observer, Thread-per-Connection, DTO, Template Method
-   - Needed: Command, Factory
-
-3. **C Requirements**:
-   - Constants in separate file ✅
-   - Use of structs ✅
-   - Executable required
-
----
-
-## 🔌 Current Implementation Status
-
-### ✅ COMPLETED: Network Layer
-
-#### Server (Java)
-```
-✅ GameServer.java      - Main server, accepts connections
-✅ ClientHandler.java   - Thread per client
-✅ NetworkPlayer.java   - Player connection metadata
-✅ Config.java          - Configuration constants
-```
-
-**Key Features Implemented**:
-- Multi-client support via threads
-- Player vs Spectator role selection
-- Spectator assignment to specific players
-- Disconnect handling with observer notification
-- Thread-safe operations (ConcurrentHashMap)
-
-#### Client (C)
-```
-✅ connection.c/h       - TCP socket operations
-✅ lobby_handler.c/h    - Lobby phase logic
-✅ session_handler.c/h  - Game session placeholder
-✅ message_handler.c/h  - Protocol parsing
-✅ constants.h          - Configuration
-```
-
-**Key Features Implemented**:
-- Cross-platform socket code (Windows/Linux/macOS)
-- Clean separation of lobby vs game phases
-- Type-safe message parsing
-- Modular architecture
-
-### 🚧 TODO: Game Logic Implementation
-
-#### Server Needs:
-1. **Game Entities** (classes for Player, Crocodiles, Fruits)
-2. **Game State Manager** (positions, collisions, score)
-3. **Game Loop** (60 FPS update cycle)
-4. **Command Pattern** (handle player inputs)
-5. **Admin Console** (entity creation/deletion)
-6. **Factory Pattern** (entity creation)
-
-#### Client Needs:
-1. **Raylib Integration** (graphics rendering)
-2. **Game State Structures** (mirror server state)
-3. **Input Handler** (keyboard → commands)
-4. **State Parser** (protocol → structs)
-5. **Renderer** (draw entities, UI)
-
----
-
-## 🔄 Proposed Game Flow
-
-### 1. Connection Phase (✅ DONE)
-```
-Client connects → Server accepts → ClientHandler thread spawned
-```
-
-### 2. Lobby Phase (✅ DONE)
-```
-Client chooses:
-├─ PLAYER → If slots available → Enter game
-├─ SPECTATOR → Select player → Watch game
-└─ EXIT → Disconnect
-```
-
-### 3. Game Initialization (🚧 TODO)
-```
-Server:
-├─ Create GameState
-├─ Spawn initial entities
-├─ Start GameLoop thread
-└─ Broadcast initial state
-
-Client:
-├─ Initialize Raylib window
-├─ Parse initial state
-└─ Start render loop
-```
-
-### 4. Main Game Loop (🚧 TODO)
-```
-Every frame (60 FPS):
-Server:
-├─ Process command queue
-├─ Update entity positions
-├─ Check collisions
-├─ Handle deaths/scoring
-└─ Broadcast state to all clients
-
-Client:
-├─ Poll keyboard input
-├─ Send commands to server
-├─ Receive state updates
-└─ Render game state
-```
-
-### 5. Admin Operations (🚧 TODO)
-```
-Admin Console (parallel thread):
-├─ Read console commands
-├─ Validate parameters
-├─ Create/delete entities
-└─ Update GameState
-```
-
----
-
-## 📨 Protocol Design (Proposed)
-
-### Client → Server Commands
-```
-MOVE:UP
-MOVE:DOWN  
-MOVE:LEFT
-MOVE:RIGHT
-JUMP
-CLIMB
-```
-
-### Server → Client Messages
-```
-STATE:<json>                    # Full game state update
-PLAYER_DIED:<id>               # Player death notification
-SCORE_UPDATE:<id>:<score>      # Score change
-FRUIT_COLLECTED:<id>:<points>  # Fruit collection
-LEVEL_COMPLETE                 # Level completed
-GAME_OVER                       # Game ended
-```
-
-### State JSON Format (Proposed)
-```json
-{
-  "players": [
-    {"id": 1, "x": 100, "y": 200, "lives": 3, "score": 500, "climbing": false}
-  ],
-  "crocodiles": [
-    {"id": 1, "type": "red", "vine": 2, "y": 150, "direction": "up"},
-    {"id": 2, "type": "blue", "vine": 4, "y": 50}
-  ],
-  "fruits": [
-    {"id": 1, "vine": 3, "height": 0.5, "points": 100}
-  ],
-  "level": 1,
-  "speed_multiplier": 1.0
-}
-```
-
----
-
 ## 👥 Team Task Allocation (From Tasks.md)
 
 ### Person A (Tamara) - Game Core
@@ -231,25 +33,11 @@ GAME_OVER                       # Game ended
 
 ## 📝 User Stories for Sprint 1
 
-### Epic 1: Game State Management
-```
-US1.1: As a server, I need to maintain game state with all entity positions
-US1.2: As a server, I need to detect collisions between entities
-US1.3: As a server, I need to track player lives and scores
-```
-
 ### Epic 2: Player Control
 ```
 US2.1: As a player, I want to move using arrow keys
 US2.2: As a player, I want to jump to grab vines
 US2.3: As a player, I want to see my lives and score
-```
-
-### Epic 3: Enemy Behavior
-```
-US3.1: As a server, I need red crocodiles to patrol vertically on vines
-US3.2: As a server, I need blue crocodiles to fall down vines
-US3.3: As a server, I need to increase enemy speed after level completion
 ```
 
 ### Epic 4: Admin Controls
@@ -265,77 +53,6 @@ US5.1: As a spectator, I want to see real-time game state
 US5.2: As a spectator, I want read-only view (no input)
 US5.3: As a spectator, I want notification when player disconnects
 ```
-
----
-
-## 🚀 Implementation Priorities
-
-### Week 1 (Parallel Development)
-1. **Person A**: Create entity classes & GameState
-2. **Person D**: Set up Raylib, create rendering system
-3. **Person B**: Design command pattern structure
-4. **Person C**: Build admin console interface
-
-### Week 2 (Integration)
-1. Connect GameState to GameLoop
-2. Link commands to state updates
-3. Wire admin console to entity creation
-4. Connect client renderer to network updates
-
-### Week 3 (Polish & Testing)
-1. Full system testing
-2. Performance optimization
-3. Documentation
-4. Bug fixes
-
----
-
-## ⚠️ Risk Assessment
-
-### Technical Risks
-1. **Synchronization Issues**: Multiple threads accessing GameState
-   - **Mitigation**: Use synchronized methods or locks
-
-2. **Network Latency**: State updates might lag
-   - **Mitigation**: Send deltas instead of full state, interpolation
-
-3. **Collision Detection Performance**: O(n²) with many entities
-   - **Mitigation**: Spatial partitioning, limit entity count
-
-### Process Risks
-1. **Integration Delays**: Interfaces not matching
-   - **Mitigation**: Define contracts early, use mocks
-
-2. **Unequal Work Distribution**: Some finish early, others blocked
-   - **Mitigation**: Clear task boundaries, help with integration
-
----
-
-## 📊 Success Metrics
-
-### Functional Requirements
-- [ ] 2 players can connect and play simultaneously
-- [ ] Spectators can watch without affecting game
-- [ ] Admin can create/delete entities during gameplay
-- [ ] Collision detection works correctly
-- [ ] Score and lives tracked accurately
-- [ ] Level progression with speed increase
-
-### Technical Requirements
-- [ ] Java uses 2+ design patterns (excluding Singleton)
-- [ ] C uses structs and separate constants file
-- [ ] No primitive types in Java (wrapper classes only)
-- [ ] Clean separation of concerns
-- [ ] Thread-safe operations
-
-### Quality Metrics
-- [ ] 60 FPS game loop
-- [ ] <100ms network latency
-- [ ] No memory leaks
-- [ ] Graceful disconnect handling
-- [ ] Clear error messages
-
----
 
 ## 🎯 Meeting Agenda Topics
 
@@ -397,60 +114,254 @@ US5.3: As a spectator, I want notification when player disconnects
 
 ---
 
-## 📚 Resources & References
+## Requirements:
 
-### Documentation
-- [Socket Programming C/Java](https://old.chuidiang.org/java/sockets/cpp_java/cpp_java.php)
-- [Raylib Documentation](https://www.raylib.com/)
-- [Java Design Patterns](https://refactoring.guru/design-patterns/java)
+### 🖥️ SERVIDOR (Java)
 
-### Testing Tools
-- Valgrind (C memory leaks)
-- JUnit (Java unit tests)
-- Wireshark (network debugging)
+### Conexiones
+- Aceptar conexiones TCP en puerto
+- Validar tipo de cliente (jugador/espectador)
+- Máximo 2 jugadores simultáneos
+- Máximo 2 espectadores por jugador
+- Asociar espectadores con jugadores específicos
 
-### Similar Projects
-- [Original Donkey Kong Jr](https://www.retrogames.cz/play_002-NES.php)
-- Multiplayer game architectures
-- Real-time synchronization techniques
+### Admin UI (Java Swing)
+- Panel con dropdown de tipos de enemigo (Rojo/Azul)
+- Dropdown de número de liana (1-5)
+- Campo de texto para tipo de fruta
+- Campo de texto para posición Y de frutas
+- Botón "Crear Enemigo"
+- Botón "Crear Fruta"
+- Botón "Eliminar Fruta"
+- Lista visual de frutas creadas (permite selección)
+- Lista de jugadores conectados con sus IPs (actualización automática)
+
+### Variables Persistentes (por jugador)
+- **Vidas**: Inicia en 3, decrementa al recibir `EVENT:DIED`, envía `LIVES:<n>`
+- **Score**: Inicia en 0, incrementa al recibir `EVENT:FRUIT:<puntos>`, envía `SCORE:<n>`
+- **Velocidad**: Inicia en 1.0, incrementa 20% al recibir `EVENT:LEVEL_COMPLETE`, envía `SPEED:<n>`
+- **Game Over**: Cuando vidas = 0, envía `GAME_OVER`
+
+### Broadcast de Entidades (solo creación/eliminación)
+- Admin crea enemigo → broadcast a TODOS: `ENEMY_SPAWNED:<tipo>:<lianaId>`
+- Admin crea fruta → broadcast a TODOS: `FRUIT_SPAWNED:<lianaId>:<altura>:<puntos>`
+- Admin elimina fruta → broadcast a TODOS: `FRUIT_REMOVED:<lianaId>:<altura>`
+- Servidor NO actualiza ni envía posiciones después de crear
+
+### Comunicación con Jugadores
+- Recibir eventos: `EVENT:DIED`, `EVENT:FRUIT:<puntos>`, `EVENT:LEVEL_COMPLETE`
+- Enviar confirmaciones: `LIVES:<n>`, `SCORE:<n>`, `SPEED:<n>`, `GAME_OVER`
+- Recibir estado completo (20 Hz): `STATE:<json>`
+- NO validar física, colisiones ni posiciones
+
+### Comunicación con Espectadores (relay)
+- Recibir estado del jugador observado
+- Retransmitir sin modificar: `PLAYER_STATE:<json>` (json con todas las entidades)
+- Retransmitir eventos: `PLAYER_EVENT:DIED`, `PLAYER_EVENT:LEVEL_COMPLETE`
+- Enviar `PLAYER_DISCONNECTED` si jugador se desconecta
+
+### Patrones de Diseño (mínimo 2)
+- **Observer**: Espectadores observan jugadores, servidor notifica cambios
+- **Factory**: EntityFactory crea instancias según tipo
+- **Thread-per-Connection**: ClientHandler extiende Thread
+
+### Estructura OO
+- Paquetes: `network`, `game/entities`, `game/managers`, `ui`, `utils`
+- Herencia: `Enemy` (abstract) → `RedEnemy`, `BlueEnemy`
+- Sin tipos primitivos: `Integer`, `Float`, `Boolean`, `String`
 
 ---
 
-## ✅ Pre-Meeting Checklist
+### 💻 CLIENTE (C + Raylib)
 
-- [ ] Each member reviews their Tasks.md section
-- [ ] Prepare questions about unclear requirements
-- [ ] Think about interface boundaries
-- [ ] Consider potential blockers
-- [ ] Review current codebase
-- [ ] Test network connection works
-- [ ] Prepare development environment
+### Lobby
+- Mostrar menú: 1) Jugador, 2) Espectador, 3) Salir
+- Enviar `JOIN:PLAYER` o `JOIN:SPECTATOR:<playerId>`
+- Si espectador: mostrar lista de jugadores disponibles
+- Esperar `ACCEPTED` o `REJECTED`
+- Transicionar a juego si aceptado
+
+### Input (solo jugadores, NO espectadores)
+- Flechas izquierda/derecha: Movimiento horizontal
+- Flecha arriba: Trepar liana (si agarrado)
+- Flecha abajo: Bajar liana / soltar
+- Espacio: Saltar / agarrar liana cercana
+
+### Física del Jugador (local, 60 FPS)
+- Gravedad constante cuando no está en piso ni trepando
+- Velocidad horizontal constante al moverse
+- Velocidad de trepar constante
+- Snap a plataforma cuando aterriza
+- Detener movimiento horizontal al chocar con pared
+
+### Sistema de Lianas
+- Recibir estructura inicial: `LEVEL_DATA:<json>`
+- Guardar posiciones de lianas visibles e invisibles
+- Detectar lianas cercanas para agarrar (radio de alcance)
+- Permitir agarrar lianas invisibles solo si lianas laterales están suficientemente bajas
+- Soltar liana al presionar abajo hasta no tocar ninguna
+- Soltar liana al moverse lateralmente fuera de rango
+
+### Lógica de Enemigos (local, 60 FPS)
+- Recibir creación: `ENEMY_SPAWNED:<tipo>:<lianaId>`
+- Crear enemigo en lista local y actualizarlo desde ese momento
+- **Rojos**: Patrullan verticalmente, invierten dirección en límites
+- **Azules**: Caen verticalmente, eliminarse al tocar agua
+- Aplicar multiplicador `game_speed` recibido del servidor
+- Cliente tiene TODA la lógica de movimiento
+
+### Detección de Colisiones (local)
+- **Piso/Plataformas**: Snap arriba del piso cuando aterriza
+- **Paredes**: Detener movimiento horizontal
+- **Enemigos**: Muerte si distancia < radio
+- **Frutas**: Recoger si overlap
+- **Agua**: Muerte si Y > nivel del agua
+- **Jaula**: Victoria si overlap con rectángulo
+
+### Eventos al Servidor
+- Muerte: `EVENT:DIED:ENEMY` o `EVENT:DIED:FALL`
+- Fruta: `EVENT:FRUIT:<puntos>`
+- Victoria: `EVENT:LEVEL_COMPLETE`
+- Servidor responde con confirmación
+
+### Sistema de Vidas y Puntuación
+- Variables locales: `lives`, `score`, `game_speed`
+- Actualizar localmente al detectar evento
+- Enviar evento al servidor
+- Recibir confirmación y sincronizar si difiere
+
+### Estado para Espectadores (envío periódico)
+- Cada 50-100ms enviar estado completo al servidor:
+```json
+STATE:{
+  player: {x, y, state, facing},
+  enemies: [{id, x, y}, ...],
+  fruits: [{id, x, y}, ...],
+  lives,
+  score
+}
+```
+- Servidor retransmite a espectadores sin procesar
+
+### Renderizado (60 FPS)
+- Sprites según estado: idle, walk, jump, climb, dead
+- Sprites según dirección: left, right
+- Animaciones: caminar (4 frames), trepar (2 frames)
+- Renderizar lianas visibles (invisibles NO se dibujan)
+- Renderizar plataformas, enemigos, frutas, jaula
+- UI: vidas, score, nivel
+
+### Modo Espectador
+- NO procesar input de teclado (solo ESC para salir)
+- Recibir estado completo: `PLAYER_STATE:<json>`
+- Interpolar entre actualizaciones (20 Hz → 60 FPS)
+- Mostrar overlay: "Observando a Jugador #<id>"
+- Detectar `PLAYER_DISCONNECTED`
+
+### Estructura Imperativa
+- Structs: `Player`, `Enemy`, `Fruit`, `Vine`, `Platform`, `GameState`
+- Archivo `constants.h` con todas las constantes
+- Sin clases: Solo funciones sobre structs
+- Paso por puntero: `void update_player(Player* p, float dt)`
 
 ---
 
-## 📝 Notes Section
+## 🌐 PROTOCOLO DE RED
 
-*Use this space during the meeting to capture decisions and action items*
+### Cliente → Servidor (Jugador)
+```
+JOIN:PLAYER
+EVENT:DIED:ENEMY
+EVENT:DIED:FALL
+EVENT:FRUIT:<puntos>
+EVENT:LEVEL_COMPLETE
+STATE:<json>
+```
 
-### Decisions Made:
-- Pantalla principal del juego (seleccion jugador y espectador, inputs individuales a server).
-- Espectador abre pantalla de jugador a visualizar. (inputs inidviduales a server)
-- Administrador Server, interfaz en java, panel con casillas de selección, dropdown con tipos de enemigos y botón de selección.
-- Handle sending client inputs to server (move up, down, left right, mensajes individuales y espacio para saltar).
-- Handle floor colission, if player is at a lower or equal corrdinate than the floor it will move the player a few pixels higher than the block.
-- Lianas se crean como nodos, conectas liana a con b con c, las lianas impares son invisibles, representan estado en el que donkey kong jr se agarra a la derecha a la izquierda (cuando pasa esto la colision derecha e izquierda aplican para el punto central).
-- Cocodrilos, rojos spawnean en las lianas, arriba y abajo y nunca caen, los azules, llegan a una liana y caen hasta atravesar el piso y caer al agua. eliminamos instancias de ambos. Preguntar a profe, para spawnear cocodrilos, escogemos posicion en y? los azules spanean desde arriba o directo en la liana? Y para las frutas si escogemos la posicion en y o solo la liana.
-- Colisiones en las invisibles funcionan de tal forma que colisiones en el nodo izquierdo y derecho las afectan. Para montarme a la liana tengo que saltar. Frutas solo pueden spawnear en las lianas, y donkey puede estar, ademas hay lianas invisibles a la derecha de la liana derecha y a la izquierda de la liana izquierda, solo te puedes bajar de las lianas si le das abajo hasta no tocar ninguna o yendo a los lados hasta soltarte de la invisible. Agarrarse a los lados de la liana invisible requiere que al menos una de las 2 lianas laterales este tan abajo como la coord x de donkey kong jr
-- Llegar a la cima no es meta, es especificamente la jaula de donkey kong
-- Se debe crear un handler para cada sprite segun el estado actual, esto incluye la ultima direccion del mono, si estas colgado, si llegas, movimiento de los enemigos, etc.
-### Action Items:
-- 
+### Cliente → Servidor (Espectador)
+```
+JOIN:SPECTATOR:<playerId>
+```
 
-### Questions to Research:
-- 
+### Servidor → Todos los Clientes (broadcast)
+```
+ENEMY_SPAWNED:<tipo>:<lianaId>
+FRUIT_SPAWNED:<lianaId>:<altura>:<puntos>
+FRUIT_REMOVED:<lianaId>:<altura>
+LEVEL_DATA:<json>
+```
 
-### Next Meeting:
-- Date:
-- Topics:
+### Servidor → Jugador Específico (confirmaciones)
+```
+ACCEPTED:PLAYER
+REJECTED:<razón>
+LIVES:<n>
+SCORE:<n>
+SPEED:<n>
+GAME_OVER
+```
+
+### Servidor → Espectador Específico (relay)
+```
+ACCEPTED:SPECTATOR
+REJECTED:<razón>
+PLAYER_STATE:<json>
+PLAYER_EVENT:DIED
+PLAYER_EVENT:LEVEL_COMPLETE
+PLAYER_DISCONNECTED
+```
 
 ---
+
+## 🎮 MECÁNICAS DE JUEGO
+
+### Enemigos
+- **Rojos**: Patrullan verticalmente en liana, invierten dirección en límites, nunca caen
+- **Azules**: Spawnan arriba, caen hasta agua, atraviesan plataformas
+- Velocidad: `base_speed * game_speed` (game_speed del servidor)
+- Lógica completamente en cliente después de spawn
+
+### Frutas
+- Posición: Liana + altura relativa (0.0-1.0)
+- Puntos configurables en admin
+- Cliente elimina localmente al recoger
+- Reaparecen al completar nivel
+
+### Win Condition
+- Colisión con jaula de Donkey Kong
+- Cliente envía `EVENT:LEVEL_COMPLETE`
+- Servidor responde: `LIVES:<n+1>`, `SCORE:<score+bonus>`, `SPEED:<speed*1.2>`
+- Cliente resetea nivel localmente
+
+### Pérdida
+- Vidas = 0 → Servidor envía `GAME_OVER`
+- Pantalla de Game Over
+- Opciones: Reiniciar o volver al lobby
+
+---
+
+## ✅ CUMPLIMIENTO DE RÚBRICA
+
+### Servidor (Puntos 1-9)
+- ✅ 1-2. Crear enemigos rojos/azules (admin UI → broadcast)
+- ✅ 3. Crear/eliminar frutas (admin UI → broadcast)
+- ✅ 4. Administración de vidas (contador persistente)
+- ✅ 5. Administración de puntuación (contador persistente)
+- ✅ 6. Velocidad de desplazamiento (multiplicador, incremento por nivel)
+- ✅ 7. OO (herencia, paquetes)
+- ✅ 8. Patrones (Observer, Factory, Thread-per-Connection)
+- ✅ 9. Ejecutable
+
+### Cliente (Puntos 10-18)
+- ✅ 10. Control de Donkey (input + física local)
+- ✅ 11. 2 jugadores activos (2 clientes jugadores)
+- ✅ 12. 2 espectadores por jugador (4 clientes espectadores)
+- ✅ 13. Interpretación estructura servidor (parse mensajes)
+- ✅ 14. Informa muerte (envía EVENT:DIED)
+- ✅ 15. Informa frutas (envía EVENT:FRUIT)
+- ✅ 16. Archivo constantes (constants.h)
+- ✅ 17. Imperativo (structs, funciones)
+- ✅ 18. Ejecutable
+
+### Comunicación (Punto 22)
+- ✅ Sockets TCP (C ↔ Java)
