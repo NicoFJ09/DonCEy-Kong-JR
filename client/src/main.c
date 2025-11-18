@@ -6,29 +6,12 @@
 #include "utils/constants.h"
 #include "rendering/renderer.h"
 #include "rendering/sprite_test.h"
+#include "game/screens/ip_input_screen.h"
 
 static void print_header(void) {
     printf("========================================\n");
     printf("DonCEy Kong Jr - Client\n");
     printf("========================================\n\n");
-}
-
-static bool get_server_ip(char* ip_buffer, size_t buffer_size) {
-    printf("Enter server IP address (or 'test' for sprite test): ");
-    fflush(stdout);
-    
-    if (fgets(ip_buffer, buffer_size, stdin) == NULL) {
-        return false;
-    }
-    
-    ip_buffer[strcspn(ip_buffer, "\n")] = '\0';
-    
-    if (strlen(ip_buffer) == 0) {
-        printf("Error: IP address cannot be empty\n");
-        return false;
-    }
-    
-    return true;
 }
 
 int main(void) {
@@ -42,44 +25,59 @@ int main(void) {
     renderer_init("DonCEy Kong Jr - Client", "assets/");
     printf("✓ Graphics window opened\n\n");
     
-    // Get server IP
-    while (conn == NULL) {
-        if (!get_server_ip(server_ip, sizeof(server_ip))) {
-            printf("Invalid input. Try again.\n\n");
-            continue;
-        }
-        
-        // SPECIAL: If user types "test", run isolated sprite test
-        if (strcmp(server_ip, "test") == 0) {
-            sprite_test_run();
-            renderer_cleanup();
-            return 0;
-        }
-        
+    // PHASE 1: IP Input Screen (graphical)
+    bool got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), false);
+    
+    if (!got_ip) {
+        printf("User closed window during IP input\n");
+        renderer_cleanup();
+        return 0;
+    }
+    
+    // SPECIAL: If user types "test", run isolated sprite test
+    if (strcmp(server_ip, "test") == 0) {
+        printf("Entering sprite test mode...\n");
+        sprite_test_run();
+        renderer_cleanup();
+        return 0;
+    }
+    
+    // Connection loop with retry
+    while (!conn) {
+        printf("\nAttempting connection to %s:%d...\n", server_ip, SERVER_PORT);
         conn = connection_create(server_ip, SERVER_PORT);
         
         if (!conn) {
-            printf("\nConnection failed. Check IP and try again.\n");
-            printf("Press Enter to retry, or type 'quit' to exit: ");
-            fflush(stdout);
+            printf("Connection failed!\n");
             
-            char retry[10];
-            if (fgets(retry, sizeof(retry), stdin) != NULL) {
-                retry[strcspn(retry, "\n")] = '\0';
-                if (strcmp(retry, "quit") == 0 || strcmp(retry, "exit") == 0) {
-                    printf("Exiting...\n");
-                    renderer_cleanup();
-                    return 1;
-                }
+            // Show error screen and allow retry
+            got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), true);
+            
+            if (!got_ip) {
+                printf("User closed window\n");
+                renderer_cleanup();
+                return 0;
             }
-            printf("\n");
+            
+            // Check for test mode again
+            if (strcmp(server_ip, "test") == 0) {
+                printf("Entering sprite test mode...\n");
+                sprite_test_run();
+                renderer_cleanup();
+                return 0;
+            }
         }
     }
     
-    // Lobby selection
+    printf("✓ Connected successfully!\n\n");
+    
+    // REST OF THE FLOW REMAINS TERMINAL-BASED FOR NOW
+    // (Will be replaced in Phase 2+)
+    
+    // Lobby selection (terminal)
     bool accepted = lobby_handle(conn);
     
-    // Game session
+    // Game session (terminal)
     if (accepted && conn->connected) {
         session_handle(conn);
     }

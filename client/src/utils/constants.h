@@ -27,12 +27,32 @@
 #define PROTO_LOBBY "LOBBY"
 
 // ============================================================
-// TODO: Add game phase protocol constants here
+// UI CONSTANTS
 // ============================================================
-// Example:
-// #define PROTO_GAME_STATE "GAME_STATE:"
-// #define PROTO_SCORE "SCORE:"
-// #define CMD_MOVE_UP "MOVE:UP"
-// #define CMD_JUMP "JUMP"
+
+// Window dimensions
+#define UI_WINDOW_WIDTH 1200
+#define UI_WINDOW_HEIGHT 900
+
+// Font sizes
+#define UI_FONT_SIZE_TITLE 32
+#define UI_FONT_SIZE_NORMAL 24
+#define UI_FONT_SIZE_INPUT 20
+#define UI_FONT_SIZE_ERROR 18
+
+// Colors (Raylib color definitions)
+#define UI_COLOR_BACKGROUND (Color){0, 0, 0, 255}      // Black
+#define UI_COLOR_TEXT (Color){255, 255, 255, 255}      // White
+#define UI_COLOR_INPUT (Color){255, 255, 0, 255}       // Yellow
+#define UI_COLOR_ERROR (Color){255, 0, 0, 255}         // Red
+#define UI_COLOR_SELECTED (Color){255, 255, 0, 255}    // Yellow
+
+// Input box dimensions
+#define UI_INPUT_BOX_WIDTH 400
+#define UI_INPUT_BOX_HEIGHT 40
+#define UI_INPUT_MAX_CHARS 15
+
+// Cursor blink rate (frames)
+#define UI_CURSOR_BLINK_RATE 30
 
 #endif

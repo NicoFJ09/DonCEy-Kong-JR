@@ -34,8 +34,11 @@ RENDERING_SOURCES = src/rendering/sprite_manager.c \
                     src/rendering/renderer.c \
                     src/rendering/sprite_test.c
 
+# Game screens layer
+GAME_SOURCES = src/game/screens/ip_input_screen.c
+
 MAIN_SOURCE = src/main.c
-SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES)
+SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(GAME_SOURCES)
 
 # Object files
 NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
@@ -48,7 +51,9 @@ RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
                     $(OBJ_DIR)/renderer.o \
                     $(OBJ_DIR)/sprite_test.o
 
-OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS)
+GAME_OBJECTS = $(OBJ_DIR)/ip_input_screen.o
+
+OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(GAME_OBJECTS)
 
 HEADERS = src/network/connection.h \
           src/network/message_handler.h \
@@ -58,6 +63,7 @@ HEADERS = src/network/connection.h \
           src/rendering/animation.h \
           src/rendering/renderer.h \
           src/rendering/sprite_test.h \
+          src/game/screens/ip_input_screen.h \
           src/utils/constants.h
 
 all: directories $(TARGET)
@@ -94,6 +100,9 @@ $(OBJ_DIR)/renderer.o: src/rendering/renderer.c src/rendering/renderer.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

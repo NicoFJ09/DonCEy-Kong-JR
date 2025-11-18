@@ -2,6 +2,7 @@
 #include "renderer.h"
 #include "sprite_manager.h"
 #include "animation.h"
+#include "raylib.h"
 #include <stdio.h>
 
 #define MARGIN_LEFT 40
@@ -93,18 +94,18 @@ void sprite_test_run(void) {
     printf("Screen: %dx%d\n", SCREEN_WIDTH, SCREEN_HEIGHT);
     printf("Margins: %dpx, Spacing: %dx%dpx\n\n", MARGIN_LEFT, SPACING_X, SPACING_Y);
     
-    while (!renderer_should_close()) {
+    while (!WindowShouldClose()) {
         // UPDATE
         for (int i = 0; i < sprite_count; i++) {
             animated_object_update(&test_sprites[i]);
         }
         
         // RENDER
-        renderer_begin_frame();
-            renderer_draw_background();
+        BeginDrawing();
+            ClearBackground(BLACK);
             draw_test_sprites(test_sprites, sprite_count);
             DrawFPS(10, 10);
-        renderer_end_frame();
+        EndDrawing();
     }
     
     printf("\nExiting sprite test...\n");
