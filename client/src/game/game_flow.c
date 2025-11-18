@@ -1,13 +1,19 @@
 #include "game_flow.h"
 #include "screens/ip_input_screen.h"
 #include "screens/title_screen.h"
+#include "screens/player_screen.h"
+#include "screens/lose_screen.h"
 #include "../network/connection.h"
 #include "../utils/constants.h"
+#include "../utils/font_manager.h"
 #include "../rendering/sprite_test.h"
 #include <stdio.h>
 #include <string.h>
 
 bool game_flow_run(void) {
+    // Initialize fonts once at the beginning
+    font_manager_init();
+    
     char server_ip[256];
     Connection* conn = NULL;
     
@@ -62,7 +68,27 @@ bool game_flow_run(void) {
         switch (selected) {
             case MENU_PLAY:
                 printf("DEBUG: Selected Play\n");
-                // TODO Phase 3: show_player_screen(conn);
+                
+                // Player screen loop (with lose screen)
+                bool playing = true;
+                while (playing && conn->connected) {
+                    // Show player screen (10 seconds)
+                    show_player_screen();
+                    
+                    // Show lose screen
+                    LoseOption choice = show_lose_screen();
+                    
+                    switch (choice) {
+                        case LOSE_PLAY_AGAIN:
+                            // Loop back to player screen
+                            break;
+                            
+                        case LOSE_RETURN_TITLE:
+                            // Exit player loop, return to title
+                            playing = false;
+                            break;
+                    }
+                }
                 break;
                 
             case MENU_SPECTATE:

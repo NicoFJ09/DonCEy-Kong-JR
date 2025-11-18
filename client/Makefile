@@ -37,10 +37,15 @@ RENDERING_SOURCES = src/rendering/sprite_manager.c \
 # Game layer
 GAME_SOURCES = src/game/game_flow.c \
                src/game/screens/ip_input_screen.c \
-               src/game/screens/title_screen.c
+               src/game/screens/title_screen.c \
+               src/game/screens/player_screen.c \
+               src/game/screens/lose_screen.c
+
+# Utils layer
+UTILS_SOURCES = src/utils/font_manager.c
 
 MAIN_SOURCE = src/main.c
-SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(GAME_SOURCES)
+SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(GAME_SOURCES) $(UTILS_SOURCES)
 
 # Object files
 NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
@@ -55,9 +60,13 @@ RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
 
 GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
                $(OBJ_DIR)/ip_input_screen.o \
-               $(OBJ_DIR)/title_screen.o
+               $(OBJ_DIR)/title_screen.o \
+               $(OBJ_DIR)/player_screen.o \
+               $(OBJ_DIR)/lose_screen.o
 
-OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(GAME_OBJECTS)
+UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o
+
+OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(GAME_OBJECTS) $(UTILS_OBJECTS)
 
 HEADERS = src/network/connection.h \
           src/network/message_handler.h \
@@ -70,7 +79,10 @@ HEADERS = src/network/connection.h \
           src/game/game_flow.h \
           src/game/screens/ip_input_screen.h \
           src/game/screens/title_screen.h \
-          src/utils/constants.h
+          src/game/screens/player_screen.h \
+          src/game/screens/lose_screen.h \
+          src/utils/constants.h \
+          src/utils/font_manager.h
 
 all: directories $(TARGET)
 
@@ -115,6 +127,15 @@ $(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screen
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/title_screen.o: src/game/screens/title_screen.c src/game/screens/title_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player_screen.o: src/game/screens/player_screen.c src/game/screens/player_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/lose_screen.o: src/game/screens/lose_screen.c src/game/screens/lose_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
