@@ -3,6 +3,7 @@
 #include "screens/title_screen.h"
 #include "screens/player_screen.h"
 #include "screens/lose_screen.h"
+#include "screens/player_selection_screen.h"
 #include "../network/connection.h"
 #include "../utils/constants.h"
 #include "../utils/font_manager.h"
@@ -11,9 +12,8 @@
 #include <string.h>
 
 bool game_flow_run(void) {
-    // Initialize fonts once at the beginning
     font_manager_init();
-    
+
     char server_ip[256];
     Connection* conn = NULL;
     
@@ -62,7 +62,7 @@ bool game_flow_run(void) {
     // Main game loop - title screen and gameplay
     bool running = true;
     
-    while (running && conn->connected) {
+    while (running && conn->connected && !WindowShouldClose()) {
         MenuOption selected = show_title_screen();
         
         switch (selected) {
@@ -71,20 +71,16 @@ bool game_flow_run(void) {
                 
                 // Player screen loop (with lose screen)
                 bool playing = true;
-                while (playing && conn->connected) {
-                    // Show player screen (10 seconds)
+                while (playing && conn->connected && !WindowShouldClose()) {
                     show_player_screen();
                     
-                    // Show lose screen
                     LoseOption choice = show_lose_screen();
                     
                     switch (choice) {
                         case LOSE_PLAY_AGAIN:
-                            // Loop back to player screen
                             break;
                             
                         case LOSE_RETURN_TITLE:
-                            // Exit player loop, return to title
                             playing = false;
                             break;
                     }
@@ -93,7 +89,26 @@ bool game_flow_run(void) {
                 
             case MENU_SPECTATE:
                 printf("DEBUG: Selected Spectate\n");
-                // TODO Phase 4: show_player_selection_screen(conn);
+                
+                // Player selection loop
+                bool in_spectate = true;
+                while (in_spectate && conn->connected && !WindowShouldClose()) {
+                    int player_id = show_player_selection_screen();
+                    
+                    if (player_id > 0) {
+                        // Player selected
+                        printf("DEBUG: User selected Player #%d\n", player_id);
+                        // TODO Phase 5: show_spectator_screen(conn, player_id);
+                        // For now, stay in selection loop
+                    } else if (player_id == -1) {
+                        // Refresh selected - loop back to show updated list
+                        printf("DEBUG: Refresh - reloading player list\n");
+                    } else {
+                        // Return selected (player_id == 0)
+                        printf("DEBUG: Return - going back to title\n");
+                        in_spectate = false;
+                    }
+                }
                 break;
                 
             case MENU_EXIT:
