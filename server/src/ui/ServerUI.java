@@ -99,8 +99,7 @@ public class ServerUI extends JFrame {
         JPanel separator = new JPanel();
         separator.setBackground(new Color(46,111,64));
         separator.setBounds(430, 0, 10, y); // Posicionar en coordenadas x=500, ancho=8
-        mainPanel.add(separator);
-        
+        mainPanel.add(separator);        
 
         //_____________________________________________________________
         //PARA LAS PARTES DE ABAJO DE EL PRIMER SEPARADOR HORIZONTAL
@@ -130,7 +129,7 @@ public class ServerUI extends JFrame {
         vineLabel.setBounds(25, 310, 200, 25);
         mainPanel.add(vineLabel);
 
-        JComboBox<String> vineCountCombo = new JComboBox<>(new String[]{"1", "2", "3", "4", "5"});
+        JComboBox<String> vineCountCombo = new JComboBox<>(new String[]{"1", "2", "3", "4", "5", "6"});
         vineCountCombo.setFont(new Font("Arial", Font.PLAIN, 16));
         vineCountCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         vineCountCombo.setBackground(Color.WHITE);
@@ -173,7 +172,7 @@ public class ServerUI extends JFrame {
         fruitPointsCombo.setBounds(230, 475, 150, 30);
         mainPanel.add(fruitPointsCombo);
     
-        JComboBox<String> vineCountCombo2 = new JComboBox<>(new String[]{"1", "2", "3", "4", "5"});
+        JComboBox<String> vineCountCombo2 = new JComboBox<>(new String[]{"1", "2", "3", "4", "5", "6"});
         vineCountCombo2.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         vineCountCombo2.setFont(new Font("Arial", Font.PLAIN, 16));
         vineCountCombo2.setBackground(Color.WHITE);
@@ -255,10 +254,149 @@ public class ServerUI extends JFrame {
         });
         mainPanel.add(removeButton);
 
+        //__________________________________________________________
+        //              PARA LAS PARTES DEL JUEGO 
+        //           EN LA IZQUIERDA DE LA PANTALLA
+        //__________________________________________________________
+
+        String currentDir = System.getProperty("user.dir");
+        String projectRoot = currentDir.endsWith("server") ? currentDir + "/.." : currentDir;
+        
+        // lianas
+        addVine(mainPanel, projectRoot, 450, 200, 120, 200);
+        addVine(mainPanel, projectRoot, 450, 400, 120, 200);
+        addVine(mainPanel, projectRoot, 450, 600, 120, 200);
+
+        JLabel vineNumber1 = new JLabel("[1]");
+        vineNumber1.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber1.setHorizontalAlignment(SwingConstants.CENTER);
+        vineNumber1.setBounds(450, 810, 120, 20);
+        mainPanel.add(vineNumber1);
+
+        addVine(mainPanel, projectRoot, 530, 200, 120, 100);
+        addVine(mainPanel, projectRoot, 530, 300, 120, 200);
+        addVine(mainPanel, projectRoot, 530, 500, 120, 250);
+
+        JLabel vineNumber2 = new JLabel("[2]");
+        vineNumber2.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber2.setHorizontalAlignment(SwingConstants.CENTER);
+        vineNumber2.setBounds(530, 760, 120, 20);
+        mainPanel.add(vineNumber2);
+
+        
+        // plataformas
+        addPlatform(mainPanel, projectRoot, 440, 150, 200, 80);
+        addPlatform(mainPanel, projectRoot, 640, 150, 200, 80);
+        addPlatform(mainPanel, projectRoot, 790, 150, 200, 80);
+        addPlatform(mainPanel, projectRoot, 930, 170, 230, 80);
+        addPlatform(mainPanel, projectRoot, 1100, 600, 270, 80);
+
+        //bases
+        addBase(mainPanel, projectRoot, 440, 900, 230, 30);
+        addBase(mainPanel, projectRoot, 1180, 810, 125, 30);
+        addStem(mainPanel, projectRoot, 1216, 840, 55, 95);
+
+        addBase(mainPanel, projectRoot, 1010, 850, 135, 30);
+        addStem(mainPanel, projectRoot, 1050, 860, 55, 80);
+
+        addBase(mainPanel, projectRoot, 890, 880, 100, 30);
+        addStem(mainPanel, projectRoot, 925, 905, 30, 30);
+        
+        addBase(mainPanel, projectRoot, 730, 850, 135, 30);
+        addStem(mainPanel, projectRoot, 770, 860, 55, 80);
+
+        addPlatform(mainPanel, projectRoot, 615, 600, 150, 80);
+        addPlatform(mainPanel, projectRoot, 625, 430, 110, 80);
+
+        //lianas despues de plataformas
+        addVine(mainPanel, projectRoot, 750, 200, 120, 200);
+        addVine(mainPanel, projectRoot, 750, 400, 120, 200);
+        addVine(mainPanel, projectRoot, 750, 600, 120, 100);
+
+        JLabel vineNumber3 = new JLabel("[3]");
+        vineNumber3.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber3.setHorizontalAlignment(SwingConstants.CENTER);
+        vineNumber3.setBounds(750, 710, 120, 20);
+        mainPanel.add(vineNumber3);
+
+        addVine(mainPanel, projectRoot, 830, 200, 120, 100);
+        addVine(mainPanel, projectRoot, 830, 300, 120, 150);
+        addVine(mainPanel, projectRoot, 830, 450, 120, 150);
+
+        JLabel vineNumber4 = new JLabel("[4]");
+        vineNumber4.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber4.setHorizontalAlignment(SwingConstants.CENTER);
+        vineNumber4.setBounds(830, 610, 120, 20);
+        mainPanel.add(vineNumber4);
+
+        addVine(mainPanel, projectRoot, 920, 200, 120, 180);
+        addVine(mainPanel, projectRoot, 920, 380, 120, 180);
+        addVine(mainPanel, projectRoot, 920, 560, 120, 220);
+
+        JLabel vineNumber5 = new JLabel("[5]");
+        vineNumber5.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber5.setHorizontalAlignment(SwingConstants.CENTER);
+        vineNumber5.setBounds(920, 790, 120, 20);
+        mainPanel.add(vineNumber5);
+
+        addVine(mainPanel, projectRoot, 1020, 200, 120, 150);
+        addVine(mainPanel, projectRoot, 1020, 350, 120, 150);
+        addVine(mainPanel, projectRoot, 1020, 500, 120, 200);
+
+        JLabel vineNumber6 = new JLabel("[6]");
+        vineNumber6.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber6.setHorizontalAlignment(SwingConstants.CENTER);
+        vineNumber6.setBounds(1020, 710, 120, 20);
+        mainPanel.add(vineNumber6);
+
+
         outerPanel.add(mainPanel, BorderLayout.CENTER);
         add(outerPanel);
         setVisible(true);
     }
+    
+
+    private void addVine(JPanel panel, String projectRoot, int x, int y, int width, int height) {
+        String vinePath = projectRoot + "/client/assets/environment/vines/vine.png";
+        ImageIcon vineIcon = new ImageIcon(vinePath);
+        Image vineImage = vineIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        ImageIcon scaledIcon = new ImageIcon(vineImage);
+        JLabel vineLabel = new JLabel(scaledIcon);
+        vineLabel.setBounds(x, y, width, height);
+        panel.add(vineLabel);
+    }
+
+    private void addPlatform(JPanel panel, String projectRoot, int x, int y, int width, int height) {
+        String platformPath = projectRoot + "/client/assets/environment/platforms/platform.png";
+        ImageIcon platformIcon = new ImageIcon(platformPath);
+        Image platformImage = platformIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        ImageIcon scaledIcon = new ImageIcon(platformImage);
+        JLabel platformLabel = new JLabel(scaledIcon);
+        platformLabel.setBounds(x, y, width, height);
+        panel.add(platformLabel);
+    }
+
+    private void addBase(JPanel panel, String projectRoot, int x, int y, int width, int height) {
+        String vinePath = projectRoot + "/client/assets/environment/grass/wide_grass.png";
+        ImageIcon vineIcon = new ImageIcon(vinePath);
+        Image vineImage = vineIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        ImageIcon scaledIcon = new ImageIcon(vineImage);
+        JLabel vineLabel = new JLabel(scaledIcon);
+        vineLabel.setBounds(x, y, width, height);
+        panel.add(vineLabel);
+    }
+
+    private void addStem(JPanel panel, String projectRoot, int x, int y, int width, int height) {
+        String platformPath = projectRoot + "/client/assets/environment/grass/wide_stem.png";
+        ImageIcon platformIcon = new ImageIcon(platformPath);
+        Image platformImage = platformIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        ImageIcon scaledIcon = new ImageIcon(platformImage);
+        JLabel platformLabel = new JLabel(scaledIcon);
+        platformLabel.setBounds(x, y, width, height);
+        panel.add(platformLabel);
+    }
+
+    
     
     private void startPlayerUpdateThread() {
         updateThread = new Thread(() -> {
