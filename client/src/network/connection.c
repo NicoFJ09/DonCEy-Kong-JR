@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Platform-specific includes
 #ifdef _WIN32
     #include <winsock2.h>
     #include <ws2tcpip.h>
@@ -14,11 +13,6 @@
     #include <sys/socket.h>
 #endif
 
-// === Global Initialization ===
-
-/**
- * Initialize network subsystem (Windows only)
- */
 bool connection_init(void) {
     #ifdef _WIN32
     WSADATA wsa_data;
@@ -30,31 +24,19 @@ bool connection_init(void) {
     return true;
 }
 
-/**
- * Cleanup network subsystem (Windows only)
- */
 void connection_cleanup_global(void) {
     #ifdef _WIN32
     WSACleanup();
     #endif
 }
 
-// === Connection Management ===
-
-/**
- * Create and connect to server
- * Cross-platform implementation for Windows, Linux, and macOS
- * Note: connection_init() must be called first
- */
 Connection* connection_create(const char* ip, int port) {
-    // Allocate connection structure
     Connection* conn = malloc(sizeof(Connection));
     if (!conn) {
         printf("Error: Could not allocate memory for connection\n");
         return NULL;
     }
     
-    // Create TCP socket
     conn->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     
     #ifdef _WIN32
@@ -67,12 +49,10 @@ Connection* connection_create(const char* ip, int port) {
         return NULL;
     }
     
-    // Configure server address
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     
-    // Convert IP string to binary form
     if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
         printf("Error: Invalid server IP address\n");
         #ifdef _WIN32
@@ -84,13 +64,11 @@ Connection* connection_create(const char* ip, int port) {
         return NULL;
     }
     
-    // Attempt connection
     printf("Connecting to %s:%d...\n", ip, port);
     if (connect(conn->socket_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         printf("Error: Could not connect to server\n");
         #ifdef _WIN32
         closesocket(conn->socket_fd);
-        WSACleanup();
         #else
         close(conn->socket_fd);
         #endif
@@ -99,24 +77,17 @@ Connection* connection_create(const char* ip, int port) {
     }
     
     conn->connected = true;
-    conn->client_id = -1;  // Not assigned yet
+    conn->client_id = -1;
     printf("Connected to server!\n\n");
     
     return conn;
 }
 
-// === Communication ===
-
-/**
- * Send message to server
- * Appends newline automatically
- */
 bool connection_send(Connection* conn, const char* message) {
     if (!conn || !conn->connected) {
         return false;
     }
     
-    // Append newline to message
     char buffer[BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer), "%s\n", message);
     
@@ -127,7 +98,6 @@ bool connection_send(Connection* conn, const char* message) {
     #endif
     
     if (sent <= 0) {
-        // Connection lost
         conn->connected = false;
         return false;
     }
@@ -135,16 +105,11 @@ bool connection_send(Connection* conn, const char* message) {
     return true;
 }
 
-/**
- * Receive message from server (blocking)
- * Strips trailing newline from received data
- */
 char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
     if (!conn || !conn->connected) {
         return NULL;
     }
     
-    // Block until data received
     #ifdef _WIN32
     int bytes = recv(conn->socket_fd, buffer, buffer_size - 1, 0);
     #else
@@ -152,14 +117,12 @@ char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
     #endif
     
     if (bytes <= 0) {
-        // Connection closed or error
         conn->connected = false;
         return NULL;
     }
     
     buffer[bytes] = '\0';
     
-    // Strip trailing newline if present
     if (bytes > 0 && buffer[bytes - 1] == '\n') {
         buffer[bytes - 1] = '\0';
     }
@@ -167,9 +130,6 @@ char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
     return buffer;
 }
 
-/**
- * Check if data is available without blocking
- */
 bool connection_has_data(Connection* conn) {
     if (!conn || !conn->connected) {
         return false;
@@ -194,17 +154,13 @@ bool connection_has_data(Connection* conn) {
     #endif
 }
 
-// === Cleanup ===
-
-/**
- * Close connection and free memory
- */
 void connection_close(Connection* conn) {
     if (conn) {
         if (conn->connected) {
             #ifdef _WIN32
             closesocket(conn->socket_fd);
-            WSACleanup();
+            // CRITICAL FIX: DO NOT call WSACleanup() here!
+            // It's called once at program exit via connection_cleanup_global()
             #else
             close(conn->socket_fd);
             #endif

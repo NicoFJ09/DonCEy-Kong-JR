@@ -22,20 +22,15 @@ endif
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
-# Network layer
-NETWORK_SOURCES = src/network/connection.c \
-                  src/network/message_handler.c
+NETWORK_SOURCES = src/network/connection.c
 
-# Rendering layer
 RENDERING_SOURCES = src/rendering/sprite_manager.c \
                     src/rendering/animation.c \
                     src/rendering/renderer.c \
                     src/rendering/sprite_test.c
 
-# Utils layer
 UTILS_SOURCES = src/utils/font_manager.c
 
-# Game layer
 GAME_SOURCES = src/game/game_flow.c \
                src/game/screens/ip_input_screen.c \
                src/game/screens/title_screen.c \
@@ -47,9 +42,7 @@ GAME_SOURCES = src/game/game_flow.c \
 MAIN_SOURCE = src/main.c
 SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(UTILS_SOURCES) $(GAME_SOURCES)
 
-# Object files
-NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
-                  $(OBJ_DIR)/message_handler.o
+NETWORK_OBJECTS = $(OBJ_DIR)/connection.o
 
 RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
                     $(OBJ_DIR)/animation.o \
@@ -69,7 +62,6 @@ GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
 OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(UTILS_OBJECTS) $(GAME_OBJECTS)
 
 HEADERS = src/network/connection.h \
-          src/network/message_handler.h \
           src/rendering/sprite_manager.h \
           src/rendering/animation.h \
           src/rendering/renderer.h \
@@ -97,9 +89,6 @@ $(OBJ_DIR)/main.o: src/main.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/message_handler.o: src/network/message_handler.c src/network/message_handler.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/sprite_manager.o: src/rendering/sprite_manager.c src/rendering/sprite_manager.h
