@@ -112,8 +112,11 @@ bool game_flow_run(void) {
                 }
                 
                 char buffer[BUFFER_SIZE];
-                if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-                    printf("ERROR: Failed to receive response\n");
+                if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 5.0)) {
+                    printf("ERROR: Timeout waiting for join response\n");
+                    snprintf(error_message, sizeof(error_message), "Server timeout - try again");
+                    show_error = true;
+                    error_display_time = GetTime();
                     break;
                 }
                 
@@ -123,8 +126,8 @@ bool game_flow_run(void) {
                     printf("✓ Accepted as PLAYER\n");
                     
                     // Read CLIENT_ID (may be redundant if already set)
-                    if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-                        printf("ERROR: Failed to receive CLIENT_ID\n");
+                    if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 3.0)) {
+                        printf("ERROR: Timeout receiving CLIENT_ID\n");
                         break;
                     }
                     printf("DEBUG: Received: %s\n", buffer);
@@ -134,8 +137,8 @@ bool game_flow_run(void) {
                     }
                     
                     // Read SESSION_START
-                    if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-                        printf("ERROR: Failed to receive SESSION_START\n");
+                    if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 3.0)) {
+                        printf("ERROR: Timeout receiving SESSION_START\n");
                         break;
                     }
                     printf("DEBUG: Received: %s\n", buffer);
@@ -206,8 +209,11 @@ bool game_flow_run(void) {
                         }
                         
                         char buffer[BUFFER_SIZE];
-                        if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-                            printf("ERROR: Failed to receive response\n");
+                        if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 5.0)) {
+                            printf("ERROR: Timeout waiting for spectator join response\n");
+                            snprintf(error_message, sizeof(error_message), "Server timeout - try again");
+                            show_error = true;
+                            error_display_time = GetTime();
                             continue;
                         }
                         
@@ -217,8 +223,8 @@ bool game_flow_run(void) {
                             printf("✓ Accepted as SPECTATOR for Player #%d\n", player_id);
                             
                             // Read CLIENT_ID (may be redundant if already set)
-                            if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-                                printf("ERROR: Failed to receive CLIENT_ID\n");
+                            if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 3.0)) {
+                                printf("ERROR: Timeout receiving CLIENT_ID\n");
                                 continue;
                             }
                             printf("DEBUG: Received: %s\n", buffer);
@@ -228,8 +234,8 @@ bool game_flow_run(void) {
                             }
                             
                             // Read SESSION_START
-                            if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-                                printf("ERROR: Failed to receive SESSION_START\n");
+                            if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 3.0)) {
+                                printf("ERROR: Timeout receiving SESSION_START\n");
                                 continue;
                             }
                             printf("DEBUG: Received: %s\n", buffer);

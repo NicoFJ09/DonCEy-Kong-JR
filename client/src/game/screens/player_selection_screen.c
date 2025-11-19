@@ -45,9 +45,10 @@ static bool fetch_player_list(Connection* conn, PlayerList* list) {
     
     char buffer[BUFFER_SIZE];
     
-    if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-        printf("ERROR: Failed to receive PLAYER_LIST_START\n");
-        strcpy(list->error_message, "Network error");
+    // Use timeout to prevent indefinite blocking
+    if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 3.0)) {
+        printf("ERROR: Timeout waiting for PLAYER_LIST_START\n");
+        strcpy(list->error_message, "Server timeout - try again");
         list->show_error = true;
         return false;
     }
@@ -70,9 +71,10 @@ static bool fetch_player_list(Connection* conn, PlayerList* list) {
     while (!list_ended && safety_counter < MAX_READS) {
         safety_counter++;
         
-        if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
-            printf("ERROR: Connection lost while reading list\n");
-            strcpy(list->error_message, "Connection lost");
+        // Use timeout for each item to prevent blocking
+        if (!connection_receive_with_timeout(conn, buffer, BUFFER_SIZE, 2.0)) {
+            printf("ERROR: Timeout while reading player list\n");
+            strcpy(list->error_message, "Server slow - try again");
             list->show_error = true;
             return false;
         }

@@ -168,6 +168,64 @@ char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
     return buffer;
 }
 
+char* connection_receive_with_timeout(Connection* conn, char* buffer, int buffer_size, double timeout_seconds) {
+    if (!conn || !conn->connected) {
+        return NULL;
+    }
+    
+    #ifdef _WIN32
+    // Windows: Use select with timeout
+    fd_set read_fds;
+    struct timeval timeout;
+    
+    FD_ZERO(&read_fds);
+    FD_SET(conn->socket_fd, &read_fds);
+    
+    timeout.tv_sec = (long)timeout_seconds;
+    timeout.tv_usec = (long)((timeout_seconds - (long)timeout_seconds) * 1000000);
+    
+    int result = select(0, &read_fds, NULL, NULL, &timeout);
+    
+    if (result > 0) {
+        // Data available - read normally
+        return connection_receive(conn, buffer, buffer_size);
+    } else if (result == 0) {
+        // Timeout
+        printf("DEBUG: Receive timeout after %.1fs\n", timeout_seconds);
+        return NULL;
+    } else {
+        // Error
+        conn->connected = false;
+        return NULL;
+    }
+    #else
+    // Unix/Mac: Use select with timeout
+    fd_set read_fds;
+    struct timeval timeout;
+    
+    FD_ZERO(&read_fds);
+    FD_SET(conn->socket_fd, &read_fds);
+    
+    timeout.tv_sec = (long)timeout_seconds;
+    timeout.tv_usec = (long)((timeout_seconds - (long)timeout_seconds) * 1000000);
+    
+    int result = select(conn->socket_fd + 1, &read_fds, NULL, NULL, &timeout);
+    
+    if (result > 0) {
+        // Data available - read normally
+        return connection_receive(conn, buffer, buffer_size);
+    } else if (result == 0) {
+        // Timeout
+        printf("DEBUG: Receive timeout after %.1fs\n", timeout_seconds);
+        return NULL;
+    } else {
+        // Error
+        conn->connected = false;
+        return NULL;
+    }
+    #endif
+}
+
 bool connection_has_data(Connection* conn) {
     if (!conn || !conn->connected) {
         return false;

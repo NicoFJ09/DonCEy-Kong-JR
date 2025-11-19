@@ -71,6 +71,17 @@ bool connection_send_immediate(Connection* conn, const char* message);
 char* connection_receive(Connection* conn, char* buffer, int buffer_size);
 
 /**
+ * Receive message from server with timeout
+ * Strips trailing newline
+ * @param conn Connection pointer
+ * @param buffer Buffer to store received data
+ * @param buffer_size Size of buffer
+ * @param timeout_seconds Timeout in seconds (e.g., 3.0 for 3 seconds)
+ * @return Pointer to buffer on success, NULL on timeout or failure
+ */
+char* connection_receive_with_timeout(Connection* conn, char* buffer, int buffer_size, double timeout_seconds);
+
+/**
  * Check if there is data available to read (non-blocking)
  * @param conn Connection pointer
  * @return true if data is available, false otherwise
