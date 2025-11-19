@@ -18,6 +18,7 @@ typedef struct {
     socket_t socket_fd;
     bool connected;
     int client_id;  // Server-assigned client ID
+    double last_send_time;  // Last time a message was sent (for throttling)
 } Connection;
 
 /**
@@ -42,13 +43,22 @@ void connection_cleanup_global(void);
 Connection* connection_create(const char* ip, int port);
 
 /**
- * Send message to server
- * Automatically appends newline
+ * Send message to server with throttling
+ * Automatically appends newline and enforces minimum delay between sends
  * @param conn Connection pointer
  * @param message Null-terminated string to send
  * @return true on success, false on failure
  */
 bool connection_send(Connection* conn, const char* message);
+
+/**
+ * Send message to server immediately without throttling
+ * Use for critical commands (DISCONNECT, etc.)
+ * @param conn Connection pointer
+ * @param message Null-terminated string to send
+ * @return true on success, false on failure
+ */
+bool connection_send_immediate(Connection* conn, const char* message);
 
 /**
  * Receive message from server (blocking)

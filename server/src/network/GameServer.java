@@ -6,20 +6,14 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * GameServer - Main server managing client connections
- * Accepts TCP connections and spawns ClientHandler threads
- * Thread-safe using ConcurrentHashMap + synchronized methods
- */
 public class GameServer {
     private ServerSocket serverSocket;
-    private boolean running;
+    private volatile boolean running;
     private Integer nextClientId;
     
-    // ConcurrentHashMap provides thread-safe operations
-    private Map<Integer, NetworkPlayer> players;        // id -> NetworkPlayer
-    private Map<Integer, Integer> spectators;           // spectatorId -> playerId watching
-    private Map<Integer, ClientHandler> clientHandlers; // id -> ClientHandler thread
+    private Map<Integer, NetworkPlayer> players;
+    private Map<Integer, Integer> spectators;
+    private Map<Integer, ClientHandler> clientHandlers;
     
     public GameServer() {
         this.running = false;
@@ -29,33 +23,40 @@ public class GameServer {
         this.clientHandlers = new ConcurrentHashMap<>();
     }
     
-    // === Server Lifecycle ===
-    
-    /**
-     * Start server and accept connections
-     * Blocks until server stops
-     */
     public void start() {
         try {
-            serverSocket = new ServerSocket(Config.SERVER_PORT);
+            serverSocket = new ServerSocket(Config.SERVER_PORT, 50); // Increased backlog to 50 connections
+            
+            // Optimize server socket for high-load scenarios
+            serverSocket.setPerformancePreferences(0, 1, 0); // latency > bandwidth > connection time
+            serverSocket.setReuseAddress(true); // Allow quick restart without TIME_WAIT issues
+            
             running = true;
             
             printServerHeader();
             
-            // Main accept loop - runs until server stops
             while (running) {
                 try {
                     Socket clientSocket = serverSocket.accept();
+                    
+                    // Configure socket for reliability and dead connection detection
+                    clientSocket.setTcpNoDelay(true); // Disable Nagle's algorithm for lower latency
+                    clientSocket.setKeepAlive(true); // Enable TCP keepalive to detect dead connections
+                    clientSocket.setSoLinger(true, 0); // Close immediately without waiting for unsent data
+                    
                     Integer clientId = nextClientId++;
                     String clientAddress = clientSocket.getInetAddress().getHostAddress();
                     
                     System.out.println("→ Client #" + clientId + " connected from " + clientAddress);
                     
-                    // Spawn handler thread for this client
                     ClientHandler handler = new ClientHandler(clientSocket, clientId, clientAddress, this);
                     clientHandlers.put(clientId, handler);
                     handler.start();
                     
+                } catch (SocketException e) {
+                    if (running) {
+                        System.err.println("Socket error accepting client: " + e.getMessage());
+                    }
                 } catch (IOException e) {
                     if (running) {
                         System.err.println("Error accepting client: " + e.getMessage());
@@ -68,9 +69,6 @@ public class GameServer {
         }
     }
     
-    /**
-     * Stop server and close socket
-     */
     public void stop() {
         running = false;
         try {
@@ -80,51 +78,39 @@ public class GameServer {
         }
     }
     
-    // === Client Registration ===
-    
-    /**
-     * Register new player
-     * Called by ClientHandler after lobby selection
-     * @param id Client ID
-     * @param address Client IP address
-     * @return true if registered, false if server full
-     */
+    // CRITICAL: synchronized prevents TWO clients from both passing the size check at same time
     public synchronized boolean registerPlayer(Integer id, String address) {
         if (players.size() >= Config.MAX_PLAYERS) {
+            System.out.println("  ✗ Player #" + id + " registration failed - server full (" + players.size() + "/" + Config.MAX_PLAYERS + ")");
             return false;
         }
         NetworkPlayer player = new NetworkPlayer(id, address);
         players.put(id, player);
+        System.out.println("  ✓ Player #" + id + " registered (" + players.size() + "/" + Config.MAX_PLAYERS + ")");
         return true;
     }
     
-    /**
-     * Register spectator to watch a player
-     * Called by ClientHandler after player selection
-     * @param spectatorId Spectator's client ID
-     * @param playerId Player to watch
-     * @return true if registered, false if player doesn't exist or full
-     */
     public synchronized boolean registerSpectator(Integer spectatorId, Integer playerId) {
         NetworkPlayer player = players.get(playerId);
-        if (player == null || !player.canAcceptSpectator()) {
+        if (player == null) {
+            System.out.println("  ✗ Spectator #" + spectatorId + " registration failed - player #" + playerId + " not found");
+            return false;
+        }
+        if (!player.canAcceptSpectator()) {
+            System.out.println("  ✗ Spectator #" + spectatorId + " registration failed - player #" + playerId + " full");
             return false;
         }
         player.addSpectator(spectatorId);
         spectators.put(spectatorId, playerId);
+        System.out.println("  ✓ Spectator #" + spectatorId + " registered to Player #" + playerId);
         return true;
     }
     
-    /**
-     * Unregister player from session (returning to lobby, NOT disconnecting)
-     * @param id Player's client ID
-     */
     public synchronized void unregisterPlayerFromSession(Integer id) {
         NetworkPlayer player = players.remove(id);
         if (player != null) {
             System.out.println("  Player #" + id + " left session (staying connected)");
             
-            // Notify spectators that this player left the session
             List<Integer> watchingSpectators = new ArrayList<>();
             for (Map.Entry<Integer, Integer> entry : spectators.entrySet()) {
                 if (entry.getValue().equals(id)) {
@@ -135,23 +121,26 @@ public class GameServer {
             if (!watchingSpectators.isEmpty()) {
                 System.out.println("  Notifying " + watchingSpectators.size() + " spectator(s) that player left");
                 
+                // Notify in parallel to avoid blocking on slow connections
                 for (Integer spectatorId : watchingSpectators) {
                     spectators.remove(spectatorId);
                     
                     ClientHandler spectatorHandler = clientHandlers.get(spectatorId);
                     if (spectatorHandler != null) {
-                        spectatorHandler.notifyPlayerLeftSession(id);
+                        // Fire and forget - don't block if notification fails
+                        new Thread(() -> {
+                            try {
+                                spectatorHandler.notifyPlayerLeftSession(id);
+                            } catch (Exception e) {
+                                System.err.println("Failed to notify spectator #" + spectatorId + ": " + e.getMessage());
+                            }
+                        }, "Notify-Spectator-" + spectatorId).start();
                     }
                 }
             }
         }
     }
     
-    /**
-     * Unregister spectator from session (returning to lobby, NOT disconnecting)
-     * @param spectatorId Spectator's client ID
-     * @param playerId Player they were watching
-     */
     public synchronized void unregisterSpectatorFromSession(Integer spectatorId, Integer playerId) {
         spectators.remove(spectatorId);
         NetworkPlayer player = players.get(playerId);
@@ -161,26 +150,13 @@ public class GameServer {
         }
     }
     
-    // === Disconnection Handling ===
-    
-    /**
-     * Cleanup when client disconnects
-     * 
-     * Two cases:
-     * 1. Player disconnect: Remove player and notify all spectators (Observer pattern)
-     * 2. Spectator disconnect: Remove from watched player's list
-     * 
-     * @param id Client ID that disconnected
-     */
     public synchronized void cleanup(Integer id) {
         clientHandlers.remove(id);
         
-        // Case 1: Disconnecting client is a player
         NetworkPlayer player = players.remove(id);
         if (player != null) {
             System.out.println("Player #" + id + " disconnected");
             
-            // Find all spectators watching this player
             List<Integer> orphanedSpectators = new ArrayList<>();
             for (Map.Entry<Integer, Integer> entry : spectators.entrySet()) {
                 if (entry.getValue().equals(id)) {
@@ -188,16 +164,23 @@ public class GameServer {
                 }
             }
             
-            // Notify spectators that their player disconnected (Observer pattern)
             if (!orphanedSpectators.isEmpty()) {
-                System.out.println("  Notifying " + orphanedSpectators.size() + " spectator(s)");
+                System.out.println("  Kicking " + orphanedSpectators.size() + " spectator(s)");
                 
+                // Notify in parallel to avoid blocking on slow connections
                 for (Integer spectatorId : orphanedSpectators) {
                     spectators.remove(spectatorId);
                     
                     ClientHandler spectatorHandler = clientHandlers.get(spectatorId);
                     if (spectatorHandler != null) {
-                        spectatorHandler.notifyPlayerDisconnected(id);
+                        // Fire and forget - don't block if notification fails
+                        new Thread(() -> {
+                            try {
+                                spectatorHandler.notifyPlayerDisconnected(id);
+                            } catch (Exception e) {
+                                System.err.println("Failed to notify spectator #" + spectatorId + ": " + e.getMessage());
+                            }
+                        }, "Kick-Spectator-" + spectatorId).start();
                     }
                 }
             }
@@ -206,7 +189,6 @@ public class GameServer {
             return;
         }
         
-        // Case 2: Disconnecting client is a spectator
         Integer watchedPlayerId = spectators.remove(id);
         if (watchedPlayerId != null) {
             NetworkPlayer watchedPlayer = players.get(watchedPlayerId);
@@ -218,39 +200,24 @@ public class GameServer {
         }
     }
     
-    // === Data Access ===
-    
-    /**
-     * Get copy of players map
-     * Returns copy for thread safety
-     * @return Snapshot of current players
-     */
     public synchronized Map<Integer, NetworkPlayer> getPlayers() {
         return new HashMap<>(players);
     }
     
-    /**
-     * Get specific player by ID
-     * @param playerId Player ID to find
-     * @return NetworkPlayer or null if not found
-     */
     public synchronized NetworkPlayer getPlayer(Integer playerId) {
         return players.get(playerId);
     }
-    
-    // === Logging ===
     
     private void printServerHeader() {
         System.out.println("===========================================");
         System.out.println("🎮 DonCEy Kong Jr - Server");
         System.out.println("===========================================");
         
-        // Get the actual network IP (not loopback)
         String serverIP = getNetworkIP();
         if (serverIP != null) {
             System.out.println("Server IP: " + serverIP);
         } else {
-            System.out.println("Server IP: Could not determine (check network connection)");
+            System.out.println("Server IP: Could not determine");
         }
         
         System.out.println("Port: " + Config.SERVER_PORT);
@@ -259,10 +226,6 @@ public class GameServer {
         System.out.println("\nWaiting for connections...\n");
     }
     
-    /**
-     * Get the actual network IP address (not loopback)
-     * Returns the first non-loopback IPv4 address found
-     */
     public String getNetworkIP() {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
@@ -270,7 +233,6 @@ public class GameServer {
             while (interfaces.hasMoreElements()) {
                 NetworkInterface iface = interfaces.nextElement();
                 
-                // Skip loopback and inactive interfaces
                 if (iface.isLoopback() || !iface.isUp()) {
                     continue;
                 }
@@ -279,7 +241,6 @@ public class GameServer {
                 while (addresses.hasMoreElements()) {
                     InetAddress addr = addresses.nextElement();
                     
-                    // Only return IPv4 addresses (not IPv6)
                     if (addr instanceof Inet4Address) {
                         return addr.getHostAddress();
                     }

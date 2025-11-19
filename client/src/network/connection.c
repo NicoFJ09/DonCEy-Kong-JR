@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <raylib.h>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -12,6 +13,9 @@
     #include <arpa/inet.h>
     #include <sys/socket.h>
 #endif
+
+// Minimum delay between sends in seconds (prevents server spam)
+#define SEND_THROTTLE_DELAY 0.05  // 50ms = max 20 messages/second
 
 bool connection_init(void) {
     #ifdef _WIN32
@@ -78,12 +82,14 @@ Connection* connection_create(const char* ip, int port) {
     
     conn->connected = true;
     conn->client_id = -1;
+    conn->last_send_time = 0.0;
     printf("Connected to server!\n\n");
     
     return conn;
 }
 
-bool connection_send(Connection* conn, const char* message) {
+// Internal send function - actually sends data over socket
+static bool connection_send_internal(Connection* conn, const char* message) {
     if (!conn || !conn->connected) {
         return false;
     }
@@ -103,6 +109,38 @@ bool connection_send(Connection* conn, const char* message) {
     }
     
     return true;
+}
+
+bool connection_send(Connection* conn, const char* message) {
+    if (!conn || !conn->connected) {
+        return false;
+    }
+    
+    // Throttle: enforce minimum delay between sends
+    double current_time = GetTime();
+    double time_since_last = current_time - conn->last_send_time;
+    
+    if (time_since_last < SEND_THROTTLE_DELAY) {
+        // Wait for the remaining time
+        double wait_time = SEND_THROTTLE_DELAY - time_since_last;
+        WaitTime(wait_time);
+    }
+    
+    bool result = connection_send_internal(conn, message);
+    if (result) {
+        conn->last_send_time = GetTime();
+    }
+    
+    return result;
+}
+
+bool connection_send_immediate(Connection* conn, const char* message) {
+    // Send without throttling - for critical commands
+    bool result = connection_send_internal(conn, message);
+    if (result) {
+        conn->last_send_time = GetTime();
+    }
+    return result;
 }
 
 char* connection_receive(Connection* conn, char* buffer, int buffer_size) {

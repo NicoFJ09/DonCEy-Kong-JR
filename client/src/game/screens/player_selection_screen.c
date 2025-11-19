@@ -23,12 +23,10 @@ typedef struct {
 } PlayerList;
 
 static bool fetch_player_list(Connection* conn, PlayerList* list) {
-    // Clear previous state
     list->show_error = false;
     list->error_message[0] = '\0';
     list->count = 0;
     
-    // Check connection is still valid
     if (!conn || !conn->connected) {
         printf("ERROR: Connection not valid\n");
         strcpy(list->error_message, "Connection lost");
@@ -47,7 +45,6 @@ static bool fetch_player_list(Connection* conn, PlayerList* list) {
     
     char buffer[BUFFER_SIZE];
     
-    // Wait for PLAYER_LIST_START
     if (!connection_receive(conn, buffer, BUFFER_SIZE)) {
         printf("ERROR: Failed to receive PLAYER_LIST_START\n");
         strcpy(list->error_message, "Network error");
@@ -66,10 +63,9 @@ static bool fetch_player_list(Connection* conn, PlayerList* list) {
     
     printf("DEBUG: Started reading player list\n");
     
-    // Read player entries until PLAYER_LIST_END
     bool list_ended = false;
     int safety_counter = 0;
-    const int MAX_READS = 100; // Prevent infinite loop
+    const int MAX_READS = 100;
     
     while (!list_ended && safety_counter < MAX_READS) {
         safety_counter++;
@@ -140,7 +136,6 @@ static bool fetch_player_list(Connection* conn, PlayerList* list) {
 static void draw_player_selection_screen(PlayerList* list, int selected_index, int client_id) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
-    // Draw client ID at top center
     font_manager_draw_client_id(client_id, "Spectator");
     
     const char* title = "ONLINE PLAYERS";
@@ -203,15 +198,9 @@ int show_player_selection_screen(Connection* conn, int client_id, const char* er
     
     PlayerList list = {0};
     
-    // Add small random delay to avoid thundering herd problem
-    // when multiple clients join simultaneously
-    double random_delay = ((double)(GetTime() * 1000) - (int)(GetTime() * 1000)) * 0.2; // 0-200ms
-    WaitTime(random_delay);
-    
     printf("Fetching player list from server...\n\n");
     fetch_player_list(conn, &list);
     
-    // Set external error message if provided
     bool show_external_error = false;
     double external_error_time = 0.0;
     if (error_message && strlen(error_message) > 0) {
@@ -231,7 +220,6 @@ int show_player_selection_screen(Connection* conn, int client_id, const char* er
     while (!done && conn->connected && !WindowShouldClose()) {
         double current_time = GetTime();
         
-        // Handle input
         if (IsKeyPressed(KEY_DOWN)) {
             selected_index = (selected_index + 1) % total_options;
         }
@@ -254,17 +242,14 @@ int show_player_selection_screen(Connection* conn, int client_id, const char* er
         
         if (IsKeyPressed(KEY_ENTER)) {
             if (selected_index < list.count) {
-                // Selected a player
                 result = list.players[selected_index].id;
                 printf("DEBUG: Selected Player #%d\n", result);
                 done = true;
             } else if (selected_index == list.count) {
-                // Return button
                 result = 0;
                 printf("DEBUG: Return button pressed\n");
                 done = true;
             } else {
-                // Refresh button
                 if (current_time - last_manual_refresh >= MANUAL_REFRESH_COOLDOWN) {
                     printf("DEBUG: Manual refresh triggered\n");
                     if (!fetch_player_list(conn, &list)) {
@@ -272,7 +257,7 @@ int show_player_selection_screen(Connection* conn, int client_id, const char* er
                     } else {
                         total_options = list.count + 2;
                         if (selected_index >= total_options) {
-                            selected_index = total_options - 1;
+                            selected_index = total_options > 0 ? total_options - 1 : 0;
                         }
                     }
                     last_manual_refresh = current_time;
@@ -283,23 +268,19 @@ int show_player_selection_screen(Connection* conn, int client_id, const char* er
             }
         }
         
-        // Also allow R key to return quickly
         if (IsKeyPressed(KEY_R)) {
             result = 0;
             printf("DEBUG: R key pressed - returning to title\n");
             done = true;
         }
         
-        // Check if external error should still be displayed (3 seconds)
         if (show_external_error && (current_time - external_error_time >= 3.0)) {
             show_external_error = false;
         }
         
-        // Render
         BeginDrawing();
             draw_player_selection_screen(&list, selected_index, client_id);
             
-            // Draw external error message at bottom if active
             if (show_external_error) {
                 int error_width = font_manager_measure_text(error_message, UI_FONT_SIZE_ERROR);
                 int error_x = (UI_WINDOW_WIDTH - error_width) / 2;

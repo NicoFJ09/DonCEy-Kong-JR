@@ -74,6 +74,10 @@ bool game_flow_run(void) {
         bool show_error = false;
         double error_display_time = 0.0;
         const double ERROR_DISPLAY_DURATION = 3.0; // Show errors for 3 seconds
+        
+        // Request cooldown to prevent server spam
+        static double last_join_attempt = 0.0;
+        const double JOIN_COOLDOWN = 1.0; // 1 second between join attempts
     
         while (running && conn->connected && !WindowShouldClose()) {
         // Clear error after timeout
@@ -86,6 +90,19 @@ bool game_flow_run(void) {
         
         switch (selected) {
             case MENU_PLAY: {
+                // Check cooldown to prevent request spam
+                double current_time = GetTime();
+                if (current_time - last_join_attempt < JOIN_COOLDOWN) {
+                    printf("DEBUG: Join attempt on cooldown (%.1fs remaining)\n", 
+                           JOIN_COOLDOWN - (current_time - last_join_attempt));
+                    snprintf(error_message, sizeof(error_message), "Please wait %.0fs", 
+                             JOIN_COOLDOWN - (current_time - last_join_attempt) + 0.5);
+                    show_error = true;
+                    error_display_time = current_time;
+                    break;
+                }
+                last_join_attempt = current_time;
+                
                 printf("DEBUG: Selected Play\n");
                 printf("DEBUG: Sending join request: %s\n", CMD_JOIN_PLAYER);
                 
@@ -141,7 +158,7 @@ bool game_flow_run(void) {
                                 
                             case LOSE_RETURN_TITLE:
                                 printf("DEBUG: Returning to title - sending DISCONNECT to exit session\n");
-                                if (!connection_send(conn, CMD_DISCONNECT)) {
+                                if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
                                     printf("ERROR: Failed to send DISCONNECT\n");
                                 }
                                 printf("DEBUG: Ready to return to title screen\n");
@@ -226,7 +243,7 @@ bool game_flow_run(void) {
                             
                             // Always send DISCONNECT to properly exit session (whether voluntary or kicked)
                             printf("DEBUG: Exiting spectator session - sending DISCONNECT\n");
-                            if (!connection_send(conn, CMD_DISCONNECT)) {
+                            if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
                                 printf("ERROR: Failed to send DISCONNECT\n");
                                 break;
                             }
@@ -268,7 +285,7 @@ bool game_flow_run(void) {
                 
             case MENU_EXIT:
                 printf("DEBUG: Selected Exit\n");
-                connection_send(conn, CMD_EXIT);
+                connection_send_immediate(conn, CMD_EXIT);
                 running = false;
                 game_running = false; // Exit completely
                 break;

@@ -29,19 +29,30 @@ public class ClientHandler extends Thread {
         this.server = server;
         this.running = true;
         this.watchedPlayerId = null;
+        
+        // Configure socket for high-load scenarios
+        try {
+            // Use larger buffers for better throughput under load
+            socket.setSendBufferSize(65536);    // 64KB send buffer
+            socket.setReceiveBufferSize(65536); // 64KB receive buffer
+            
+            // Performance optimizations
+            socket.setPerformancePreferences(0, 1, 0); // latency > bandwidth > connection time
+        } catch (SocketException e) {
+            System.err.println("Warning: Could not optimize socket for client #" + id);
+        }
     }
     
     @Override
     public void run() {
         try {
-            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            // Use larger buffer for better performance under load
+            input = new BufferedReader(new InputStreamReader(socket.getInputStream()), 8192);
             output = new PrintWriter(socket.getOutputStream(), true);
             
-            // Send initial CLIENT_ID immediately upon connection
-            output.println("CLIENT_ID:" + id);
-            System.out.println("Sent initial CLIENT_ID:" + id + " to new connection");
+            sendMessage("CLIENT_ID:" + id);
+            System.out.println("Sent initial CLIENT_ID:" + id);
             
-            // Main lobby loop - client can join/leave sessions multiple times
             while (running) {
                 type = handleClientSelection();
                 if (type == null) {
@@ -49,7 +60,6 @@ public class ClientHandler extends Thread {
                     break;
                 }
                 
-                // Enter session
                 boolean returnToLobby = false;
                 if (type == ClientType.PLAYER) {
                     returnToLobby = handlePlayerSession();
@@ -57,29 +67,34 @@ public class ClientHandler extends Thread {
                     returnToLobby = handleSpectatorSession();
                 }
                 
-                // Clean up session registration
                 if (type == ClientType.PLAYER) {
                     server.unregisterPlayerFromSession(id);
                 } else if (type == ClientType.SPECTATOR && watchedPlayerId != null) {
                     server.unregisterSpectatorFromSession(id, watchedPlayerId);
                 }
                 
-                // If not returning to lobby, exit
                 if (!returnToLobby) {
                     break;
                 }
                 
-                // Reset session state for lobby
                 type = null;
                 watchedPlayerId = null;
-                
                 System.out.println("Client #" + id + " returned to lobby");
             }
             
+        } catch (SocketTimeoutException e) {
+            System.err.println("Client #" + id + " timed out (no activity)");
+        } catch (SocketException e) {
+            if (running) {
+                System.err.println("Client #" + id + " socket error: " + e.getMessage());
+            }
         } catch (IOException e) {
             if (running) {
-                System.err.println("Error with client #" + id + ": " + e.getMessage());
+                System.err.println("Client #" + id + " I/O error: " + e.getMessage());
             }
+        } catch (Exception e) {
+            System.err.println("Client #" + id + " unexpected error: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             close();
             server.cleanup(id);
@@ -89,7 +104,7 @@ public class ClientHandler extends Thread {
     private ClientType handleClientSelection() throws IOException {
         String selection;
         
-        while (running && (selection = input.readLine()) != null) {
+        while (running && (selection = readLineWithTimeout()) != null) {
             selection = selection.trim();
             System.out.println("  Client #" + id + " sent: " + selection);
             
@@ -100,12 +115,12 @@ public class ClientHandler extends Thread {
             
             if (selection.equals("1")) {
                 if (server.registerPlayer(id, address)) {
-                    output.println("ACCEPTED:PLAYER");
-                    output.println("CLIENT_ID:" + id);
-                    output.println("SESSION_START");
+                    sendMessage("ACCEPTED:PLAYER");
+                    sendMessage("CLIENT_ID:" + id);
+                    sendMessage("SESSION_START");
                     return ClientType.PLAYER;
                 } else {
-                    output.println("REJECTED:Players full");
+                    sendMessage("REJECTED:Players full");
                 }
                 continue;
             }
@@ -117,27 +132,27 @@ public class ClientHandler extends Thread {
                     
                     if (server.registerSpectator(id, playerId)) {
                         watchedPlayerId = playerId;
-                        output.println("ACCEPTED:SPECTATOR");
-                        output.println("CLIENT_ID:" + id);
-                        output.println("SESSION_START");
+                        sendMessage("ACCEPTED:SPECTATOR");
+                        sendMessage("CLIENT_ID:" + id);
+                        sendMessage("SESSION_START");
                         return ClientType.SPECTATOR;
                     } else {
-                        output.println("REJECTED:Cannot join - spectators full");
+                        sendMessage("REJECTED:Cannot join - spectators full");
                     }
                 } catch (Exception e) {
-                    output.println("ERROR:Invalid spectator request");
+                    sendMessage("ERROR:Invalid spectator request");
                 }
                 continue;
             }
             
             if (selection.equals("DISCONNECT")) {
                 System.out.println("Client #" + id + " disconnecting gracefully");
-                output.println("BYE");
+                sendMessage("BYE");
                 return null;
             }
             
             if (selection.equalsIgnoreCase("exit")) {
-                output.println("BYE");
+                sendMessage("BYE");
                 return null;
             }
         }
@@ -148,16 +163,16 @@ public class ClientHandler extends Thread {
     private void sendPlayerList() {
         Map<Integer, NetworkPlayer> players = server.getPlayers();
         
-        output.println("PLAYER_LIST_START");
+        sendMessage("PLAYER_LIST_START");
         
         for (NetworkPlayer player : players.values()) {
-            output.println("PLAYER:" + player.getId() + ":" + 
-                          player.getAddress() + ":" + 
-                          player.getSpectatorCount() + ":" + 
-                          Config.SPECTATORS_PER_PLAYER);
+            sendMessage("PLAYER:" + player.getId() + ":" + 
+                       player.getAddress() + ":" + 
+                       player.getSpectatorCount() + ":" + 
+                       Config.SPECTATORS_PER_PLAYER);
         }
         
-        output.println("PLAYER_LIST_END");
+        sendMessage("PLAYER_LIST_END");
         
         System.out.println("  Sent player list to client #" + id + " (" + players.size() + " players)");
     }
@@ -173,50 +188,84 @@ public class ClientHandler extends Thread {
     }
     
     private boolean placeholderGameLoop() throws IOException {
-        // Don't send welcome message - it interferes with lobby protocol
-        
         String message;
-        while (running && (message = input.readLine()) != null) {
+        while (running && (message = readLineWithTimeout()) != null) {
             message = message.trim();
             
             if (message.equals("DISCONNECT")) {
                 System.out.println("Client #" + id + " returning to lobby");
-                // Don't send BYE - client is returning to lobby
-                return true; // Return to lobby
+                return true;
             }
             
             if (message.equals("PLAY_AGAIN")) {
                 System.out.println("Client #" + id + " wants to play again");
-                output.println("INFO:Play again - starting new round");
+                sendMessage("INFO:Play again - starting new round");
                 continue;
             }
             
             if (message.equalsIgnoreCase("exit")) {
-                output.println("BYE");
-                return false; // Close connection
+                sendMessage("BYE");
+                return false;
             }
             
-            output.println("ECHO:" + message);
+            sendMessage("ECHO:" + message);
         }
         
-        return false; // Connection lost or error
+        return false;
     }
     
     public void notifyPlayerDisconnected(Integer playerId) {
-        if (output != null) {
-            output.println("PLAYER_DISCONNECTED:" + playerId);
-            output.println("INFO:Player disconnected - connection closing");
-        }
+        sendMessage("PLAYER_DISCONNECTED:" + playerId);
+        sendMessage("INFO:Player disconnected - connection closing");
         running = false;
         close();
     }
     
     public void notifyPlayerLeftSession(Integer playerId) {
-        if (output != null) {
-            output.println("PLAYER_LEFT_SESSION:" + playerId);
-        }
-        // Don't close connection - spectator stays connected
+        sendMessage("PLAYER_LEFT_SESSION:" + playerId);
         System.out.println("  Notified spectator #" + id + " that player #" + playerId + " left session");
+    }
+    
+    /**
+     * Read a line with timeout protection
+     * Uses the socket's SO_TIMEOUT if set, or reads normally
+     */
+    private String readLineWithTimeout() throws IOException {
+        try {
+            // Check if socket is still connected before reading
+            if (socket.isClosed() || !socket.isConnected()) {
+                return null;
+            }
+            
+            return input.readLine();
+        } catch (SocketTimeoutException e) {
+            // Timeout is expected for idle connections - just return null to check running flag
+            if (running) {
+                // If still supposed to be running, return empty to continue loop
+                return "";
+            }
+            return null;
+        } catch (SocketException e) {
+            // Socket closed or reset - connection lost
+            return null;
+        }
+    }
+    
+    private synchronized void sendMessage(String message) {
+        if (output != null && !socket.isClosed()) {
+            try {
+                output.println(message);
+                output.flush();
+                // Check if output stream had an error
+                if (output.checkError()) {
+                    System.err.println("Warning: Error sending message to client #" + id);
+                    running = false;
+                }
+            } catch (Exception e) {
+                System.err.println("Error sending to client #" + id + ": " + e.getMessage());
+                running = false;
+            }
+        }
     }
     
     private void close() {
