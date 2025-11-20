@@ -29,7 +29,8 @@ RENDERING_SOURCES = src/rendering/sprite_manager.c \
                     src/rendering/renderer.c \
                     src/rendering/sprite_test.c
 
-UTILS_SOURCES = src/utils/font_manager.c
+UTILS_SOURCES = src/utils/font_manager.c \
+                src/utils/message_listener.c
 
 GAME_SOURCES = src/game/game_flow.c \
                src/game/screens/ip_input_screen.c \
@@ -49,7 +50,8 @@ RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
                     $(OBJ_DIR)/renderer.o \
                     $(OBJ_DIR)/sprite_test.o
 
-UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o
+UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o \
+                $(OBJ_DIR)/message_listener.o
 
 GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
                $(OBJ_DIR)/ip_input_screen.o \
@@ -68,6 +70,7 @@ HEADERS = src/network/connection.h \
           src/rendering/sprite_test.h \
           src/utils/font_manager.h \
           src/utils/constants.h \
+          src/utils/message_listener.h \
           src/game/game_flow.h \
           src/game/screens/ip_input_screen.h \
           src/game/screens/title_screen.h \
@@ -104,6 +107,36 @@ $(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/game_flow.o: src/game/game_flow.c src/game/game_flow.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/title_screen.o: src/game/screens/title_screen.c src/game/screens/title_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player_screen.o: src/game/screens/player_screen.c src/game/screens/player_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/lose_screen.o: src/game/screens/lose_screen.c src/game/screens/lose_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player_selection_screen.o: src/game/screens/player_selection_screen.c src/game/screens/player_selection_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/spectator_screen.o: src/game/screens/spectator_screen.c src/game/screens/spectator_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/message_listener.o: src/utils/message_listener.c src/utils/message_listener.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/game_flow.o: src/game/game_flow.c src/game/game_flow.h

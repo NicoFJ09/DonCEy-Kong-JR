@@ -8,6 +8,7 @@
 #include "../network/connection.h"
 #include "../utils/constants.h"
 #include "../utils/font_manager.h"
+#include "../utils/message_listener.h"
 #include "../rendering/sprite_test.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -146,6 +147,8 @@ bool game_flow_run(void) {
                         printf("WARNING: Expected SESSION_START, got: %s\n", buffer);
                     }
                     
+                    pthread_t listener_thread = message_listener_start(conn);
+                    
                     // Player screen loop
                     bool playing = true;
                     while (playing && conn->connected && !WindowShouldClose()) {
@@ -170,6 +173,9 @@ bool game_flow_run(void) {
                                 break;
                         }
                     }
+                    
+                    message_listener_stop(listener_thread);
+                    
                 } else if (strncmp(buffer, PROTO_REJECTED, strlen(PROTO_REJECTED)) == 0) {
                     const char* reason = buffer + strlen(PROTO_REJECTED);
                     printf("✗ Rejected: %s\n", reason);

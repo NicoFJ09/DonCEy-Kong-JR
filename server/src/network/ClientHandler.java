@@ -226,6 +226,10 @@ public class ClientHandler extends Thread {
         System.out.println("  Notified spectator #" + id + " that player #" + playerId + " left session");
     }
     
+    public void sendMessageToPlayer(String message) {
+        sendMessage(message);
+    }
+    
     /**
      * Read a line with timeout protection
      * Uses the socket's SO_TIMEOUT if set, or reads normally
