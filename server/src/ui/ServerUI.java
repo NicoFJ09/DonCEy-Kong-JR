@@ -83,9 +83,13 @@ public class ServerUI extends JFrame {
                     if (parts.length > 1) {
                         String idPart = parts[1].split(" ")[0];
                         selectedPlayerId = Integer.parseInt(idPart);
+                        
+                        // Update fruit list to show only fruits of selected player
+                        updateFruitListForPlayer(selectedPlayerId);
                     }
                 } catch (Exception ex) {
                     selectedPlayerId = -1;
+                    fruitListModel.clear();
                 }
             }
         });
@@ -501,6 +505,16 @@ public class ServerUI extends JFrame {
                 playerListModel.addElement(playerInfo);
             }
         });
+    }
+    
+    private void updateFruitListForPlayer(int playerId) {
+        fruitListModel.clear();
+        Player player = players.get(playerId);
+        if (player != null) {
+            for (String fruit : player.getFruits()) {
+                fruitListModel.addElement(fruit);
+            }
+        }
     }
     
 
