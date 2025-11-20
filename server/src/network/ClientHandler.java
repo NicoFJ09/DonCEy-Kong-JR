@@ -5,16 +5,6 @@ import java.io.*;
 import java.net.*;
 import java.util.Map;
 
-/**
- * ClientHandler - Manages individual client connection in separate thread
- * 
- * Lifecycle:
- * 1. Setup I/O streams
- * 2. Lobby: Client selects PLAYER or SPECTATOR
- * 3. Game Session: Handle based on type
- * 4. Cleanup: Close resources and notify server
- */
-
 public class ClientHandler extends Thread {
     private Socket socket;
     private Integer id;
@@ -23,13 +13,14 @@ public class ClientHandler extends Thread {
     
     private BufferedReader input;
     private PrintWriter output;
-    private volatile boolean running;  // volatile for thread visibility
+    private volatile boolean running;
 
     private enum ClientType {
-    PLAYER,      // Active game participant
-    SPECTATOR    // Read-only observer
+        PLAYER,
+        SPECTATOR
     }
     private ClientType type;
+    private Integer watchedPlayerId;
 
     public ClientHandler(Socket socket, Integer id, String address, GameServer server) {
         this.socket = socket;
@@ -37,257 +28,246 @@ public class ClientHandler extends Thread {
         this.address = address;
         this.server = server;
         this.running = true;
+        this.watchedPlayerId = null;
+        
+        // Configure socket for high-load scenarios
+        try {
+            // Use larger buffers for better throughput under load
+            socket.setSendBufferSize(65536);    // 64KB send buffer
+            socket.setReceiveBufferSize(65536); // 64KB receive buffer
+            
+            // Performance optimizations
+            socket.setPerformancePreferences(0, 1, 0); // latency > bandwidth > connection time
+        } catch (SocketException e) {
+            System.err.println("Warning: Could not optimize socket for client #" + id);
+        }
     }
     
-    // === Thread Lifecycle ===
-    
-    /**
-     * Main thread execution
-     * Template Method pattern: defines client connection lifecycle
-     */
     @Override
     public void run() {
         try {
-            // Phase 1: Setup I/O streams
-            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            // Use larger buffer for better performance under load
+            input = new BufferedReader(new InputStreamReader(socket.getInputStream()), 8192);
             output = new PrintWriter(socket.getOutputStream(), true);
             
-            // Phase 2: Lobby - client type selection
-            type = selectClientType();
-            if (type == null) {
-                System.out.println("Client #" + id + " disconnected during selection");
-                return;
+            sendMessage("CLIENT_ID:" + id);
+            System.out.println("Sent initial CLIENT_ID:" + id);
+            
+            while (running) {
+                type = handleClientSelection();
+                if (type == null) {
+                    System.out.println("Client #" + id + " disconnected");
+                    break;
+                }
+                
+                boolean returnToLobby = false;
+                if (type == ClientType.PLAYER) {
+                    returnToLobby = handlePlayerSession();
+                } else {
+                    returnToLobby = handleSpectatorSession();
+                }
+                
+                if (type == ClientType.PLAYER) {
+                    server.unregisterPlayerFromSession(id);
+                } else if (type == ClientType.SPECTATOR && watchedPlayerId != null) {
+                    server.unregisterSpectatorFromSession(id, watchedPlayerId);
+                }
+                
+                if (!returnToLobby) {
+                    break;
+                }
+                
+                type = null;
+                watchedPlayerId = null;
+                System.out.println("Client #" + id + " returned to lobby");
             }
             
-            // Phase 3: Game session (behavior varies by type)
-            if (type == ClientType.PLAYER) {
-                handlePlayerSession();
-            } else {
-                handleSpectatorSession();
+        } catch (SocketTimeoutException e) {
+            System.err.println("Client #" + id + " timed out (no activity)");
+        } catch (SocketException e) {
+            if (running) {
+                System.err.println("Client #" + id + " socket error: " + e.getMessage());
             }
-            
         } catch (IOException e) {
             if (running) {
-                System.err.println("Error with client #" + id + ": " + e.getMessage());
+                System.err.println("Client #" + id + " I/O error: " + e.getMessage());
             }
+        } catch (Exception e) {
+            System.err.println("Client #" + id + " unexpected error: " + e.getMessage());
+            e.printStackTrace();
         } finally {
-            // Phase 4: Cleanup (always executes)
             close();
             server.cleanup(id);
         }
     }
     
-    // === Lobby Phase ===
-    
-    /**
-     * Handle lobby interactions until client selects type
-     * Loops until valid selection or disconnect
-     * @return Selected ClientType, or null if disconnected
-     * @throws IOException on network error
-     */
-    private ClientType selectClientType() throws IOException {
-        while (running) {
-            displayLobby();
-            
-            String selection = input.readLine();
-            if (selection == null) return null;  // Client disconnected
-            
+    private ClientType handleClientSelection() throws IOException {
+        String selection;
+        
+        while (running && (selection = readLineWithTimeout()) != null) {
             selection = selection.trim();
-            System.out.println("  Client #" + id + " selected: " + selection);
+            System.out.println("  Client #" + id + " sent: " + selection);
             
-            switch (selection) {
-                case "1":  // Join as player
-                    if (server.registerPlayer(id, address)) {
-                        return ClientType.PLAYER;
-                    } else {
-                        output.println("REJECTED:Players full");
-                    }
-                    break;
+            if (selection.equals("LIST_PLAYERS")) {
+                sendPlayerList();
+                continue;
+            }
+            
+            if (selection.equals("1")) {
+                if (server.registerPlayer(id, address)) {
+                    sendMessage("ACCEPTED:PLAYER");
+                    sendMessage("CLIENT_ID:" + id);
+                    sendMessage("SESSION_START");
+                    return ClientType.PLAYER;
+                } else {
+                    sendMessage("REJECTED:Players full");
+                }
+                continue;
+            }
+            
+            if (selection.startsWith("JOIN_SPECTATOR:")) {
+                try {
+                    String[] parts = selection.split(":");
+                    Integer playerId = Integer.parseInt(parts[1]);
                     
-                case "2":  // Join as spectator
-                    Integer playerId = selectPlayer();
-                    if (playerId != null && server.registerSpectator(id, playerId)) {
+                    if (server.registerSpectator(id, playerId)) {
+                        watchedPlayerId = playerId;
+                        sendMessage("ACCEPTED:SPECTATOR");
+                        sendMessage("CLIENT_ID:" + id);
+                        sendMessage("SESSION_START");
                         return ClientType.SPECTATOR;
+                    } else {
+                        sendMessage("REJECTED:Cannot join - spectators full");
                     }
-                    // If failed, loop back to lobby menu
-                    break;
-                    
-                case "exit":
-                    output.println("BYE");
-                    return null;
-                    
-                default:
-                    output.println("ERROR:Invalid option");
+                } catch (Exception e) {
+                    sendMessage("ERROR:Invalid spectator request");
+                }
+                continue;
+            }
+            
+            if (selection.equals("DISCONNECT")) {
+                System.out.println("Client #" + id + " disconnecting gracefully");
+                sendMessage("BYE");
+                return null;
+            }
+            
+            if (selection.equalsIgnoreCase("exit")) {
+                sendMessage("BYE");
+                return null;
             }
         }
+        
         return null;
     }
     
-    /**
-     * Display lobby menu to client
-     * Shows current players and spectator availability
-     */
-    private void displayLobby() {
-        output.println("========================================");
-        output.println("LOBBY");
-        output.println("========================================");
-        
-        Map<Integer, NetworkPlayer> players = server.getPlayers();
-        output.println("Players: " + players.size() + "/" + Config.MAX_PLAYERS);
-        
-        // Show active players with spectator slots
-        if (!players.isEmpty()) {
-            output.println("\nActive players:");
-            for (NetworkPlayer player : players.values()) {
-                String status = player.canAcceptSpectator() ? "JOIN" : "FULL";
-                output.println("  Player #" + player.getId() +
-                             " [" + player.getSpectatorCount() + "/" +
-                             Config.SPECTATORS_PER_PLAYER + " spectators] " + status);
-            }
-        }
-        
-        output.println("\nOptions:");
-        output.println("  1 - Join as PLAYER");
-        output.println("  2 - Join as SPECTATOR");
-        output.println("  exit - Quit");
-        output.println();
-        output.print("> ");
-        output.flush();  // Force send prompt without waiting for newline
-    }
-    
-    /**
-     * Handle spectator player selection
-     * Shows available players and gets user choice
-     * @return Selected player ID, or null if cancelled/invalid
-     * @throws IOException on network error
-     */
-    private Integer selectPlayer() throws IOException {
+    private void sendPlayerList() {
         Map<Integer, NetworkPlayer> players = server.getPlayers();
         
-        if (players.isEmpty()) {
-            output.println("REJECTED:No players to spectate");
-            return null;
-        }
+        sendMessage("PLAYER_LIST_START");
         
-        // Show available players
-        output.println("\nSelect player to spectate:");
         for (NetworkPlayer player : players.values()) {
-            output.println("  Player #" + player.getId() +
-                         " [" + player.getSpectatorCount() + "/" +
-                         Config.SPECTATORS_PER_PLAYER + " spectators]");
-        }
-        output.println();
-        output.print("Enter player ID (or 'back'): ");
-        output.flush();
-        
-        String response = input.readLine();
-        if (response == null || response.trim().equalsIgnoreCase("back")) {
-            return null;  // Return to lobby menu
+            sendMessage("PLAYER:" + player.getId() + ":" + 
+                       player.getAddress() + ":" + 
+                       player.getSpectatorCount() + ":" + 
+                       Config.SPECTATORS_PER_PLAYER);
         }
         
-        // Parse and validate player ID
-        try {
-            Integer playerId = Integer.parseInt(response.trim());
-            NetworkPlayer player = server.getPlayer(playerId);
-            
-            if (player == null) {
-                output.println("ERROR:Player not found");
-                return null;
-            }
-            
-            if (!player.canAcceptSpectator()) {
-                output.println("REJECTED:Player spectators full");
-                return null;
-            }
-            
-            return playerId;
-            
-        } catch (NumberFormatException e) {
-            output.println("ERROR:Invalid ID");
-            return null;
-        }
+        sendMessage("PLAYER_LIST_END");
+        
+        System.out.println("  Sent player list to client #" + id + " (" + players.size() + " players)");
     }
     
-    // === Game Session Phase ===
-    
-    /**
-     * Handle player game session
-     * TODO: Replace placeholderGameLoop() with actual game logic:
-     * - Parse movement commands (WASD, space)
-     * - Update GamePlayer state
-     * - Broadcast state to spectators
-     * @throws IOException on network error
-     */
-
-    private void handlePlayerSession() throws IOException {
-        output.println("ACCEPTED:PLAYER");
-        output.println("CLIENT_ID:" + id);
-        output.println("SESSION_START");
-        
+    private boolean handlePlayerSession() throws IOException {
         System.out.println("Client #" + id + " joined as PLAYER");
-        
-        placeholderGameLoop();
+        return placeholderGameLoop();
     }
     
-    /**
-     * Handle spectator game session
-     * TODO: Replace placeholderGameLoop() with spectator logic:
-     * - Receive game state updates from observed player
-     * - Display read-only view
-     * - Handle watched player disconnect
-     * @throws IOException on network error
-     */
-
-    private void handleSpectatorSession() throws IOException {
-        output.println("ACCEPTED:SPECTATOR");
-        output.println("CLIENT_ID:" + id);
-        output.println("SESSION_START");
-        
-        System.out.println("Client #" + id + " joined as SPECTATOR");
-        
-        placeholderGameLoop();
+    private boolean handleSpectatorSession() throws IOException {
+        System.out.println("Client #" + id + " joined as SPECTATOR (watching Player #" + watchedPlayerId + ")");
+        return placeholderGameLoop();
     }
     
-    /**
-     * Placeholder game loop for testing
-     * Simple echo server until game logic implemented
-     * @throws IOException on network error
-     */
-    private void placeholderGameLoop() throws IOException {
-        output.println("INFO:Connected. Type 'exit' to disconnect");
-        
+    private boolean placeholderGameLoop() throws IOException {
         String message;
-        while (running && (message = input.readLine()) != null) {
-            if (message.trim().equalsIgnoreCase("exit")) {
-                output.println("BYE");
-                break;
+        while (running && (message = readLineWithTimeout()) != null) {
+            message = message.trim();
+            
+            if (message.equals("DISCONNECT")) {
+                System.out.println("Client #" + id + " returning to lobby");
+                return true;
             }
-            output.println("ECHO:" + message);
+            
+            if (message.equals("PLAY_AGAIN")) {
+                System.out.println("Client #" + id + " wants to play again");
+                sendMessage("INFO:Play again - starting new round");
+                continue;
+            }
+            
+            if (message.equalsIgnoreCase("exit")) {
+                sendMessage("BYE");
+                return false;
+            }
+            
+            sendMessage("ECHO:" + message);
         }
+        
+        return false;
     }
     
-    // === Observer Pattern ===
-    
-    /**
-     * Notify spectator that watched player disconnected
-     * Called by GameServer.cleanup() when player leaves
-     * @param playerId ID of disconnected player
-     */
     public void notifyPlayerDisconnected(Integer playerId) {
-        if (output != null) {
-            output.println("PLAYER_DISCONNECTED:" + playerId);
-            output.println("INFO:Connection closing...");
-        }
+        sendMessage("PLAYER_DISCONNECTED:" + playerId);
+        sendMessage("INFO:Player disconnected - connection closing");
         running = false;
         close();
     }
     
-    // === Cleanup ===
+    public void notifyPlayerLeftSession(Integer playerId) {
+        sendMessage("PLAYER_LEFT_SESSION:" + playerId);
+        System.out.println("  Notified spectator #" + id + " that player #" + playerId + " left session");
+    }
     
     /**
-     * Close all resources
-     * Called in finally block to ensure cleanup
+     * Read a line with timeout protection
+     * Uses the socket's SO_TIMEOUT if set, or reads normally
      */
+    private String readLineWithTimeout() throws IOException {
+        try {
+            // Check if socket is still connected before reading
+            if (socket.isClosed() || !socket.isConnected()) {
+                return null;
+            }
+            
+            return input.readLine();
+        } catch (SocketTimeoutException e) {
+            // Timeout is expected for idle connections - just return null to check running flag
+            if (running) {
+                // If still supposed to be running, return empty to continue loop
+                return "";
+            }
+            return null;
+        } catch (SocketException e) {
+            // Socket closed or reset - connection lost
+            return null;
+        }
+    }
+    
+    private synchronized void sendMessage(String message) {
+        if (output != null && !socket.isClosed()) {
+            try {
+                output.println(message);
+                output.flush();
+                // Check if output stream had an error
+                if (output.checkError()) {
+                    System.err.println("Warning: Error sending message to client #" + id);
+                    running = false;
+                }
+            } catch (Exception e) {
+                System.err.println("Error sending to client #" + id + ": " + e.getMessage());
+                running = false;
+            }
+        }
+    }
+    
     private void close() {
         running = false;
         try {
@@ -295,7 +275,7 @@ public class ClientHandler extends Thread {
             if (output != null) output.close();
             if (socket != null) socket.close();
         } catch (IOException e) {
-            // Ignore cleanup errors
+            // Ignore
         }
     }
 }

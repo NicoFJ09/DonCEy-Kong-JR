@@ -1,12 +1,9 @@
 #include "ip_input_screen.h"
 #include "../../utils/constants.h"
+#include "../../utils/font_manager.h"
 #include "raylib.h"
 #include <string.h>
 #include <stdio.h>
-
-// Font reference (loaded from assets)
-static Font press_start_font;
-static bool font_loaded = false;
 
 // Input state
 typedef struct {
@@ -17,33 +14,7 @@ typedef struct {
     bool show_error;
 } InputState;
 
-static void load_font_if_needed(void) {
-    if (!font_loaded) {
-        press_start_font = LoadFont("assets/ui/fonts/PressStart2P.ttf");
-        if (press_start_font.texture.id != 0) {
-            font_loaded = true;
-            printf("✓ Loaded PressStart2P font\n");
-        } else {
-            printf("✗ Failed to load PressStart2P font, using default\n");
-        }
-    }
-}
 
-static void draw_text_ex(const char* text, int x, int y, int font_size, Color color) {
-    if (font_loaded) {
-        DrawTextEx(press_start_font, text, (Vector2){x, y}, font_size, 2, color);
-    } else {
-        DrawText(text, x, y, font_size, color);
-    }
-}
-
-static int measure_text_ex(const char* text, int font_size) {
-    if (font_loaded) {
-        Vector2 size = MeasureTextEx(press_start_font, text, font_size, 2);
-        return (int)size.x;
-    }
-    return MeasureText(text, font_size);
-}
 
 static void handle_text_input(InputState* state) {
     static int backspace_hold_frames = 0;
@@ -124,11 +95,11 @@ static void draw_ip_input_screen(InputState* state) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
     // Title
-    const char* title = "Enter IP:";
-    int title_width = measure_text_ex(title, UI_FONT_SIZE_TITLE);
+    const char* title = "ENTER IP:";
+    int title_width = font_manager_measure_text(title, UI_FONT_SIZE_TITLE);
     int title_x = (UI_WINDOW_WIDTH - title_width) / 2;
     int title_y = 300;
-    draw_text_ex(title, title_x, title_y, UI_FONT_SIZE_TITLE, UI_COLOR_TEXT);
+    font_manager_draw_text(title, title_x, title_y, UI_FONT_SIZE_TITLE, UI_COLOR_TEXT);
     
     // Input box
     int input_x = (UI_WINDOW_WIDTH - UI_INPUT_BOX_WIDTH) / 2;
@@ -140,10 +111,10 @@ static void draw_ip_input_screen(InputState* state) {
     
     // Input text
     if (strlen(state->text) > 0) {
-        int text_width = measure_text_ex(state->text, UI_FONT_SIZE_INPUT);
+        int text_width = font_manager_measure_text(state->text, UI_FONT_SIZE_INPUT);
         int text_x = input_x + 10;
         int text_y = input_y + (UI_INPUT_BOX_HEIGHT - UI_FONT_SIZE_INPUT) / 2;
-        draw_text_ex(state->text, text_x, text_y, UI_FONT_SIZE_INPUT, UI_COLOR_INPUT);
+        font_manager_draw_text(state->text, text_x, text_y, UI_FONT_SIZE_INPUT, UI_COLOR_INPUT);
         
         if (state->show_cursor) {
             int cursor_x = text_x + text_width + 5;
@@ -161,25 +132,23 @@ static void draw_ip_input_screen(InputState* state) {
     // ERROR MESSAGE - NEW (centered below box)
     if (state->show_error) {
         const char* error_msg = "Could not connect";
-        int error_width = measure_text_ex(error_msg, UI_FONT_SIZE_ERROR);
+        int error_width = font_manager_measure_text(error_msg, UI_FONT_SIZE_ERROR);
         int error_x = (UI_WINDOW_WIDTH - error_width) / 2;
         int error_y = input_y + UI_INPUT_BOX_HEIGHT + 20;  // 20px below box
-        draw_text_ex(error_msg, error_x, error_y, UI_FONT_SIZE_ERROR, RED);
+        font_manager_draw_text(error_msg, error_x, error_y, UI_FONT_SIZE_ERROR, RED);
     }
     
     // Instruction (same position as before, but moves down if error shown)
     const char* instruction = "Press ENTER to connect";
-    int instruction_width = measure_text_ex(instruction, UI_FONT_SIZE_ERROR);
+    int instruction_width = font_manager_measure_text(instruction, UI_FONT_SIZE_ERROR);
     int instruction_x = (UI_WINDOW_WIDTH - instruction_width) / 2;
     int instruction_y = state->show_error ? 
         input_y + UI_INPUT_BOX_HEIGHT + 60 :  // Move down if error
         input_y + UI_INPUT_BOX_HEIGHT + 30;   // Normal position
-    draw_text_ex(instruction, instruction_x, instruction_y, UI_FONT_SIZE_ERROR, GRAY);
+    font_manager_draw_text(instruction, instruction_x, instruction_y, UI_FONT_SIZE_ERROR, GRAY);
 }
 
 bool show_ip_input_screen(char* ip_buffer, size_t buffer_size, bool show_error) {
-    load_font_if_needed();
-    
     // Initialize
     InputState state = {0};
     
