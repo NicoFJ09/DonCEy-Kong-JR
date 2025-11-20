@@ -12,6 +12,8 @@
     #include <unistd.h>
     #include <arpa/inet.h>
     #include <sys/socket.h>
+    #include <sys/types.h>
+    #include <sys/select.h>
 #endif
 
 // Minimum delay between sends in seconds (prevents server spam)

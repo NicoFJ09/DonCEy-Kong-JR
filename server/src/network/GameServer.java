@@ -208,6 +208,15 @@ public class GameServer {
         return players.get(playerId);
     }
     
+    public synchronized void sendMessageToClient(Integer clientId, String message) {
+        ClientHandler handler = clientHandlers.get(clientId);
+        if (handler != null) {
+            handler.sendMessageToPlayer(message);
+        } else {
+            System.err.println("Client #" + clientId + " not found");
+        }
+    }
+    
     private void printServerHeader() {
         System.out.println("===========================================");
         System.out.println("🎮 DonCEy Kong Jr - Server");

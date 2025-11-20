@@ -2,12 +2,14 @@ package server.src.ui;
 
 import server.src.network.GameServer;
 import server.src.network.NetworkPlayer;
+import server.src.utils.Player;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 
 import java.awt.*;
 import java.util.Map;
+import java.util.HashMap;
 
 public class ServerUI extends JFrame {
     private GameServer server;
@@ -17,9 +19,12 @@ public class ServerUI extends JFrame {
     private DefaultListModel<String> fruitListModel;
     private JList<String> fruitList;
     private String selectedPlayer = "Ninguno";
+    private Integer selectedPlayerId = -1;
+    private Map<Integer, Player> players;  // Map of Player ID -> Player object
     
     public ServerUI(GameServer server) {
         this.server = server;
+        this.players = new HashMap<>();
         initializeUI();
         startPlayerUpdateThread();
     }
@@ -55,13 +60,13 @@ public class ServerUI extends JFrame {
 
         JLabel playerSelectedLabel = new JLabel("Jugador Seleccionado:");
         playerSelectedLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
-        playerSelectedLabel.setBounds(25, 160, 200, 25);
+        playerSelectedLabel.setBounds(25, 160, 400, 25);
         mainPanel.add(playerSelectedLabel);
 
         playerListModel = new DefaultListModel<>();
         playerList = new JList<>(playerListModel);
         playerList.setFont(new Font("Arial", Font.PLAIN, 15));
-        playerList.setBorder(new LineBorder(new Color(139, 69, 19), 3)); // Borde café de 3px
+        playerList.setBorder(new LineBorder(new Color(139, 69, 19), 3));
         playerList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         playerList.setBackground(new Color(240, 240, 240));
         
@@ -71,6 +76,17 @@ public class ServerUI extends JFrame {
             if (selectedIndex != -1) {
                 selectedPlayer = playerList.getSelectedValue();
                 playerSelectedLabel.setText("Jugador Seleccionado: " + selectedPlayer);
+                
+                // Extract player ID and update selectedPlayerId
+                try {
+                    String[] parts = selectedPlayer.split("#");
+                    if (parts.length > 1) {
+                        String idPart = parts[1].split(" ")[0];
+                        selectedPlayerId = Integer.parseInt(idPart);
+                    }
+                } catch (Exception ex) {
+                    selectedPlayerId = -1;
+                }
             }
         });
         
@@ -89,16 +105,16 @@ public class ServerUI extends JFrame {
         leftPanel.setBounds(20, 40, 395, 120);
         mainPanel.add(leftPanel);
         
-        // Separador horizontal 1 que va desde el inicio hasta x=300
+        // Separador horixontal 1
         JPanel separatorBottom = new JPanel();
         separatorBottom.setBackground(new Color(46,111,64));
-        separatorBottom.setBounds(0, 200, 430, 8); // x=0, y=145, ancho=300, alto=8
+        separatorBottom.setBounds(0, 200, 430, 8);
         mainPanel.add(separatorBottom);
         
-        // Separador vertical (usando JPanel) posicionado a la derecha
+        // Separador vertical posicionado a la derecha
         JPanel separator = new JPanel();
         separator.setBackground(new Color(46,111,64));
-        separator.setBounds(430, 0, 10, y); // Posicionar en coordenadas x=500, ancho=8
+        separator.setBounds(430, 0, 10, y);
         mainPanel.add(separator);        
 
         //_____________________________________________________________
@@ -141,13 +157,35 @@ public class ServerUI extends JFrame {
         addButton.setBackground(new Color(211, 182, 131));
         addButton.setFont(new Font("Arial", Font.BOLD, 15));
         addButton.setBounds(120, 360, 180, 40);
+        addButton.addActionListener(e -> {
+            if (selectedPlayerId != -1) {
+                try {
+                    // Get player object (already created in updatePlayerList)
+                    Player player = players.get(selectedPlayerId);
+                    if (player != null) {
+                        // Get crocodile data
+                        String crocodileType = (String) crocodileTypeCombo.getSelectedItem();
+                        int vineCount = Integer.parseInt((String) vineCountCombo.getSelectedItem());
+                        
+                        // Add crocodile to player
+                        player.addCrocodile(crocodileType, vineCount);
+                                                
+                        // Send message to the player
+                        String message = crocodileType + ", " + vineCount;
+                        server.sendMessageToClient(selectedPlayerId, "Agregar:" + message);
+                        System.out.println("Message sent to Player #" + selectedPlayerId);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Error: " + ex.getMessage());
+                }
+            }
+        });
         mainPanel.add(addButton);
 
         JPanel cocodrileSeparator = new JPanel();
         cocodrileSeparator.setBackground(new Color(46,111,64));
-        cocodrileSeparator.setBounds(0, 415, 430, 8); // x=0, y=310, ancho=400, alto=8
+        cocodrileSeparator.setBounds(0, 415, 430, 8);
         mainPanel.add(cocodrileSeparator);
-
 
         //_____________________________________________________________
         //PARA LAS PARTES DE ABAJO DE EL SEGUNDO SEPARADOR HORIZONTAL
@@ -201,15 +239,33 @@ public class ServerUI extends JFrame {
         addFruitButton.setBackground(new Color(211, 182, 131));
         addFruitButton.setFont(new Font("Arial", Font.BOLD, 15));
         addFruitButton.setBounds(120, 610, 180, 40);
+
         addFruitButton.addActionListener(e -> {
-            String fruitType = (String) fruitPointsCombo.getSelectedItem();
-            String vineCount = (String) vineCountCombo2.getSelectedItem();
-            String positionY = positionYField.getText();
-            
-            if (!positionY.isEmpty()) {
-                String fruitEntry = fruitType + " (Lianas: " + vineCount + ", PosY: " + positionY + ")";
-                fruitListModel.addElement(fruitEntry);
-                positionYField.setText("");
+            if (selectedPlayerId != -1) {
+                try {
+                    // Get player object (already created in updatePlayerList)
+                    Player player = players.get(selectedPlayerId);
+                    if (player != null) {
+                        // Get fruit data
+                        String fruitType = (String) fruitPointsCombo.getSelectedItem();
+                        String vineCount = (String) vineCountCombo2.getSelectedItem();
+                        String positionY = positionYField.getText();
+                        
+                        if (!positionY.isEmpty()) {
+                            // Add fruit to player
+                            player.addFruit(fruitType, vineCount, positionY);
+                            fruitListModel.addElement(fruitType + " (Liana: " + vineCount + ", PosY: " + positionY + ")");
+                            positionYField.setText("");
+                            
+                            // Send message to the player
+                            String message = fruitType + ", " + vineCount + ", " + positionY;
+                            server.sendMessageToClient(selectedPlayerId, "Agregar: " + message);
+                            System.out.println("Message sent to Player #" + selectedPlayerId);
+                        }
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Error: " + ex.getMessage());
+                }
             }
         });
         mainPanel.add(addFruitButton);
@@ -235,21 +291,37 @@ public class ServerUI extends JFrame {
         fruitList.setFont(new Font("Arial", Font.PLAIN, 14));
         fruitList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         fruitList.setBackground(new Color(240, 240, 240));
-        fruitList.setBorder(new LineBorder(new Color(139, 69, 19), 3)); // Borde café de 3px
-        
+        fruitList.setBorder(new LineBorder(new Color(139, 69, 19), 3));
+
         JScrollPane fruitScrollPane = new JScrollPane(fruitList);
         fruitScrollPane.setBounds(20, 720, 280, 200);
         mainPanel.add(fruitScrollPane);
 
         JButton removeButton = new JButton("Eliminar");
-        removeButton.setBorder(new LineBorder(new Color(139, 69, 19), 2)); // Borde café de 3px
+        removeButton.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         removeButton.setBackground(new Color(211, 182, 131));
         removeButton.setFont(new Font("Arial", Font.BOLD, 15));
         removeButton.setBounds(315, 790, 98, 40);
         removeButton.addActionListener(e -> {
             int selectedIndex = fruitList.getSelectedIndex();
-            if (selectedIndex != -1) {
-                fruitListModel.remove(selectedIndex);
+            if (selectedIndex != -1 && selectedPlayerId != -1) {
+                try {
+                    // Get the selected fruit text from UI
+                    String removedFruit = fruitListModel.remove(selectedIndex);
+                    
+                    // Remove from player object using the exact same text
+                    Player player = players.get(selectedPlayerId);
+                    if (player != null) {
+                        player.removeFruit(removedFruit);
+                        System.out.println("Fruit removed from Player #" + selectedPlayerId + ": " + removedFruit);
+                    }
+                    
+                    // Send message to selected player
+                    server.sendMessageToClient(selectedPlayerId, "Eliminar Fruta:" + removedFruit);
+                    System.out.println("Message sent to Player #" + selectedPlayerId);
+                } catch (Exception ex) {
+                    System.err.println("Error removing fruit: " + ex.getMessage());
+                }
             }
         });
         mainPanel.add(removeButton);
@@ -395,8 +467,6 @@ public class ServerUI extends JFrame {
         platformLabel.setBounds(x, y, width, height);
         panel.add(platformLabel);
     }
-
-    
     
     private void startPlayerUpdateThread() {
         updateThread = new Thread(() -> {
@@ -414,17 +484,27 @@ public class ServerUI extends JFrame {
     }
     
     private void updatePlayerList() {
-        Map<Integer, NetworkPlayer> players = server.getPlayers();
+        Map<Integer, NetworkPlayer> networkPlayers = server.getPlayers();
         
         SwingUtilities.invokeLater(() -> {
             playerListModel.clear();
             
-            for (Map.Entry<Integer, NetworkPlayer> entry : players.entrySet()) {
+            // Sync with our Player objects
+            for (Map.Entry<Integer, NetworkPlayer> entry : networkPlayers.entrySet()) {
                 Integer playerId = entry.getKey();
-                NetworkPlayer player = entry.getValue();
-                String playerInfo = "* " + "Jugador #" + playerId + " - " + player.getAddress();
+                NetworkPlayer networkPlayer = entry.getValue();
+                
+                // Create Player object if it doesn't exist
+                players.computeIfAbsent(playerId, k -> new Player(playerId, networkPlayer.getAddress()));
+                
+                String playerInfo = "* " + "Jugador #" + playerId + " - " + networkPlayer.getAddress();
                 playerListModel.addElement(playerInfo);
             }
         });
+    }
+    
+
+    public Map<Integer, Player> getPlayersData() {
+        return players;
     }
 }
