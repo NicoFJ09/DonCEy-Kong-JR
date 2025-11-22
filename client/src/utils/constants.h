@@ -109,9 +109,9 @@
 // Animation
 #define ANIMATION_SPEED 0.15f  // Time per frame in seconds
 
-// Player spawn point (on platform at x=400-808, y=550)
-#define PLAYER_SPAWN_X 600
-#define PLAYER_SPAWN_Y 502  // 550 - 48 (PLAYER_HEIGHT)
+// Player spawn point in BLOCKS (converted to pixels in code)
+#define PLAYER_SPAWN_X_BLOCK 25   // x = 25 blocks (600px)
+#define PLAYER_SPAWN_Y_BLOCK 21   // y = 21 blocks (504px) - 2 blocks above bottom platform
 
 // Hand offset for vine grabbing (sprite-specific, hands not centered)
 #define HAND_OFFSET_FROM_CENTER 16.0f

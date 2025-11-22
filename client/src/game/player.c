@@ -475,29 +475,37 @@ void player_update(Player* player, float deltaTime) {
         }
     }
 
-    // Simple ground collision (with first platform)
+    // Check collision with ALL platforms
     if (!player->climbing && g_current_level && g_current_level->platform_count > 0) {
-        Platform* platform = &g_current_level->platforms[0];
+        bool collided = false;
+        
+        for (int p = 0; p < g_current_level->platform_count; p++) {
+            Platform* platform = &g_current_level->platforms[p];
 
-        // Calculate platform width in pixels from blocks
-        float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
+            // Calculate platform width in pixels from blocks
+            float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
 
-        // Platform collision - player stands ON top of platform
-        // Platform Y is the TOP surface where player should stand
-        if (player->y + PLAYER_HEIGHT >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
-            player->y + PLAYER_HEIGHT <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
-            player->x + PLAYER_WIDTH > platform->x &&
-            player->x < platform->x + platform_width_px &&
-            player->velocity_y >= 0) {
+            // Platform collision - player stands ON top of platform
+            // Platform Y is the TOP surface where player should stand
+            if (player->y + PLAYER_HEIGHT >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
+                player->y + PLAYER_HEIGHT <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
+                player->x + PLAYER_WIDTH > platform->x &&
+                player->x < platform->x + platform_width_px &&
+                player->velocity_y >= 0) {
 
-            player->y = platform->y - PLAYER_HEIGHT;  // Stand ON platform surface
-            player->velocity_y = 0;
-            player->on_ground = true;
+                player->y = platform->y - PLAYER_HEIGHT;  // Stand ON platform surface
+                player->velocity_y = 0;
+                player->on_ground = true;
+                collided = true;
 
-            if (player->velocity_x == 0) {
-                player->state = STATE_IDLE;
+                if (player->velocity_x == 0) {
+                    player->state = STATE_IDLE;
+                }
+                break;  // Stop checking once we hit a platform
             }
-        } else {
+        }
+        
+        if (!collided) {
             player->on_ground = false;
             if (!player->climbing && player->velocity_y > 0) {
                 player->state = STATE_FALLING;
@@ -510,8 +518,8 @@ void player_update(Player* player, float deltaTime) {
 #if DEBUG_MODE
         printf("Player fell in water! Respawning...\n");
 #endif
-        player->x = PLAYER_SPAWN_X;
-        player->y = PLAYER_SPAWN_Y;
+        player->x = PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE;
+        player->y = PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE;
         player->velocity_x = 0;
         player->velocity_y = 0;
         player->climbing = false;

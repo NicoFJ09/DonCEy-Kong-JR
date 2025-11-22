@@ -9,11 +9,18 @@
 // SIMPLE TEST LEVEL DATA
 // ============================================================
 
-// Single platform for testing
-// Format: {x_pixels, y_pixels, width_blocks}
-// Height is ALWAYS 1 block (PLATFORM_BLOCK_SIZE = 24px)
-static Platform PLATFORMS[] = {
-    {400, 550, 17}   // 17 blocks wide (17 * 24 = 408px), 1 block tall (24px)
+// Platform definitions in BLOCKS (each block = 24px)
+// Format: {x_block, y_block, width_blocks}
+// Height is ALWAYS 1 block
+typedef struct {
+    int x_block;
+    int y_block;
+    int width_blocks;
+} PlatformDef;
+
+static PlatformDef PLATFORM_DEFS[] = {
+    {16, 23, 17},  // Bottom platform: x=16 blocks (384px), y=23 blocks (552px), 17 blocks wide
+    {16, 8, 17}    // Top platform: x=16 blocks (384px), y=3 blocks (72px), 17 blocks wide
 };
 
 // No columns for now
@@ -33,35 +40,36 @@ typedef struct {
     int height_blocks;    // Height in 24px blocks (e.g., 10 blocks = 240px tall vine)
 } VineHeight;
 
+
+
+// Example: Custom heights for group 1 (in 24px blocks)
+static VineHeight GROUP1_HEIGHTS[] = {
+    {9, 12},   // Vine 1: starts at block 3 (72px), 17 blocks tall (408px)
+    {9, 9},   // Vine 2: starts at block 3 (72px), 17 blocks tall (408px)
+    {9, 12}    // Vine 3: starts at block 3 (72px), 17 blocks tall (408px)
+};
+
+// Vine group definitions in BLOCKS
+// x_block will be converted to pixels, spacing is automatic (VINE_SPACING)
 typedef struct {
-    float start_x;              // X position of first vine
+    int x_block;                // X position in blocks (will be * 24)
     int vine_count;             // How many VISIBLE vines to create
     VineHeight* heights;        // Array of heights for each vine (NULL = all use default)
     int default_y_top_block;    // Default top block if heights array is NULL
     int default_height_blocks;  // Default height in blocks if heights array is NULL
-} VineGroup;
+} VineGroupDef;
 
-// Example: Custom heights for group 1 (in 24px blocks)
-static VineHeight GROUP1_HEIGHTS[] = {
-    {3, 17},   // Vine 1: starts at block 3 (72px), 17 blocks tall (408px)
-    {3, 14},   // Vine 2: starts at block 3 (72px), 17 blocks tall (408px)
-    {3, 17}    // Vine 3: starts at block 3 (72px), 17 blocks tall (408px)
+static VineGroupDef VINE_GROUP_DEFS[] = {
+    // Group 1: 3 vines at x=21 blocks (504px), custom heights
+    {21, 3, GROUP1_HEIGHTS, 0, 0},
+
+    // Group 2: 2 vines at x=37 blocks (888px), default heights
+    {37, 2, NULL, 0, 20}
 };
 
-// Define your vine groups here - SUPER EASY!
-// Spacing is ALWAYS VINE_SPACING between vines
-// Heights are in BLOCKS (matches VINE_SPRITE_HEIGHT!)
-static VineGroup VINE_GROUPS[] = {
-    // Group 1: 3 vines at x=500, custom block heights
-    {500, 3, GROUP1_HEIGHTS, 0, 0},
-
-    // Group 2: 2 vines at x=800, using default block heights
-    {800, 2, NULL, 3, 17}  // Top at block 3, 17 blocks tall
-};
-
-#define PLATFORM_COUNT (sizeof(PLATFORMS) / sizeof(Platform))
+#define PLATFORM_COUNT (sizeof(PLATFORM_DEFS) / sizeof(PlatformDef))
 #define COLUMN_COUNT (sizeof(COLUMNS) / sizeof(Column))
-#define VINE_GROUP_COUNT (sizeof(VINE_GROUPS) / sizeof(VineGroup))
+#define VINE_GROUP_COUNT (sizeof(VINE_GROUP_DEFS) / sizeof(VineGroupDef))
 
 // No goal for now
 #define CAGE_X 0.0f
@@ -79,11 +87,13 @@ Level* level_create(void) {
     // Water
     level->water_level = WATER_LEVEL;
     
-    // Platforms
+    // Platforms - convert from blocks to pixels
     level->platform_count = (int)PLATFORM_COUNT;
     level->platforms = (Platform*)malloc(sizeof(Platform) * PLATFORM_COUNT);
     for (size_t i = 0; i < PLATFORM_COUNT; i++) {
-        level->platforms[i] = PLATFORMS[i];
+        level->platforms[i].x = PLATFORM_DEFS[i].x_block * PLATFORM_BLOCK_SIZE;
+        level->platforms[i].y = PLATFORM_DEFS[i].y_block * PLATFORM_BLOCK_SIZE;
+        level->platforms[i].width_blocks = PLATFORM_DEFS[i].width_blocks;
     }
 
     // Columns
@@ -97,15 +107,15 @@ Level* level_create(void) {
     // First, calculate total vine count across all groups
     int total_visible = 0;
     for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        total_visible += VINE_GROUPS[g].vine_count;
+        total_visible += VINE_GROUP_DEFS[g].vine_count;
     }
 
     // Total vines = visible + center vines
     // Each group with N vines creates (N-1) center vines
     int total_center = 0;
     for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        if (VINE_GROUPS[g].vine_count > 1) {
-            total_center += (VINE_GROUPS[g].vine_count - 1);
+        if (VINE_GROUP_DEFS[g].vine_count > 1) {
+            total_center += (VINE_GROUP_DEFS[g].vine_count - 1);
         }
     }
 
@@ -118,7 +128,8 @@ Level* level_create(void) {
 
     // Process each vine group
     for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        VineGroup* group = &VINE_GROUPS[g];
+        VineGroupDef* group = &VINE_GROUP_DEFS[g];
+        float group_x_pixels = group->x_block * PLATFORM_BLOCK_SIZE;  // Convert blocks to pixels
 
         // Generate vines for this group (spacing is ALWAYS VINE_SPACING)
         for (int i = 0; i < group->vine_count; i++) {
@@ -137,7 +148,7 @@ Level* level_create(void) {
             // Add visible vine
             Vine visible;
             visible.id = next_id++;
-            visible.x = group->start_x + (i * VINE_SPACING);
+            visible.x = group_x_pixels + (i * VINE_SPACING);
             visible.y_top = vine_y_top;
             visible.y_bottom = vine_y_bottom;
             visible.visible = true;
@@ -166,7 +177,7 @@ Level* level_create(void) {
 
                 Vine center;
                 center.id = next_id++;
-                center.x = group->start_x + (i * VINE_SPACING) + (VINE_SPACING / 2.0f);  // Midpoint
+                center.x = group_x_pixels + (i * VINE_SPACING) + (VINE_SPACING / 2.0f);  // Midpoint
                 center.y_top = center_y_top;
                 center.y_bottom = center_y_bottom;
                 center.visible = false;  // INVISIBLE bridge
@@ -188,9 +199,9 @@ Level* level_create(void) {
            level->platform_count, level->column_count, level->vine_count, (int)VINE_GROUP_COUNT);
     printf("  Vine groups:\n");
     for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        VineGroup* vg = &VINE_GROUPS[g];
-        printf("    Group %zu: %d vines at x=%.0f, spacing=%.0fpx\n",
-               g+1, vg->vine_count, vg->start_x, VINE_SPACING);
+        VineGroupDef* vg = &VINE_GROUP_DEFS[g];
+        printf("    Group %zu: %d vines at x=%d blocks (%.0fpx), spacing=%.0fpx\n",
+               g+1, vg->vine_count, vg->x_block, vg->x_block * 24.0f, VINE_SPACING);
     }
     printf("  Complete vine layout:\n");
     for (int i = 0; i < level->vine_count; i++) {

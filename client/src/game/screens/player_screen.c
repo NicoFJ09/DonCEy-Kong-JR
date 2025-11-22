@@ -24,9 +24,11 @@ void show_player_screen(int client_id) {
     // Create test level
     g_current_level = level_create();
 
-    // Create player - start on platform center
+    // Create player - start on platform center (convert blocks to pixels)
     Player player;
-    player_init(&player, PLAYER_SPAWN_X, PLAYER_SPAWN_Y);
+    player_init(&player, 
+                PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE, 
+                PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
 
     // Main game loop - runs until window closes or ESC pressed
     while (!WindowShouldClose()) {
