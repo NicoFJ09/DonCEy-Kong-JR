@@ -2,6 +2,7 @@
 #include "level.h"
 #include "../rendering/sprite_manager.h"
 #include "../utils/constants.h"
+#include "../utils/font_manager.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -154,7 +155,7 @@ void player_handle_input(Player* player) {
                             Vine* v = &g_current_level->vines[i];
                             if (!v->visible &&
                                 v->x < current_vine->x &&
-                                fabs(v->x - (current_vine->x - (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                fabs(v->x - (current_vine->x - (VINE_SPACING / 2.0f))) < VINE_TRANSFER_TOLERANCE &&
                                 player->y >= v->y_top &&
                                 player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 center_vine = v;
@@ -193,7 +194,7 @@ void player_handle_input(Player* player) {
                             Vine* v = &g_current_level->vines[i];
                             if (v->visible &&
                                 v->x < current_vine->x &&
-                                fabs(v->x - (current_vine->x - (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                fabs(v->x - (current_vine->x - (VINE_SPACING / 2.0f))) < 5.0f &&
                                 player->y >= v->y_top &&
                                 player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 left_vine = v;
@@ -241,7 +242,7 @@ void player_handle_input(Player* player) {
                             Vine* v = &g_current_level->vines[i];
                             if (!v->visible &&
                                 v->x > current_vine->x &&
-                                fabs(v->x - (current_vine->x + (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                fabs(v->x - (current_vine->x + (VINE_SPACING / 2.0f))) < VINE_TRANSFER_TOLERANCE &&
                                 player->y >= v->y_top &&
                                 player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 center_vine = v;
@@ -280,7 +281,7 @@ void player_handle_input(Player* player) {
                             Vine* v = &g_current_level->vines[i];
                             if (v->visible &&
                                 v->x > current_vine->x &&
-                                fabs(v->x - (current_vine->x + (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                fabs(v->x - (current_vine->x + (VINE_SPACING / 2.0f))) < 5.0f &&
                                 player->y >= v->y_top &&
                                 player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 right_vine = v;
@@ -582,11 +583,11 @@ void player_render(Player* player) {
     const char* lateral = player->lateral_position == -1 ? "LEFT" :
                          (player->lateral_position == 1 ? "RIGHT" : "CENTER");
 
-    DrawText(TextFormat("%s | Pos:(%.0f,%.0f) | Ground:%s",
+    font_manager_draw_text(TextFormat("%s | Pos:(%.0f,%.0f) | Ground:%s",
              state_name, player->x, player->y, player->on_ground ? "Y" : "N"), 10, 40, 18, WHITE);
 
     if (player->climbing) {
-        DrawText(TextFormat("Vine:%d | Side:%s",
+        font_manager_draw_text(TextFormat("Vine:%d | Side:%s",
                  player->attached_vine_id, lateral), 10, 60, 18, YELLOW);
     }
 #endif

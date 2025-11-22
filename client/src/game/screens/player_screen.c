@@ -6,8 +6,6 @@
 #include "raylib.h"
 #include <stdio.h>
 
-#define PLAYER_TIMER_SECONDS 999999  // Infinite for testing
-
 // Global level reference for player collision
 Level* g_current_level = NULL;
 
@@ -30,21 +28,28 @@ void show_player_screen(int client_id) {
     Player player;
     player_init(&player, PLAYER_SPAWN_X, PLAYER_SPAWN_Y);
 
-    // Game loop timer
-    double start_time = GetTime();
-    double elapsed = 0.0;
+    // Main game loop - runs until window closes or ESC pressed
+    while (!WindowShouldClose()) {
+        // PAUSE GAME when window loses focus (minimized, alt-tabbed, etc.)
+        if (IsWindowFocused()) {
+            // Window has focus - update game normally
+            float deltaTime = GetFrameTime();
+            
+            // CRITICAL FIX: Clamp deltaTime to prevent physics explosion
+            // If somehow a large deltaTime gets through, limit it
+            if (deltaTime > MAX_DELTA_TIME) {
+                deltaTime = MAX_DELTA_TIME;
+            }
 
-    while (elapsed < PLAYER_TIMER_SECONDS && !WindowShouldClose()) {
-        elapsed = GetTime() - start_time;
-        float deltaTime = GetFrameTime();
+            // Handle input
+            player_handle_input(&player);
 
-        // Handle input
-        player_handle_input(&player);
+            // Update physics and animation
+            player_update(&player, deltaTime);
+        }
+        // If window NOT focused: do nothing - game is PAUSED
 
-        // Update physics and animation
-        player_update(&player, deltaTime);
-
-        // Render
+        // ALWAYS render (even when paused) to keep window responsive
         BeginDrawing();
             ClearBackground((Color){135, 206, 235, 255}); // Sky blue
 
@@ -56,6 +61,17 @@ void show_player_screen(int client_id) {
 
             // UI overlay
             font_manager_draw_client_id(client_id, "Player");
+            
+            // Show pause overlay when window is unfocused
+            if (!IsWindowFocused()) {
+                // Semi-transparent black overlay
+                DrawRectangle(0, 0, UI_WINDOW_WIDTH, UI_WINDOW_HEIGHT, (Color){0, 0, 0, 128});
+                
+                // "PAUSED" text centered using font manager
+                const char* pause_text = "PAUSED";
+                int text_width = font_manager_measure_text(pause_text, 60);
+                font_manager_draw_text(pause_text, (UI_WINDOW_WIDTH - text_width) / 2, UI_WINDOW_HEIGHT / 2 - 30, 60, WHITE);
+            }
 
         EndDrawing();
     }

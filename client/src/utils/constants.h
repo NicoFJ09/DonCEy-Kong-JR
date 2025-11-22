@@ -70,28 +70,58 @@
 
 // Level dimensions
 #define LEVEL_WIDTH 1200
-#define WATER_LEVEL 850.0f
+#define LEVEL_HEIGHT 900  // Same as UI_WINDOW_HEIGHT
 
-// Platform constants (from sprite_manager.c: SPRITE_PLATFORM = 24x24)
-#define PLATFORM_BLOCK_SIZE 24  // Each platform block is 24x24 pixels (matches sprite)
+// Water level (in blocks from top, not pixels)
+#define WATER_LEVEL_BLOCKS 35  // 35 blocks * 24px = 840px from top
+#define WATER_LEVEL (WATER_LEVEL_BLOCKS * 24.0f)  // 840.0f
+
+// Platform constants
+#define PLATFORM_BLOCK_SIZE 24
 #define PLATFORM_COLLISION_TOLERANCE 10
 
-// Vine constants (from sprite_manager.c: SPRITE_VINE = 24x24)
-#define VINE_SPRITE_WIDTH 24   // Native vine sprite width
-#define VINE_SPRITE_HEIGHT 24  // Native vine sprite height
-#define VINE_RENDER_SCALE 3.0f // Rendering scale for vines
-#define VINE_WIDTH (VINE_SPRITE_WIDTH * VINE_RENDER_SCALE)   // 72 pixels
-#define VINE_HEIGHT (VINE_SPRITE_HEIGHT * VINE_RENDER_SCALE) // 72 pixels
+// Vine constants
+#define VINE_SPRITE_HEIGHT 24
+#define VINE_WIDTH 72.0f
+#define VINE_HEIGHT 72.0f
+#define VINE_Y_TOLERANCE 50.0f
+#define VINE_LATERAL_OFFSET 20.0f
+#define VINE_SPACING 60.0f
+#define GRAB_RANGE 40.0f
+#define VINE_TRANSFER_TOLERANCE 5.0f
 
-// Vine movement constants
-#define VINE_GRAB_DISTANCE 150
-#define VINE_Y_TOLERANCE 50
-#define VINE_LATERAL_OFFSET 20
-#define FIXED_VINE_SPACING 60.0f  // Fixed horizontal spacing for vine-to-vine transfers
+// Player dimensions
+#define PLAYER_WIDTH 96.0f
+#define PLAYER_HEIGHT 48.0f
 
-// Player spawn point (on platform at x=400-800, y=550)
+// Player physics
+#define MOVE_SPEED 300.0f
+#define JUMP_SPEED 800.0f
+#define GRAVITY 2400.0f
+#define MAX_FALL_SPEED 1200.0f
+
+// Climb speeds (different for center vs side vines, up vs down)
+#define CLIMB_SPEED_CENTER_UP 250.0f    // Fast up on center vine
+#define CLIMB_SPEED_CENTER_DOWN 250.0f  // Fast down on center vine
+#define CLIMB_SPEED_SIDE_UP 150.0f      // Normal up on side vines
+#define CLIMB_SPEED_SIDE_DOWN 250.0f    // Fast down on side vines
+
+// Animation
+#define ANIMATION_SPEED 0.15f  // Time per frame in seconds
+
+// Player spawn point (on platform at x=400-808, y=550)
 #define PLAYER_SPAWN_X 600
 #define PLAYER_SPAWN_Y 502  // 550 - 48 (PLAYER_HEIGHT)
+
+// Hand offset for vine grabbing (sprite-specific, hands not centered)
+#define HAND_OFFSET_FROM_CENTER 16.0f
+
+// Game loop
+#define MAX_DELTA_TIME 0.1f  // 100ms max to prevent physics explosion
+
+// UI Layout
+#define UI_MENU_SPACING 60
+#define UI_BUTTON_MARGIN 100
 
 // Debug mode
 #define DEBUG_MODE 1

@@ -24,7 +24,7 @@ static void draw_lose_screen(LoseOption selected, int client_id) {
     };
     
     int start_y = 450;
-    int spacing = 60;
+    int spacing = UI_MENU_SPACING;
     
     for (LoseOption i = LOSE_PLAY_AGAIN; i <= LOSE_RETURN_TITLE; i++) {
         // Selected option = yellow, unselected = white

@@ -36,7 +36,7 @@ static void draw_title_screen(MenuOption selected, int client_id, const char* er
     };
     
     int start_y = 450;
-    int spacing = 60;
+    int spacing = UI_MENU_SPACING;
     
     for (MenuOption i = MENU_PLAY; i <= MENU_EXIT; i++) {
         // Selected option = yellow, unselected = white
