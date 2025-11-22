@@ -149,13 +149,14 @@ void player_handle_input(Player* player) {
                     if (current_vine && current_vine->visible) {
                         // Find center vine to the left (invisible, left of current)
                         Vine* center_vine = NULL;
+                        float vine_bottom_tolerance = 20.0f;  // Allow reaching visual bottom
                         for (int i = 0; i < g_current_level->vine_count; i++) {
                             Vine* v = &g_current_level->vines[i];
                             if (!v->visible &&
                                 v->x < current_vine->x &&
                                 fabs(v->x - (current_vine->x - (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
                                 player->y >= v->y_top &&
-                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
+                                player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 center_vine = v;
                                 break;
                             }
@@ -187,13 +188,14 @@ void player_handle_input(Player* player) {
                     if (current_vine && !current_vine->visible) {
                         // Find left visible vine
                         Vine* left_vine = NULL;
+                        float vine_bottom_tolerance = 20.0f;  // Allow reaching visual bottom
                         for (int i = 0; i < g_current_level->vine_count; i++) {
                             Vine* v = &g_current_level->vines[i];
                             if (v->visible &&
                                 v->x < current_vine->x &&
                                 fabs(v->x - (current_vine->x - (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
                                 player->y >= v->y_top &&
-                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
+                                player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 left_vine = v;
                                 break;
                             }
@@ -234,13 +236,14 @@ void player_handle_input(Player* player) {
                     if (current_vine && current_vine->visible) {
                         // Find center vine to the right (invisible, right of current)
                         Vine* center_vine = NULL;
+                        float vine_bottom_tolerance = 20.0f;  // Allow reaching visual bottom
                         for (int i = 0; i < g_current_level->vine_count; i++) {
                             Vine* v = &g_current_level->vines[i];
                             if (!v->visible &&
                                 v->x > current_vine->x &&
                                 fabs(v->x - (current_vine->x + (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
                                 player->y >= v->y_top &&
-                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
+                                player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 center_vine = v;
                                 break;
                             }
@@ -272,13 +275,14 @@ void player_handle_input(Player* player) {
                     if (current_vine && !current_vine->visible) {
                         // Find right visible vine
                         Vine* right_vine = NULL;
+                        float vine_bottom_tolerance = 20.0f;  // Allow reaching visual bottom
                         for (int i = 0; i < g_current_level->vine_count; i++) {
                             Vine* v = &g_current_level->vines[i];
                             if (v->visible &&
                                 v->x > current_vine->x &&
                                 fabs(v->x - (current_vine->x + (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
                                 player->y >= v->y_top &&
-                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
+                                player->y + PLAYER_HEIGHT <= v->y_bottom + vine_bottom_tolerance) {
                                 right_vine = v;
                                 break;
                             }
@@ -457,7 +461,10 @@ void player_update(Player* player, float deltaTime) {
                 player->velocity_y = 0;
             }
             // DROP OFF BOTTOM: If player moves past bottom, they FALL (no clamp)
-            if (player->y + PLAYER_HEIGHT > attached_vine->y_bottom) {
+            // Use a tolerance so player can reach the visual bottom before dropping
+            // Player is 48px tall, vines use 24px multiples, so allow ~20px past bottom
+            float bottom_tolerance = 20.0f;
+            if (player->y + PLAYER_HEIGHT > attached_vine->y_bottom + bottom_tolerance) {
                 // Player dropped off the bottom → FALL
                 player->climbing = false;
                 player->attached_vine_id = -1;
