@@ -49,11 +49,11 @@ static const struct {
     // Environment
     [SPRITE_VINE]       = {"environment/vines/vine.png", 24, 24, 1, 0},
     [SPRITE_PLATFORM]   = {"environment/platforms/platform.png", 24, 24, 1, 0},
-    [SPRITE_WATER]      = {"environment/water/water.png", 10, 8, 1, 0},
-    [SPRITE_GRASS]      = {"environment/grass/grass.png", 24, 8, 1, 0},
-    [SPRITE_GRASS_WIDE] = {"environment/grass/wide_grass.png", 32, 8, 1, 0},
-    [SPRITE_STEM]       = {"environment/grass/stem.png", 8, 8, 1, 0},
-    [SPRITE_STEM_WIDE]  = {"environment/grass/wide_stem.png", 16, 8, 1, 0},
+    [SPRITE_WATER]      = {"environment/water/water.png", 30, 24, 1, 0},
+    [SPRITE_GRASS]      = {"environment/grass/grass.png", 72, 24, 1, 0},
+    [SPRITE_GRASS_WIDE] = {"environment/grass/wide_grass.png", 96, 24, 1, 0},
+    [SPRITE_STEM]       = {"environment/grass/stem.png", 24, 24, 1, 0},
+    [SPRITE_STEM_WIDE]  = {"environment/grass/wide_stem.png", 48, 24, 1, 0},
     
     // Fruit (16x16 single frames)
     [SPRITE_FRUIT_APPLE]  = {"fruit/apple.png", 16, 16, 1, 0},

@@ -513,10 +513,10 @@ void player_update(Player* player, float deltaTime) {
         }
     }
     
-    // Check water collision
-    if (player->y > WATER_LEVEL) {
+    // Check water collision - dies on contact (bottom of player touches water)
+    if (player->y + PLAYER_HEIGHT >= WATER_LEVEL) {
 #if DEBUG_MODE
-        printf("Player fell in water! Respawning...\n");
+        printf("Player touched water! Respawning...\n");
 #endif
         player->x = PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE;
         player->y = PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE;

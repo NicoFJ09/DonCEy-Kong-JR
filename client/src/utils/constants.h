@@ -73,8 +73,9 @@
 #define LEVEL_HEIGHT 900  // Same as UI_WINDOW_HEIGHT
 
 // Water level (in blocks from top, not pixels)
-#define WATER_LEVEL_BLOCKS 35  // 35 blocks * 24px = 840px from top
-#define WATER_LEVEL (WATER_LEVEL_BLOCKS * 24.0f)  // 840.0f
+// Screen is 900px tall = 37.5 blocks. Water at block 37 = flush with bottom
+#define WATER_LEVEL_BLOCKS 37  // 37 blocks * 24px = 888px from top (12px from bottom)
+#define WATER_LEVEL (WATER_LEVEL_BLOCKS * 24.0f)  // 888.0f
 
 // Platform constants
 #define PLATFORM_BLOCK_SIZE 24

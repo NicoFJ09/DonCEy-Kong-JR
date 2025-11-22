@@ -84,8 +84,13 @@ static VineGroupDef VINE_GROUP_DEFS[] = {
 Level* level_create(void) {
     Level* level = (Level*)malloc(sizeof(Level));
     
-    // Water
-    level->water_level = WATER_LEVEL;
+    // Water - position so bottom edge is flush with screen bottom
+    // Screen is 900px, water sprite is 24px tall, so water Y = 900 - 24 = 876
+    level->water_level = LEVEL_HEIGHT - 24;
+
+#if DEBUG_MODE
+    printf("Water level set to: %.0f pixels (flush with bottom)\n", level->water_level);
+#endif
     
     // Platforms - convert from blocks to pixels
     level->platform_count = (int)PLATFORM_COUNT;
@@ -221,14 +226,15 @@ Level* level_create(void) {
 static void render_water(Level* level) {
     SpriteSheet* water_sprite = sprite_manager_get(SPRITE_WATER);
     if (!water_sprite || !water_sprite->loaded) return;
-    
-    // Repeat water texture across bottom
-    int water_width = water_sprite->frame_width;
-    int water_height = water_sprite->frame_height;
-    
-    for (int x = 0; x < LEVEL_WIDTH; x += water_width * 3) {
+
+    // Tile water texture horizontally at water level (single row)
+    int water_width = water_sprite->frame_width;   // 30px
+    int water_height = water_sprite->frame_height; // 24px
+
+    // Tile horizontally only - single row at water level
+    for (int x = 0; x < LEVEL_WIDTH; x += water_width) {
         Rectangle source = {0, 0, water_width, water_height};
-        Rectangle dest = {x, level->water_level, water_width * 3, water_height * 3};
+        Rectangle dest = {x, level->water_level, water_width, water_height};
         DrawTexturePro(water_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
     }
 }
