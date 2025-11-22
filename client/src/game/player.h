@@ -8,13 +8,27 @@
 // PLAYER CONSTANTS
 // ============================================================
 
-#define PLAYER_WIDTH 96
-#define PLAYER_HEIGHT 48
+// Player sprite dimensions (from sprite_manager.c)
+// Junior sprites are 32x16 pixels, scaled 3x for rendering
+#define PLAYER_SPRITE_WIDTH 32   // Native sprite width
+#define PLAYER_SPRITE_HEIGHT 16  // Native sprite height
+#define PLAYER_SCALE 3.0f        // Rendering scale
+
+#define PLAYER_WIDTH (PLAYER_SPRITE_WIDTH * PLAYER_SCALE)   // 96 pixels
+#define PLAYER_HEIGHT (PLAYER_SPRITE_HEIGHT * PLAYER_SCALE) // 48 pixels
+
+// Sprite hand offset from center (hands are not centered in sprite)
+#define HAND_OFFSET_FROM_CENTER 16.0f
 
 #define MOVE_SPEED 300.0f
 #define JUMP_SPEED 800.0f
-#define CLIMB_SPEED 150.0f         // Single vine (slower)
-#define CLIMB_SPEED_DUAL 250.0f    // Dual vine (faster)
+
+// Climb speeds (different for center vs side vines, up vs down)
+#define CLIMB_SPEED_CENTER_UP 250.0f    // Fast up on center vine
+#define CLIMB_SPEED_CENTER_DOWN 250.0f  // Fast down on center vine
+#define CLIMB_SPEED_SIDE_UP 150.0f      // Normal up on side vines
+#define CLIMB_SPEED_SIDE_DOWN 250.0f    // Fast down on side vines
+
 #define GRAVITY 2400.0f
 #define MAX_FALL_SPEED 1200.0f
 #define GRAB_RANGE 20.0f
@@ -52,8 +66,6 @@ typedef struct {
     bool on_ground;
     bool climbing;
     int attached_vine_id;
-    int second_vine_id;  // -1 if not holding second vine
-    bool dual_vine_climbing;  // True when holding two vines
     int lateral_position;  // -1 = left side, 0 = center, 1 = right side
     
     // State

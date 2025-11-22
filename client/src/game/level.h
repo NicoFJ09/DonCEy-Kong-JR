@@ -7,9 +7,8 @@
 // LEVEL CONSTANTS
 // ============================================================
 
-#define LEVEL_WIDTH 1200
+// Note: LEVEL_WIDTH and WATER_LEVEL are defined in utils/constants.h
 #define LEVEL_HEIGHT 900
-#define WATER_LEVEL 850.0f  // Water at bottom
 
 // ============================================================
 // LEVEL STRUCTURES
@@ -17,10 +16,14 @@
 
 /**
  * Platform - Horizontal floating platforms
+ * x, y = position in pixels (top-left corner)
+ * width_blocks = width in PLATFORM_BLOCK_SIZE blocks
+ * height = ALWAYS 1 block (derived from PLATFORM_BLOCK_SIZE in constants.h)
  */
 typedef struct {
-    float x, y;
-    float width;
+    float x, y;           // Position in pixels
+    int width_blocks;     // Width in blocks (each block = PLATFORM_BLOCK_SIZE)
+    // Height is ALWAYS 1 block (PLATFORM_BLOCK_SIZE pixels)
 } Platform;
 
 /**

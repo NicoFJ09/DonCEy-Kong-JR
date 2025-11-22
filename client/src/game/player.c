@@ -1,11 +1,78 @@
 #include "player.h"
 #include "level.h"
 #include "../rendering/sprite_manager.h"
+#include "../utils/constants.h"
 #include <stdio.h>
 #include <math.h>
 
 // External reference to level (for collision testing)
 extern Level* g_current_level;
+
+// ============================================================
+// ANIMATION HELPER FUNCTIONS
+// ============================================================
+
+/**
+ * Determines if player should animate based on current movement state
+ */
+static bool should_animate(Player* player) {
+    switch (player->state) {
+        case STATE_IDLE:
+            return false;  // No animation when idle
+
+        case STATE_RUNNING:
+            return player->velocity_x != 0;  // Animate only when moving
+
+        case STATE_CLIMBING:
+            return player->velocity_y != 0;  // Animate only when climbing up/down
+
+        case STATE_JUMPING:
+        case STATE_FALLING:
+            return false;  // Single frame for jump/fall
+
+        default:
+            return false;
+    }
+}
+
+/**
+ * Gets the appropriate sprite type for current player state
+ */
+static SpriteType get_player_sprite(Player* player, int* out_max_frames) {
+    *out_max_frames = 1;  // Default to single frame
+
+    if (player->climbing) {
+        *out_max_frames = 2;
+
+        // Select sprite based on lateral position
+        if (player->lateral_position == -1) {
+            // LEFT side of vine → use LEFT climb sprite
+            return SPRITE_JUNIOR_CLIMB_LEFT;
+        } else if (player->lateral_position == 1) {
+            // RIGHT side of vine → use RIGHT climb sprite
+            return SPRITE_JUNIOR_CLIMB_RIGHT;
+        } else {
+            // CENTER position (0) → use CENTER climb sprite
+            return SPRITE_JUNIOR_CLIMB_CENTER;
+        }
+    }
+
+    switch (player->state) {
+        case STATE_RUNNING:
+            *out_max_frames = 3;
+            return (player->direction == DIR_LEFT) ?
+                   SPRITE_JUNIOR_RUN_LEFT : SPRITE_JUNIOR_RUN_RIGHT;
+
+        case STATE_JUMPING:
+        case STATE_FALLING:
+            return (player->direction == DIR_LEFT) ?
+                   SPRITE_JUNIOR_JUMP_LEFT : SPRITE_JUNIOR_JUMP_RIGHT;
+
+        case STATE_IDLE:
+        default:
+            return SPRITE_JUNIOR_IDLE;
+    }
+}
 
 // ============================================================
 // PLAYER INITIALIZATION
@@ -19,15 +86,15 @@ void player_init(Player* player, float x, float y) {
     player->on_ground = false;
     player->climbing = false;
     player->attached_vine_id = -1;
-    player->second_vine_id = -1;
-    player->dual_vine_climbing = false;
     player->lateral_position = 0;
     player->state = STATE_IDLE;
     player->direction = DIR_RIGHT;
     player->animation_time = 0;
     player->current_frame = 0;
-    
+
+#if DEBUG_MODE
     printf("✓ Player initialized at (%.0f, %.0f)\n", x, y);
+#endif
 }
 
 // ============================================================
@@ -36,41 +103,40 @@ void player_init(Player* player, float x, float y) {
 
 void player_handle_input(Player* player) {
     if (player->climbing) {
-        // Update dual climbing status
-        player->dual_vine_climbing = (player->second_vine_id >= 0);
-        
-        // Choose climb speed based on vine count
-        float climb_speed = player->dual_vine_climbing ? CLIMB_SPEED_DUAL : CLIMB_SPEED;
-        
+        // Determine climb speed based on vine type and direction
+        // CENTER vine (lateral_position == 0) = FAST both ways
+        // SIDE vines (lateral_position == -1 or 1) = NORMAL up, FAST down
+        float climb_speed_up, climb_speed_down;
+
+        if (player->lateral_position == 0) {
+            // Center vine: fast both ways
+            climb_speed_up = CLIMB_SPEED_CENTER_UP;
+            climb_speed_down = CLIMB_SPEED_CENTER_DOWN;
+        } else {
+            // Side vine: normal up, fast down
+            climb_speed_up = CLIMB_SPEED_SIDE_UP;
+            climb_speed_down = CLIMB_SPEED_SIDE_DOWN;
+        }
+
         // Climbing mode - vertical movement
         if (IsKeyDown(KEY_UP)) {
-            player->velocity_y = -climb_speed;
+            player->velocity_y = -climb_speed_up;
             player->state = STATE_CLIMBING;
         } else if (IsKeyDown(KEY_DOWN)) {
-            player->velocity_y = climb_speed;
+            player->velocity_y = climb_speed_down;
             player->state = STATE_CLIMBING;
         } else {
             player->velocity_y = 0;
         }
         
-        // Lateral movement on vine
+        // ========================================
+        // VINE RULESET: Real center vines with height-based existence
+        // lateral_position: -1=LEFT side, 0=CENTER, 1=RIGHT side
+        // ========================================
+
         if (IsKeyPressed(KEY_LEFT)) {
-            player->direction = DIR_LEFT;
-            
-            // If in dual mode, switch to left vine only
-            if (player->dual_vine_climbing) {
-                player->attached_vine_id = player->second_vine_id < player->attached_vine_id ? 
-                                          player->second_vine_id : player->attached_vine_id;
-                player->second_vine_id = -1;
-                player->dual_vine_climbing = false;
-                player->lateral_position = 0;
-                printf("Switched to left vine only\n");
-            } else if (player->lateral_position == 0) {
-                // Move to left side of current vine
-                player->lateral_position = -1;
-                printf("Moved to left side of vine\n");
-            } else if (player->lateral_position == -1) {
-                // Try to grab left vine
+            if (player->lateral_position == -1) {
+                // ON_LEFT_SIDE + press LEFT → Try to move to CENTER vine
                 if (g_current_level) {
                     Vine* current_vine = NULL;
                     for (int i = 0; i < g_current_level->vine_count; i++) {
@@ -79,72 +145,83 @@ void player_handle_input(Player* player) {
                             break;
                         }
                     }
-                    
-                    if (current_vine) {
-                        // Look for vine to the left
+
+                    if (current_vine && current_vine->visible) {
+                        // Find center vine to the left (invisible, left of current)
+                        Vine* center_vine = NULL;
+                        for (int i = 0; i < g_current_level->vine_count; i++) {
+                            Vine* v = &g_current_level->vines[i];
+                            if (!v->visible &&
+                                v->x < current_vine->x &&
+                                fabs(v->x - (current_vine->x - (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                player->y >= v->y_top &&
+                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
+                                center_vine = v;
+                                break;
+                            }
+                        }
+
+                        if (center_vine) {
+                            player->attached_vine_id = center_vine->id;
+                            player->lateral_position = 0;
+                        } else {
+                            // No center vine at this height → FALL
+                            player->climbing = false;
+                            player->attached_vine_id = -1;
+                            player->state = STATE_FALLING;
+                        }
+                    }
+                }
+            }
+            else if (player->lateral_position == 0) {
+                // ON_CENTER + press LEFT → Move to left visible vine
+                if (g_current_level) {
+                    Vine* current_vine = NULL;
+                    for (int i = 0; i < g_current_level->vine_count; i++) {
+                        if (g_current_level->vines[i].id == player->attached_vine_id) {
+                            current_vine = &g_current_level->vines[i];
+                            break;
+                        }
+                    }
+
+                    if (current_vine && !current_vine->visible) {
+                        // Find left visible vine
                         Vine* left_vine = NULL;
                         for (int i = 0; i < g_current_level->vine_count; i++) {
                             Vine* v = &g_current_level->vines[i];
-                            if (v->visible && v->id != player->attached_vine_id &&
+                            if (v->visible &&
                                 v->x < current_vine->x &&
-                                fabs(v->x - current_vine->x) < 150 &&
-                                player->y >= v->y_top - 50 && player->y + PLAYER_HEIGHT <= v->y_bottom + 50) {
+                                fabs(v->x - (current_vine->x - (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                player->y >= v->y_top &&
+                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
                                 left_vine = v;
                                 break;
                             }
                         }
-                        
+
                         if (left_vine) {
-                            // Verify player is actually within vine bounds
-                            if (player->y >= left_vine->y_top - 50 && 
-                                player->y + PLAYER_HEIGHT <= left_vine->y_bottom + 50) {
-                                // Grab second vine
-                                player->second_vine_id = left_vine->id;
-                                player->dual_vine_climbing = true;
-                                player->lateral_position = 0;
-                                printf("Grabbed left vine %d! Now holding two vines\n", left_vine->id);
-                            } else {
-                                // Not in range - fall
-                                player->climbing = false;
-                                player->attached_vine_id = -1;
-                                player->second_vine_id = -1;
-                                player->lateral_position = 0;
-                                player->state = STATE_FALLING;
-                                printf("Out of vine range - falling!\n");
-                            }
+                            // Moving LEFT from center → land on RIGHT SIDE of left vine
+                            player->attached_vine_id = left_vine->id;
+                            player->lateral_position = 1;
+                            player->direction = DIR_RIGHT;
                         } else {
-                            // Fall from vine
+                            // No left vine at this height → FALL
                             player->climbing = false;
                             player->attached_vine_id = -1;
-                            player->second_vine_id = -1;
-                            player->lateral_position = 0;
                             player->state = STATE_FALLING;
-                            printf("No vine found - falling!\n");
                         }
                     }
                 }
-            } else if (player->lateral_position == 1) {
-                // Return to center from right side
-                player->lateral_position = 0;
-                printf("Returned to center\n");
             }
-        } else if (IsKeyPressed(KEY_RIGHT)) {
-            player->direction = DIR_RIGHT;
-            
-            // If in dual mode, switch to right vine only
-            if (player->dual_vine_climbing) {
-                player->attached_vine_id = player->second_vine_id > player->attached_vine_id ? 
-                                          player->second_vine_id : player->attached_vine_id;
-                player->second_vine_id = -1;
-                player->dual_vine_climbing = false;
-                player->lateral_position = 0;
-                printf("Switched to right vine only\n");
-            } else if (player->lateral_position == 0) {
-                // Move to right side of current vine
-                player->lateral_position = 1;
-                printf("Moved to right side of vine\n");
-            } else if (player->lateral_position == 1) {
-                // Try to grab right vine
+            else if (player->lateral_position == 1) {
+                // ON_RIGHT_SIDE + press LEFT → Switch to LEFT SIDE (same vine)
+                player->lateral_position = -1;
+                player->direction = DIR_LEFT;
+            }
+        }
+        else if (IsKeyPressed(KEY_RIGHT)) {
+            if (player->lateral_position == 1) {
+                // ON_RIGHT_SIDE + press RIGHT → Try to move to CENTER vine
                 if (g_current_level) {
                     Vine* current_vine = NULL;
                     for (int i = 0; i < g_current_level->vine_count; i++) {
@@ -153,66 +230,87 @@ void player_handle_input(Player* player) {
                             break;
                         }
                     }
-                    
-                    if (current_vine) {
-                        // Look for vine to the right
+
+                    if (current_vine && current_vine->visible) {
+                        // Find center vine to the right (invisible, right of current)
+                        Vine* center_vine = NULL;
+                        for (int i = 0; i < g_current_level->vine_count; i++) {
+                            Vine* v = &g_current_level->vines[i];
+                            if (!v->visible &&
+                                v->x > current_vine->x &&
+                                fabs(v->x - (current_vine->x + (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                player->y >= v->y_top &&
+                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
+                                center_vine = v;
+                                break;
+                            }
+                        }
+
+                        if (center_vine) {
+                            player->attached_vine_id = center_vine->id;
+                            player->lateral_position = 0;
+                        } else {
+                            // No center vine at this height → FALL
+                            player->climbing = false;
+                            player->attached_vine_id = -1;
+                            player->state = STATE_FALLING;
+                        }
+                    }
+                }
+            }
+            else if (player->lateral_position == 0) {
+                // ON_CENTER + press RIGHT → Move to right visible vine
+                if (g_current_level) {
+                    Vine* current_vine = NULL;
+                    for (int i = 0; i < g_current_level->vine_count; i++) {
+                        if (g_current_level->vines[i].id == player->attached_vine_id) {
+                            current_vine = &g_current_level->vines[i];
+                            break;
+                        }
+                    }
+
+                    if (current_vine && !current_vine->visible) {
+                        // Find right visible vine
                         Vine* right_vine = NULL;
                         for (int i = 0; i < g_current_level->vine_count; i++) {
                             Vine* v = &g_current_level->vines[i];
-                            if (v->visible && v->id != player->attached_vine_id &&
+                            if (v->visible &&
                                 v->x > current_vine->x &&
-                                fabs(v->x - current_vine->x) < 150 &&
-                                player->y >= v->y_top - 50 && player->y + PLAYER_HEIGHT <= v->y_bottom + 50) {
+                                fabs(v->x - (current_vine->x + (FIXED_VINE_SPACING / 2.0f))) < 5.0f &&
+                                player->y >= v->y_top &&
+                                player->y + PLAYER_HEIGHT <= v->y_bottom) {
                                 right_vine = v;
                                 break;
                             }
                         }
-                        
+
                         if (right_vine) {
-                            // Verify player is actually within vine bounds
-                            if (player->y >= right_vine->y_top - 50 && 
-                                player->y + PLAYER_HEIGHT <= right_vine->y_bottom + 50) {
-                                // Grab second vine
-                                player->second_vine_id = right_vine->id;
-                                player->dual_vine_climbing = true;
-                                player->lateral_position = 0;
-                                printf("Grabbed right vine %d! Now holding two vines\n", right_vine->id);
-                            } else {
-                                // Not in range - fall
-                                player->climbing = false;
-                                player->attached_vine_id = -1;
-                                player->second_vine_id = -1;
-                                player->lateral_position = 0;
-                                player->state = STATE_FALLING;
-                                printf("Out of vine range - falling!\n");
-                            }
+                            // Moving RIGHT from center → land on LEFT SIDE of right vine
+                            player->attached_vine_id = right_vine->id;
+                            player->lateral_position = -1;
+                            player->direction = DIR_LEFT;
                         } else {
-                            // Fall from vine
+                            // No right vine at this height → FALL
                             player->climbing = false;
                             player->attached_vine_id = -1;
-                            player->second_vine_id = -1;
-                            player->lateral_position = 0;
                             player->state = STATE_FALLING;
-                            printf("No vine found - falling!\n");
                         }
                     }
                 }
-            } else if (player->lateral_position == -1) {
-                // Return to center from left side
-                player->lateral_position = 0;
-                printf("Returned to center\n");
+            }
+            else if (player->lateral_position == -1) {
+                // ON_LEFT_SIDE + press RIGHT → Switch to RIGHT SIDE (same vine)
+                player->lateral_position = 1;
+                player->direction = DIR_RIGHT;
             }
         }
-        
-        // Release vine(s) with SPACE
+
+        // Release vine with SPACE (jump off)
         if (IsKeyPressed(KEY_SPACE)) {
             player->climbing = false;
             player->attached_vine_id = -1;
-            player->second_vine_id = -1;
-            player->dual_vine_climbing = false;
             player->lateral_position = 0;
             player->state = STATE_JUMPING;
-            printf("Released vine(s)!\n");
         }
     } else {
         // Normal mode
@@ -241,28 +339,37 @@ void player_handle_input(Player* player) {
                 player->velocity_y = -JUMP_SPEED;
                 player->on_ground = false;
                 player->state = STATE_JUMPING;
-                printf("Player jumped!\n");
             } else {
                 // Try to grab nearby vine
                 if (g_current_level) {
                     for (int i = 0; i < g_current_level->vine_count; i++) {
                         Vine* vine = &g_current_level->vines[i];
                         if (!vine->visible) continue;
-                        
+
                         float player_center_x = player->x + PLAYER_WIDTH / 2;
                         float distance = fabs(player_center_x - vine->x);
-                        
+
                         // Check if player is close to vine and within vine's Y range
                         if (distance < GRAB_RANGE &&
-                            player->y >= vine->y_top - 50 &&
-                            player->y + PLAYER_HEIGHT <= vine->y_bottom + 50) {
-                            
+                            player->y >= vine->y_top - VINE_Y_TOLERANCE &&
+                            player->y + PLAYER_HEIGHT <= vine->y_bottom + VINE_Y_TOLERANCE) {
+
                             player->climbing = true;
                             player->attached_vine_id = vine->id;
                             player->velocity_y = 0;
-                            player->x = vine->x - PLAYER_WIDTH / 2;  // Snap to vine
                             player->state = STATE_CLIMBING;
-                            printf("Grabbed vine %d!\n", vine->id);
+
+                            // RULESET: Snap to LEFT or RIGHT side based on approach
+                            if (player_center_x > vine->x) {
+                                // Approaching from right → snap to RIGHT SIDE
+                                player->lateral_position = 1;  // RIGHT
+                                player->direction = DIR_RIGHT;  // Face right (right-side climb)
+                            } else {
+                                // Approaching from left → snap to LEFT SIDE
+                                player->lateral_position = -1;  // LEFT
+                                player->direction = DIR_LEFT;  // Face left (left-side climb)
+                            }
+
                             break;
                         }
                     }
@@ -277,12 +384,17 @@ void player_handle_input(Player* player) {
 // ============================================================
 
 void player_update(Player* player, float deltaTime) {
-    // Update animation timer
-    player->animation_time += deltaTime;
-    if (player->animation_time >= ANIMATION_SPEED) {
+    // Update animation only if player should be animating
+    if (should_animate(player)) {
+        player->animation_time += deltaTime;
+        if (player->animation_time >= ANIMATION_SPEED) {
+            player->animation_time = 0;
+            player->current_frame++;
+        }
+    } else {
+        // Reset to frame 0 when not animating
+        player->current_frame = 0;
         player->animation_time = 0;
-        player->current_frame++;
-        // Frame count depends on sprite (will handle in render)
     }
     
     if (!player->climbing) {
@@ -294,41 +406,28 @@ void player_update(Player* player, float deltaTime) {
             player->velocity_y = MAX_FALL_SPEED;
         }
     } else {
-        // Climbing: adjust position based on lateral position and vines
+        // Climbing: adjust position based on lateral position
         if (g_current_level && player->attached_vine_id >= 0) {
             Vine* attached_vine = NULL;
-            Vine* second_vine = NULL;
-            
+
             for (int i = 0; i < g_current_level->vine_count; i++) {
                 if (g_current_level->vines[i].id == player->attached_vine_id) {
                     attached_vine = &g_current_level->vines[i];
-                }
-                if (player->second_vine_id >= 0 && g_current_level->vines[i].id == player->second_vine_id) {
-                    second_vine = &g_current_level->vines[i];
+                    break;
                 }
             }
-            
+
             if (attached_vine) {
                 // Position player based on lateral position
-                if (player->dual_vine_climbing && second_vine) {
-                    // Between two vines
-                    float center_x = (attached_vine->x + second_vine->x) / 2.0f;
-                    player->x = center_x - PLAYER_WIDTH / 2;
+                if (player->lateral_position == 0) {
+                    // CENTER position - no hand adjustment, just center on vine
+                    player->x = attached_vine->x - PLAYER_WIDTH / 2;
                 } else {
-                    // On one vine with lateral offset
-                    float offset = player->lateral_position * 20.0f; // 20 pixels offset
-                    player->x = attached_vine->x - PLAYER_WIDTH / 2 + offset;
-                }
-                
-                // Can't go above top
-                if (player->y < attached_vine->y_top) {
-                    player->y = attached_vine->y_top;
-                    player->velocity_y = 0;
-                }
-                // Can't go below bottom
-                if (player->y + PLAYER_HEIGHT > attached_vine->y_bottom) {
-                    player->y = attached_vine->y_bottom - PLAYER_HEIGHT;
-                    player->velocity_y = 0;
+                    // LEFT (-1) or RIGHT (1) side - adjust for hand position AND lateral offset
+                    float hand_adjustment = (player->direction == DIR_LEFT) ?
+                                          HAND_OFFSET_FROM_CENTER : -HAND_OFFSET_FROM_CENTER;
+                    float lateral_offset = player->lateral_position * VINE_LATERAL_OFFSET;
+                    player->x = attached_vine->x - PLAYER_WIDTH / 2 + hand_adjustment + lateral_offset;
                 }
             }
         }
@@ -340,23 +439,53 @@ void player_update(Player* player, float deltaTime) {
         player->x += player->velocity_x * deltaTime;
     }
     player->y += player->velocity_y * deltaTime;
-    
+
+    // Vine boundary checks - MUST happen AFTER Y position update
+    if (player->climbing && g_current_level && player->attached_vine_id >= 0) {
+        Vine* attached_vine = NULL;
+        for (int i = 0; i < g_current_level->vine_count; i++) {
+            if (g_current_level->vines[i].id == player->attached_vine_id) {
+                attached_vine = &g_current_level->vines[i];
+                break;
+            }
+        }
+
+        if (attached_vine) {
+            // Can't go above top - clamp position and stop velocity
+            if (player->y < attached_vine->y_top) {
+                player->y = attached_vine->y_top;
+                player->velocity_y = 0;
+            }
+            // DROP OFF BOTTOM: If player moves past bottom, they FALL (no clamp)
+            if (player->y + PLAYER_HEIGHT > attached_vine->y_bottom) {
+                // Player dropped off the bottom → FALL
+                player->climbing = false;
+                player->attached_vine_id = -1;
+                player->lateral_position = 0;
+                player->state = STATE_FALLING;
+            }
+        }
+    }
+
     // Simple ground collision (with first platform)
     if (!player->climbing && g_current_level && g_current_level->platform_count > 0) {
         Platform* platform = &g_current_level->platforms[0];
-        
-        // Check if player is on platform (adjusted so feet are ON visual surface)
-        // Platform visual is ~40px tall, so detect at platform->y + 40
-        if (player->y + PLAYER_HEIGHT >= platform->y + 35 &&
-            player->y + PLAYER_HEIGHT <= platform->y + 55 &&
+
+        // Calculate platform width in pixels from blocks
+        float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
+
+        // Platform collision - player stands ON top of platform
+        // Platform Y is the TOP surface where player should stand
+        if (player->y + PLAYER_HEIGHT >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
+            player->y + PLAYER_HEIGHT <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
             player->x + PLAYER_WIDTH > platform->x &&
-            player->x < platform->x + platform->width &&
+            player->x < platform->x + platform_width_px &&
             player->velocity_y >= 0) {
-            
-            player->y = platform->y + 40 - PLAYER_HEIGHT;  // Stand on visual surface
+
+            player->y = platform->y - PLAYER_HEIGHT;  // Stand ON platform surface
             player->velocity_y = 0;
             player->on_ground = true;
-            
+
             if (player->velocity_x == 0) {
                 player->state = STATE_IDLE;
             }
@@ -370,22 +499,22 @@ void player_update(Player* player, float deltaTime) {
     
     // Check water collision
     if (player->y > WATER_LEVEL) {
+#if DEBUG_MODE
         printf("Player fell in water! Respawning...\n");
-        player->x = 200;
-        player->y = 400;
+#endif
+        player->x = PLAYER_SPAWN_X;
+        player->y = PLAYER_SPAWN_Y;
         player->velocity_x = 0;
         player->velocity_y = 0;
         player->climbing = false;
         player->attached_vine_id = -1;
-        player->second_vine_id = -1;
-        player->dual_vine_climbing = false;
         player->lateral_position = 0;
         player->on_ground = false;
     }
     
     // Keep player on screen
     if (player->x < 0) player->x = 0;
-    if (player->x + PLAYER_WIDTH > 1200) player->x = 1200 - PLAYER_WIDTH;
+    if (player->x + PLAYER_WIDTH > UI_WINDOW_WIDTH) player->x = UI_WINDOW_WIDTH - PLAYER_WIDTH;
 }
 
 // ============================================================
@@ -393,60 +522,34 @@ void player_update(Player* player, float deltaTime) {
 // ============================================================
 
 void player_render(Player* player) {
-    // Get appropriate sprite type based on state
-    SpriteType sprite_type = SPRITE_JUNIOR_IDLE;
-    int frame = 0;
+    // Get sprite type and max frames using helper function
     int max_frames = 1;
-    
-    if (player->climbing) {
-        // Use different sprites based on vine count
-        if (player->dual_vine_climbing) {
-            // Two vines: use center climbing animation
-            sprite_type = SPRITE_JUNIOR_CLIMB_CENTER;
-        } else {
-            // One vine: use directional climbing animation
-            sprite_type = (player->direction == DIR_LEFT) ? 
-                          SPRITE_JUNIOR_CLIMB_LEFT : SPRITE_JUNIOR_CLIMB_RIGHT;
-        }
-        max_frames = 2;
-        frame = player->current_frame % max_frames;
-    } else if (player->state == STATE_RUNNING) {
-        sprite_type = (player->direction == DIR_LEFT) ? 
-                      SPRITE_JUNIOR_RUN_LEFT : SPRITE_JUNIOR_RUN_RIGHT;
-        max_frames = 3;
-        frame = player->current_frame % max_frames;
-    } else if (player->state == STATE_JUMPING) {
-        sprite_type = (player->direction == DIR_LEFT) ? 
-                      SPRITE_JUNIOR_JUMP_LEFT : SPRITE_JUNIOR_JUMP_RIGHT;
-        frame = 0;
-    } else if (player->state == STATE_FALLING) {
-        sprite_type = (player->direction == DIR_LEFT) ? 
-                      SPRITE_JUNIOR_JUMP_LEFT : SPRITE_JUNIOR_JUMP_RIGHT;
-        frame = 0;
-    } else {
-        sprite_type = SPRITE_JUNIOR_IDLE;
-        frame = 0;
-    }
-    
+    SpriteType sprite_type = get_player_sprite(player, &max_frames);
+
+    // Calculate current frame (wrap around max_frames)
+    int frame = player->current_frame % max_frames;
+
     // Get sprite from manager
     SpriteSheet* sprite = sprite_manager_get(sprite_type);
-    
+
     if (sprite && sprite->loaded) {
-        // Calculate source rectangle for current frame
+        // Source: native sprite dimensions from texture
         Rectangle src = {
             frame * (sprite->frame_width + sprite->spacing),
             0,
-            sprite->frame_width,
-            sprite->frame_height
+            sprite->frame_width,   // Should be 32 for Junior
+            sprite->frame_height   // Should be 16 for Junior
         };
-        
+
+        // Destination: scaled to match collision box
+        // PLAYER_WIDTH/HEIGHT = sprite dimensions * PLAYER_SCALE (3x)
         Rectangle dest = {
             player->x,
             player->y,
-            PLAYER_WIDTH,
-            PLAYER_HEIGHT
+            PLAYER_WIDTH,   // 32 * 3 = 96
+            PLAYER_HEIGHT   // 16 * 3 = 48
         };
-        
+
         Vector2 origin = {0, 0};
         DrawTexturePro(sprite->texture, src, dest, origin, 0.0f, WHITE);
     } else {
@@ -454,10 +557,11 @@ void player_render(Player* player) {
         Color player_color = player->climbing ? SKYBLUE : RED;
         DrawRectangle(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, player_color);
     }
-    
+
+#if DEBUG_MODE
     // Debug: draw hitbox
     DrawRectangleLines(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, GREEN);
-    
+
     // Debug: draw state info
     const char* state_name = "UNKNOWN";
     switch (player->state) {
@@ -467,18 +571,18 @@ void player_render(Player* player) {
         case STATE_FALLING: state_name = "FALLING"; break;
         case STATE_CLIMBING: state_name = "CLIMBING"; break;
     }
-    
-    const char* lateral = player->lateral_position == -1 ? "L" : 
-                         (player->lateral_position == 1 ? "R" : "C");
-    const char* climb_mode = player->dual_vine_climbing ? "DUAL" : "SINGLE";
-    
-    DrawText(TextFormat("%s | Pos:(%.0f,%.0f) | Ground:%s", 
+
+    const char* lateral = player->lateral_position == -1 ? "LEFT" :
+                         (player->lateral_position == 1 ? "RIGHT" : "CENTER");
+
+    DrawText(TextFormat("%s | Pos:(%.0f,%.0f) | Ground:%s",
              state_name, player->x, player->y, player->on_ground ? "Y" : "N"), 10, 40, 18, WHITE);
-    
+
     if (player->climbing) {
-        DrawText(TextFormat("Climb:%s V1:%d V2:%d Side:%s", 
-                 climb_mode, player->attached_vine_id, player->second_vine_id, lateral), 10, 60, 18, YELLOW);
+        DrawText(TextFormat("Vine:%d | Side:%s",
+                 player->attached_vine_id, lateral), 10, 60, 18, YELLOW);
     }
+#endif
 }
 
 

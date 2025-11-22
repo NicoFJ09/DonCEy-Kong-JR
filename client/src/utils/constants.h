@@ -64,4 +64,36 @@
 // Cursor blink rate (frames)
 #define UI_CURSOR_BLINK_RATE 30
 
+// ============================================================
+// GAME CONSTANTS
+// ============================================================
+
+// Level dimensions
+#define LEVEL_WIDTH 1200
+#define WATER_LEVEL 850.0f
+
+// Platform constants (from sprite_manager.c: SPRITE_PLATFORM = 24x24)
+#define PLATFORM_BLOCK_SIZE 24  // Each platform block is 24x24 pixels (matches sprite)
+#define PLATFORM_COLLISION_TOLERANCE 10
+
+// Vine constants (from sprite_manager.c: SPRITE_VINE = 24x24)
+#define VINE_SPRITE_WIDTH 24   // Native vine sprite width
+#define VINE_SPRITE_HEIGHT 24  // Native vine sprite height
+#define VINE_RENDER_SCALE 3.0f // Rendering scale for vines
+#define VINE_WIDTH (VINE_SPRITE_WIDTH * VINE_RENDER_SCALE)   // 72 pixels
+#define VINE_HEIGHT (VINE_SPRITE_HEIGHT * VINE_RENDER_SCALE) // 72 pixels
+
+// Vine movement constants
+#define VINE_GRAB_DISTANCE 150
+#define VINE_Y_TOLERANCE 50
+#define VINE_LATERAL_OFFSET 20
+#define FIXED_VINE_SPACING 60.0f  // Fixed horizontal spacing for vine-to-vine transfers
+
+// Player spawn point (on platform at x=400-800, y=550)
+#define PLAYER_SPAWN_X 600
+#define PLAYER_SPAWN_Y 502  // 550 - 48 (PLAYER_HEIGHT)
+
+// Debug mode
+#define DEBUG_MODE 1
+
 #endif
