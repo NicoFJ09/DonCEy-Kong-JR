@@ -23,9 +23,21 @@ static PlatformDef PLATFORM_DEFS[] = {
     {16, 8, 17}    // Top platform: x=16 blocks (384px), y=3 blocks (72px), 17 blocks wide
 };
 
-// No columns for now
-static Column COLUMNS[] = {
-    // Empty
+// Column definitions in BLOCKS
+// Format: {x_block, y_block, wide}
+// x_block = X position in blocks (centered on grass)
+// y_block = Y position in blocks (top of grass, stems extend down to water)
+// wide = true for wide grass/stem (96px/48px), false for normal (72px/24px)
+typedef struct {
+    int x_block;
+    int y_block;
+    bool wide;
+} ColumnDef;
+
+static ColumnDef COLUMN_DEFS[] = {
+    // Example columns - adjust as needed
+    {10, 25, false},  // Normal column at x=10 blocks (240px), y=25 blocks (600px)
+    {40, 20, true},   // Wide column at x=40 blocks (960px), y=20 blocks (480px)
 };
 
 // ============================================================
@@ -68,7 +80,7 @@ static VineGroupDef VINE_GROUP_DEFS[] = {
 };
 
 #define PLATFORM_COUNT (sizeof(PLATFORM_DEFS) / sizeof(PlatformDef))
-#define COLUMN_COUNT (sizeof(COLUMNS) / sizeof(Column))
+#define COLUMN_COUNT (sizeof(COLUMN_DEFS) / sizeof(ColumnDef))
 #define VINE_GROUP_COUNT (sizeof(VINE_GROUP_DEFS) / sizeof(VineGroupDef))
 
 // No goal for now
@@ -101,11 +113,21 @@ Level* level_create(void) {
         level->platforms[i].width_blocks = PLATFORM_DEFS[i].width_blocks;
     }
 
-    // Columns
+    // Columns - convert from blocks to pixels
     level->column_count = (int)COLUMN_COUNT;
     level->columns = (Column*)malloc(sizeof(Column) * COLUMN_COUNT);
     for (size_t i = 0; i < COLUMN_COUNT; i++) {
-        level->columns[i] = COLUMNS[i];
+        // Grass sprites: normal=72px wide, wide=96px wide
+        int grass_width = COLUMN_DEFS[i].wide ? 96 : 72;
+
+        // X position: center the grass at x_block position
+        // Grass is centered at x_block position
+        float grass_center_x = COLUMN_DEFS[i].x_block * PLATFORM_BLOCK_SIZE;
+
+        level->columns[i].x = grass_center_x - (grass_width / 2.0f);  // Top-left of grass
+        level->columns[i].y = COLUMN_DEFS[i].y_block * PLATFORM_BLOCK_SIZE;  // Top of grass
+        level->columns[i].wide = COLUMN_DEFS[i].wide;
+        level->columns[i].grass_width = grass_width;
     }
 
     // Vines - Auto-generate from vine groups
@@ -271,33 +293,35 @@ static void render_columns(Level* level) {
     SpriteSheet* wide_stem = sprite_manager_get(SPRITE_STEM_WIDE);
     SpriteSheet* grass = sprite_manager_get(SPRITE_GRASS);
     SpriteSheet* wide_grass = sprite_manager_get(SPRITE_GRASS_WIDE);
-    
+
     for (int i = 0; i < level->column_count; i++) {
         Column* col = &level->columns[i];
-        
+
         SpriteSheet* stem_sprite = col->wide ? wide_stem : stem;
         SpriteSheet* grass_sprite = col->wide ? wide_grass : grass;
-        
+
         if (!stem_sprite || !stem_sprite->loaded) continue;
         if (!grass_sprite || !grass_sprite->loaded) continue;
-        
-        int stem_width = stem_sprite->frame_width;
-        int stem_height = stem_sprite->frame_height;
-        int grass_height = grass_sprite->frame_height;
-        
-        // Draw stem (repeated vertically from water to height)
-        float y = level->water_level;
-        while (y > (level->water_level - col->height)) {
+
+        int stem_width = stem_sprite->frame_width;   // 24 or 48
+        int stem_height = stem_sprite->frame_height; // 24
+        int grass_height = grass_sprite->frame_height; // 24
+
+        // Draw stems vertically from 24px below grass down to water level
+        // Stems are centered under the grass
+        float stem_x = col->x + (col->grass_width / 2.0f) - (stem_width / 2.0f);
+        float stem_start_y = col->y + 24; // Start 24px below grass
+        float stem_end_y = level->water_level; // End directly at water level
+
+        for (float y = stem_start_y; y < stem_end_y; y += stem_height) {
             Rectangle source = {0, 0, stem_width, stem_height};
-            Rectangle dest = {col->x, y - stem_height, stem_width, stem_height};
+            Rectangle dest = {stem_x, y, stem_width, stem_height};
             DrawTexturePro(stem_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
-            y -= stem_height;
         }
-        
-        // Draw grass on top
-        float grass_y = level->water_level - col->height;
+
+        // Draw grass on top at column position
         Rectangle source = {0, 0, grass_sprite->frame_width, grass_height};
-        Rectangle dest = {col->x, grass_y - grass_height, grass_sprite->frame_width, grass_height};
+        Rectangle dest = {col->x, col->y, grass_sprite->frame_width, grass_height};
         DrawTexturePro(grass_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
     }
 }

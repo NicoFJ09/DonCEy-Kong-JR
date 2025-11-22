@@ -29,12 +29,14 @@ typedef struct {
 } Platform;
 
 /**
- * Column - Vertical structures from water
+ * Column - Grass platforms with stems extending to water
+ * Grass has collision (acts like platform), stems do not
  */
 typedef struct {
-    float x;
-    float height;
-    bool wide;  // true = wide stem/grass, false = normal
+    float x;           // X position (top-left of grass)
+    float y;           // Y position (top of grass)
+    bool wide;         // true = wide grass/stem (96px/48px), false = normal (72px/24px)
+    int grass_width;   // Width of grass in pixels (72 or 96)
 } Column;
 
 /**

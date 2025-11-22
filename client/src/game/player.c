@@ -475,10 +475,11 @@ void player_update(Player* player, float deltaTime) {
         }
     }
 
-    // Check collision with ALL platforms
-    if (!player->climbing && g_current_level && g_current_level->platform_count > 0) {
+    // Check collision with ALL platforms and grass (columns)
+    if (!player->climbing && g_current_level) {
         bool collided = false;
-        
+
+        // Check platform collisions
         for (int p = 0; p < g_current_level->platform_count; p++) {
             Platform* platform = &g_current_level->platforms[p];
 
@@ -504,7 +505,35 @@ void player_update(Player* player, float deltaTime) {
                 break;  // Stop checking once we hit a platform
             }
         }
-        
+
+        // Check grass (column) collisions - same as platforms
+        if (!collided) {
+            for (int c = 0; c < g_current_level->column_count; c++) {
+                Column* column = &g_current_level->columns[c];
+
+                // Grass collision - player stands ON top of grass (same as platform)
+                // Grass is 24px tall, positioned at column->y
+                float grass_top = column->y;
+
+                if (player->y + PLAYER_HEIGHT >= grass_top - PLATFORM_COLLISION_TOLERANCE &&
+                    player->y + PLAYER_HEIGHT <= grass_top + PLATFORM_COLLISION_TOLERANCE &&
+                    player->x + PLAYER_WIDTH > column->x &&
+                    player->x < column->x + column->grass_width &&
+                    player->velocity_y >= 0) {
+
+                    player->y = grass_top - PLAYER_HEIGHT;  // Stand ON grass surface
+                    player->velocity_y = 0;
+                    player->on_ground = true;
+                    collided = true;
+
+                    if (player->velocity_x == 0) {
+                        player->state = STATE_IDLE;
+                    }
+                    break;  // Stop checking once we hit grass
+                }
+            }
+        }
+
         if (!collided) {
             player->on_ground = false;
             if (!player->climbing && player->velocity_y > 0) {
