@@ -7,8 +7,10 @@
 // LEVEL CONSTANTS
 // ============================================================
 
-// Note: LEVEL_WIDTH and WATER_LEVEL are defined in utils/constants.h
-#define LEVEL_HEIGHT 900
+// Note: All level dimensions defined in utils/constants.h
+// LEVEL_WIDTH = 1200 (50 blocks)
+// LEVEL_HEIGHT = 912 (38 blocks)
+// WATER_LEVEL = 888 (block 37)
 
 // ============================================================
 // LEVEL STRUCTURES

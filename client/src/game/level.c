@@ -84,12 +84,12 @@ static VineGroupDef VINE_GROUP_DEFS[] = {
 Level* level_create(void) {
     Level* level = (Level*)malloc(sizeof(Level));
     
-    // Water - position so bottom edge is flush with screen bottom
-    // Screen is 900px, water sprite is 24px tall, so water Y = 900 - 24 = 876
-    level->water_level = LEVEL_HEIGHT - 24;
+    // Water - use constant (positioned at block 37, one block from bottom)
+    level->water_level = WATER_LEVEL;
 
 #if DEBUG_MODE
-    printf("Water level set to: %.0f pixels (flush with bottom)\n", level->water_level);
+    printf("Water level set to: %.0f pixels (block %d of %d)\n",
+           level->water_level, WATER_LEVEL_BLOCKS, LEVEL_HEIGHT / 24);
 #endif
     
     // Platforms - convert from blocks to pixels

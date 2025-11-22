@@ -38,9 +38,9 @@
 // UI CONSTANTS
 // ============================================================
 
-// Window dimensions
-#define UI_WINDOW_WIDTH 1200
-#define UI_WINDOW_HEIGHT 900
+// Window dimensions - both multiples of 24 for grid alignment
+#define UI_WINDOW_WIDTH 1200   // 50 blocks * 24px
+#define UI_WINDOW_HEIGHT 912   // 38 blocks * 24px
 
 // Font sizes
 #define UI_FONT_SIZE_TITLE 32
@@ -68,13 +68,13 @@
 // GAME CONSTANTS
 // ============================================================
 
-// Level dimensions
-#define LEVEL_WIDTH 1200
-#define LEVEL_HEIGHT 900  // Same as UI_WINDOW_HEIGHT
+// Level dimensions - must match UI window dimensions
+#define LEVEL_WIDTH 1200   // 50 blocks * 24px
+#define LEVEL_HEIGHT 912   // 38 blocks * 24px
 
 // Water level (in blocks from top, not pixels)
-// Screen is 900px tall = 37.5 blocks. Water at block 37 = flush with bottom
-#define WATER_LEVEL_BLOCKS 37  // 37 blocks * 24px = 888px from top (12px from bottom)
+// Screen is 912px tall = 38 blocks. Water at block 37 = last block, flush with bottom
+#define WATER_LEVEL_BLOCKS 37  // 37 blocks * 24px = 888px from top (one block from bottom)
 #define WATER_LEVEL (WATER_LEVEL_BLOCKS * 24.0f)  // 888.0f
 
 // Platform constants
