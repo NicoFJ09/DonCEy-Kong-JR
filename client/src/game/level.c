@@ -23,6 +23,7 @@ static PlatformDef PLATFORM_DEFS[] = {
     {0, 36, 15},   // Spawn platform: x=0 (left border), y=36 blocks (864px, right above water), 15 blocks wide
     {0, 9, 30},    // Top left platform: x=0 (left border), y=9 blocks (216px), 30 blocks wide
     {30, 10, 12},  // Top right platform: x=30 blocks (720px), y=10 blocks (240px, one block lower), 12 blocks wide
+    {36, 20, 14},  // Right platform: x=38 blocks (912px), y=20 blocks (480px, 10 blocks below top right), 12 blocks wide (aligned to right)
     {12, 18, 6},   // Platform above third vine: x=12 blocks (288), y=18 blocks (432px), 6 blocks wide
     {12, 24, 9}    // Platform below (15 blocks below top): x=12 blocks (288px), y=24 blocks (576px), 9 blocks wide
 
@@ -70,10 +71,28 @@ typedef struct {
 
 // Custom heights for group 1 - vines below top left platform
 // Top platform is at block 9 (216px), vines start at block 10 (right below it)
+// Heights in 24px blocks - each block = one vine segment
 static VineHeight GROUP1_HEIGHTS[] = {
-    {10, 22},  // Vine 1: starts at block 10 (240px), extends 27 blocks down (648px) to water
-    {10, 21},  // Vine 2: starts at block 10 (240px), 1 block shorter (624px)
-    {19, 15}   // Vine 3: starts 8 blocks below platform = block 18 (432px), extends 19 blocks (456px) to water
+    {10, 24},  // Vine 1: starts at block 10 (240px), 24 blocks tall (576px)
+    {10, 21},  // Vine 2: starts at block 10 (240px), 21 blocks tall (504px)
+    {19, 15}   // Vine 3: starts at block 19 (456px), 15 blocks tall (360px)
+};
+
+static VineHeight GROUP2_HEIGHTS[] = {
+    {10, 18}
+};
+
+static VineHeight GROUP3A_HEIGHTS[] = {
+    {10, 9},
+    {11, 9}
+};
+
+static VineHeight GROUP3B_HEIGHTS[] = {
+    {11, 13},
+    {11, 15},
+    {11, 18},
+    {6, 21},
+    {6, 24}
 };
 
 // Vine group definitions in BLOCKS
@@ -87,12 +106,10 @@ typedef struct {
 } VineGroupDef;
 
 static VineGroupDef VINE_GROUP_DEFS[] = {
-    // Group 1: 3 vines starting at x=4 blocks (96px), below top left platform
-    {8, 3, GROUP1_HEIGHTS, 0, 0}
-
-    // Old test vines (commented out)
-    // {21, 3, GROUP1_HEIGHTS, 0, 0},  // Group 1: 3 vines at x=21 blocks (504px), custom heights
-    // {37, 2, NULL, 0, 20}            // Group 2: 2 vines at x=37 blocks (888px), default heights
+    {8, 3, GROUP1_HEIGHTS, 0, 0},
+    {23, 1, GROUP2_HEIGHTS, 0, 0},
+    {28, 2, GROUP3A_HEIGHTS, 0, 0},
+    {35, 5, GROUP3B_HEIGHTS, 0, 0}
 };
 
 #define PLATFORM_COUNT (sizeof(PLATFORM_DEFS) / sizeof(PlatformDef))
@@ -343,8 +360,12 @@ static void render_columns(Level* level) {
 }
 
 static void render_vines(Level* level) {
-    SpriteSheet* vine_sprite = sprite_manager_get(SPRITE_VINE);
-    if (!vine_sprite || !vine_sprite->loaded) return;
+    // Load all 3 vine sprite variants
+    SpriteSheet* vine1 = sprite_manager_get(SPRITE_VINE_1);
+    SpriteSheet* vine2 = sprite_manager_get(SPRITE_VINE_2);
+    SpriteSheet* vine3 = sprite_manager_get(SPRITE_VINE_3);
+    
+    if (!vine1 || !vine1->loaded || !vine2 || !vine2->loaded || !vine3 || !vine3->loaded) return;
 
     for (int i = 0; i < level->vine_count; i++) {
         Vine* v = &level->vines[i];
@@ -352,19 +373,31 @@ static void render_vines(Level* level) {
         // Only render visible vines
         if (!v->visible) continue;
 
-        // Repeat vine texture from top to bottom
-        // Vine sprite is 24x24, scaled by VINE_RENDER_SCALE (3x) = 72x72
+        // Stack vine segments from top to bottom (24px per block)
+        // Alternate between vine1, vine2, vine3 for visual variety
+        int segment_index = 0;
         for (float y = v->y_top; y < v->y_bottom; y += VINE_HEIGHT) {
-            Rectangle source = {0, 0,
-                               vine_sprite->frame_width,   // 24
-                               vine_sprite->frame_height}; // 24
+            // Cycle through vine sprites: 1 → 2 → 3 → 1 → 2 → 3...
+            SpriteSheet* current_sprite;
+            int sprite_variant = segment_index % 3;
+            if (sprite_variant == 0) {
+                current_sprite = vine1;
+            } else if (sprite_variant == 1) {
+                current_sprite = vine2;
+            } else {
+                current_sprite = vine3;
+            }
+
+            Rectangle source = {0, 0, 24, 24};  // Native 24×24px sprite
             Rectangle dest = {
                 v->x - VINE_WIDTH / 2,  // Center vine on x position
                 y,
-                VINE_WIDTH,   // 24 * 3 = 72
-                VINE_HEIGHT   // 24 * 3 = 72
+                VINE_WIDTH,   // 24px width (no scaling)
+                VINE_HEIGHT   // 24px height (no scaling)
             };
-            DrawTexturePro(vine_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
+            DrawTexturePro(current_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
+            
+            segment_index++;
         }
     }
 }

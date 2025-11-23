@@ -46,8 +46,10 @@ static const struct {
     [SPRITE_SNAPJAW_BLUE_LEFT]  = {"enemies/blue_snapjaw/b_left.png", 16, 16, 2, 2},
     [SPRITE_SNAPJAW_BLUE_RIGHT] = {"enemies/blue_snapjaw/b_right.png", 16, 16, 2, 2},
     
-    // Environment
-    [SPRITE_VINE]       = {"environment/vines/vine.png", 24, 24, 1, 0},
+    // Environment - Vines (24x24 native, no scaling needed)
+    [SPRITE_VINE_1]     = {"environment/vines/vine1.png", 24, 24, 1, 0},
+    [SPRITE_VINE_2]     = {"environment/vines/vine2.png", 24, 24, 1, 0},
+    [SPRITE_VINE_3]     = {"environment/vines/vine3.png", 24, 24, 1, 0},
     [SPRITE_PLATFORM]   = {"environment/platforms/platform.png", 24, 24, 1, 0},
     [SPRITE_WATER]      = {"environment/water/water.png", 30, 24, 1, 0},
     [SPRITE_GRASS]      = {"environment/grass/grass.png", 72, 24, 1, 0},
@@ -215,7 +217,9 @@ const char* sprite_manager_get_name(SpriteType type) {
         case SPRITE_SNAPJAW_BLUE_RIGHT: return "Blue Right";
         
         // Environment
-        case SPRITE_VINE:       return "Vine";
+        case SPRITE_VINE_1:     return "Vine 1";
+        case SPRITE_VINE_2:     return "Vine 2";
+        case SPRITE_VINE_3:     return "Vine 3";
         case SPRITE_PLATFORM:   return "Platform";
         case SPRITE_WATER:      return "Water";
         case SPRITE_GRASS:      return "Grass";

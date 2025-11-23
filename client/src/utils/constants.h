@@ -81,13 +81,13 @@
 #define PLATFORM_BLOCK_SIZE 24
 #define PLATFORM_COLLISION_TOLERANCE 10
 
-// Vine constants
-#define VINE_SPRITE_HEIGHT 24
-#define VINE_WIDTH 72.0f
-#define VINE_HEIGHT 72.0f
+// Vine constants - Native 24px blocks, no scaling
+#define VINE_SPRITE_HEIGHT 24    // Height per vine block (matches platform blocks)
+#define VINE_WIDTH 24.0f         // Width of vine sprite (24px, not scaled)
+#define VINE_HEIGHT 24.0f        // Height per vine segment (24px, not scaled)
 #define VINE_Y_TOLERANCE 50.0f
 #define VINE_LATERAL_OFFSET 20.0f
-#define VINE_SPACING 72.0f
+#define VINE_SPACING 72.0f       // Horizontal spacing between vines (3 blocks)
 #define GRAB_RANGE 40.0f
 #define VINE_TRANSFER_TOLERANCE 5.0f
 
