@@ -115,6 +115,7 @@
 
 // Animation
 #define ANIMATION_SPEED 0.15f  // Time per frame in seconds
+#define DEATH_ANIMATION_DURATION 1.0f  // Death animation lasts 1 second
 
 // Player spawn point in BLOCKS (converted to pixels in code)
 #define PLAYER_SPAWN_X_BLOCK 0    // x = 0 blocks (0px) - left border

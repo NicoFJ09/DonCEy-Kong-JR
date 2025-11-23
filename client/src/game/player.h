@@ -14,7 +14,8 @@ typedef enum {
     STATE_RUNNING,
     STATE_JUMPING,
     STATE_CLIMBING,
-    STATE_FALLING
+    STATE_FALLING,
+    STATE_DYING
 } PlayerState;
 
 typedef enum {
@@ -44,6 +45,9 @@ typedef struct {
     // Animation
     float animation_time;
     int current_frame;
+    
+    // Death
+    float death_timer;
     
 } Player;
 

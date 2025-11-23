@@ -31,6 +31,9 @@ static bool should_animate(Player* player) {
         case STATE_FALLING:
             return false;  // Single frame for jump/fall
 
+        case STATE_DYING:
+            return true;  // Animate death sequence
+
         default:
             return false;
     }
@@ -41,6 +44,11 @@ static bool should_animate(Player* player) {
  */
 static SpriteType get_player_sprite(Player* player, int* out_max_frames) {
     *out_max_frames = 1;  // Default to single frame
+
+    if (player->state == STATE_DYING) {
+        *out_max_frames = 2;
+        return SPRITE_JUNIOR_DEATH;
+    }
 
     if (player->climbing) {
         *out_max_frames = 2;
@@ -92,6 +100,7 @@ void player_init(Player* player, float x, float y) {
     player->direction = DIR_RIGHT;
     player->animation_time = 0;
     player->current_frame = 0;
+    player->death_timer = 0;
 
 #if DEBUG_MODE
     printf("✓ Player initialized at (%.0f, %.0f)\n", x, y);
@@ -172,6 +181,11 @@ static bool would_collide_at_position(Player* player, int lateral_pos) {
 // ============================================================
 
 void player_handle_input(Player* player) {
+    // No input during death animation
+    if (player->state == STATE_DYING) {
+        return;
+    }
+
     if (player->climbing) {
         // Determine climb speed based on vine type and direction
         // CENTER vine (lateral_position == 0) = FAST both ways
@@ -476,6 +490,36 @@ void player_handle_input(Player* player) {
 // ============================================================
 
 void player_update(Player* player, float deltaTime) {
+    // Handle death state
+    if (player->state == STATE_DYING) {
+        player->death_timer += deltaTime;
+        
+        // Update death animation
+        player->animation_time += deltaTime;
+        if (player->animation_time >= ANIMATION_SPEED) {
+            player->animation_time = 0;
+            player->current_frame++;
+        }
+        
+        // After 1 second, respawn
+        if (player->death_timer >= DEATH_ANIMATION_DURATION) {
+            player->x = PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE;
+            player->y = PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE;
+            player->velocity_x = 0;
+            player->velocity_y = 0;
+            player->climbing = false;
+            player->attached_vine_id = -1;
+            player->lateral_position = 0;
+            player->on_ground = false;
+            player->state = STATE_IDLE;
+            player->death_timer = 0;
+            player->current_frame = 0;
+            player->animation_time = 0;
+        }
+        
+        return;  // Skip all other updates during death
+    }
+    
     // Update animation only if player should be animating
     if (should_animate(player)) {
         player->animation_time += deltaTime;
@@ -730,16 +774,19 @@ void player_update(Player* player, float deltaTime) {
     float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
     if (collision_bottom >= WATER_LEVEL) {
 #if DEBUG_MODE
-        printf("Player touched water! Respawning...\n");
+        printf("Player touched water! Playing death animation...\n");
 #endif
-        player->x = PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE;
-        player->y = PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE;
+        // Freeze in place and start death animation
         player->velocity_x = 0;
         player->velocity_y = 0;
         player->climbing = false;
         player->attached_vine_id = -1;
         player->lateral_position = 0;
         player->on_ground = false;
+        player->state = STATE_DYING;
+        player->death_timer = 0;
+        player->current_frame = 0;
+        player->animation_time = 0;
     }
 
     // Keep player on screen (use collision box edges)
@@ -841,6 +888,7 @@ void player_render(Player* player) {
         case STATE_JUMPING: state_name = "JUMPING"; break;
         case STATE_FALLING: state_name = "FALLING"; break;
         case STATE_CLIMBING: state_name = "CLIMBING"; break;
+        case STATE_DYING: state_name = "DYING"; break;
     }
 
     const char* lateral = player->lateral_position == -1 ? "LEFT" :
