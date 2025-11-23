@@ -5,8 +5,9 @@
 #include <stdbool.h>
 
 // Use UI constants from utils/constants.h
-#define SCREEN_WIDTH 1200
-#define SCREEN_HEIGHT 900
+// Both multiples of 24 for grid alignment
+#define SCREEN_WIDTH 1200   // 50 blocks * 24px
+#define SCREEN_HEIGHT 912   // 38 blocks * 24px
 
 /**
  * Initialize renderer and window

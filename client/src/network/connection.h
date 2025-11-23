@@ -5,6 +5,9 @@
 
 // Platform-specific socket type
 #ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define NOGDI
+    #define NOUSER
     #include <winsock2.h>
     typedef SOCKET socket_t;
 #else

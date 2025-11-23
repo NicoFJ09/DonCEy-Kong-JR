@@ -153,7 +153,7 @@ static void draw_player_selection_screen(PlayerList* list, int selected_index, i
     }
     
     int start_y = 300;
-    int spacing = 60;
+    int spacing = UI_MENU_SPACING;
     
     if (list->count == 0 && !list->show_error) {
         const char* no_players = "No players online";
@@ -185,12 +185,12 @@ static void draw_player_selection_screen(PlayerList* list, int selected_index, i
     
     const char* return_text = "[Return]";
     Color return_color = (selected_index == selection_return) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
-    font_manager_draw_text(return_text, 100, button_y, UI_FONT_SIZE_NORMAL, return_color);
+    font_manager_draw_text(return_text, UI_BUTTON_MARGIN, button_y, UI_FONT_SIZE_NORMAL, return_color);
     
     const char* refresh_text = "[Refresh]";
     Color refresh_color = (selected_index == selection_refresh) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
     int refresh_width = font_manager_measure_text(refresh_text, UI_FONT_SIZE_NORMAL);
-    font_manager_draw_text(refresh_text, UI_WINDOW_WIDTH - refresh_width - 100, button_y, UI_FONT_SIZE_NORMAL, refresh_color);
+    font_manager_draw_text(refresh_text, UI_WINDOW_WIDTH - refresh_width - UI_BUTTON_MARGIN, button_y, UI_FONT_SIZE_NORMAL, refresh_color);
 }
 
 int show_player_selection_screen(Connection* conn, int client_id, const char* error_message) {

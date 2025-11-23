@@ -38,9 +38,9 @@
 // UI CONSTANTS
 // ============================================================
 
-// Window dimensions
-#define UI_WINDOW_WIDTH 1200
-#define UI_WINDOW_HEIGHT 900
+// Window dimensions - both multiples of 24 for grid alignment
+#define UI_WINDOW_WIDTH 1200   // 50 blocks * 24px
+#define UI_WINDOW_HEIGHT 912   // 38 blocks * 24px
 
 // Font sizes
 #define UI_FONT_SIZE_TITLE 32
@@ -63,5 +63,75 @@
 
 // Cursor blink rate (frames)
 #define UI_CURSOR_BLINK_RATE 30
+
+// ============================================================
+// GAME CONSTANTS
+// ============================================================
+
+// Level dimensions - must match UI window dimensions
+#define LEVEL_WIDTH 1200   // 50 blocks * 24px
+#define LEVEL_HEIGHT 912   // 38 blocks * 24px
+
+// Water level (in blocks from top, not pixels)
+// Screen is 912px tall = 38 blocks. Water at block 37 = last block, flush with bottom
+#define WATER_LEVEL_BLOCKS 37  // 37 blocks * 24px = 888px from top (one block from bottom)
+#define WATER_LEVEL (WATER_LEVEL_BLOCKS * 24.0f)  // 888.0f
+
+// Platform constants
+#define PLATFORM_BLOCK_SIZE 24
+#define PLATFORM_COLLISION_TOLERANCE 10
+
+// Vine constants - Native 24px blocks, no scaling
+#define VINE_SPRITE_HEIGHT 24    // Height per vine block (matches platform blocks)
+#define VINE_WIDTH 24.0f         // Width of vine sprite (24px, not scaled)
+#define VINE_HEIGHT 24.0f        // Height per vine segment (24px, not scaled)
+#define VINE_Y_TOLERANCE 50.0f
+#define VINE_LATERAL_OFFSET 20.0f
+#define VINE_SPACING 72.0f       // Horizontal spacing between vines (3 blocks)
+#define GRAB_RANGE 40.0f
+#define VINE_TRANSFER_TOLERANCE 5.0f
+
+// Player dimensions (sprite is 32x16 scaled 3x = 96x48)
+#define PLAYER_WIDTH 96.0f
+#define PLAYER_HEIGHT 48.0f
+
+// Collision box adjustments (tighter hitbox to match visual sprite)
+#define COLLISION_OFFSET_X 16.0f  // 16px inset from each side (64px wide collision)
+#define COLLISION_OFFSET_Y 8.0f   // 8px inset from top (40px tall collision)
+#define COLLISION_WIDTH (PLAYER_WIDTH - (COLLISION_OFFSET_X * 2))   // 64px
+#define COLLISION_HEIGHT (PLAYER_HEIGHT - COLLISION_OFFSET_Y)       // 40px
+
+// Player physics
+#define MOVE_SPEED 300.0f
+#define JUMP_SPEED 800.0f
+#define GRAVITY 2400.0f
+#define MAX_FALL_SPEED 1200.0f
+
+// Climb speeds (different for center vs side vines, up vs down)
+#define CLIMB_SPEED_CENTER_UP 250.0f    // Fast up on center vine
+#define CLIMB_SPEED_CENTER_DOWN 250.0f  // Fast down on center vine
+#define CLIMB_SPEED_SIDE_UP 150.0f      // Normal up on side vines
+#define CLIMB_SPEED_SIDE_DOWN 250.0f    // Fast down on side vines
+
+// Animation
+#define ANIMATION_SPEED 0.15f  // Time per frame in seconds
+#define DEATH_ANIMATION_DURATION 1.0f  // Death animation lasts 1 second
+
+// Player spawn point in BLOCKS (converted to pixels in code)
+#define PLAYER_SPAWN_X_BLOCK 0    // x = 0 blocks (0px) - left border
+#define PLAYER_SPAWN_Y_BLOCK 34   // y = 34 blocks (816px) - 2 blocks above spawn platform
+
+// Hand offset for vine grabbing (sprite-specific, hands not centered)
+#define HAND_OFFSET_FROM_CENTER 16.0f
+
+// Game loop
+#define MAX_DELTA_TIME 0.1f  // 100ms max to prevent physics explosion
+
+// UI Layout
+#define UI_MENU_SPACING 60
+#define UI_BUTTON_MARGIN 100
+
+// Debug mode
+#define DEBUG_MODE 1
 
 #endif

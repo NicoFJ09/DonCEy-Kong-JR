@@ -134,7 +134,7 @@ static void draw_ip_input_screen(InputState* state) {
         const char* error_msg = "Could not connect";
         int error_width = font_manager_measure_text(error_msg, UI_FONT_SIZE_ERROR);
         int error_x = (UI_WINDOW_WIDTH - error_width) / 2;
-        int error_y = input_y + UI_INPUT_BOX_HEIGHT + 20;  // 20px below box
+        int error_y = input_y + UI_INPUT_BOX_HEIGHT + 20;
         font_manager_draw_text(error_msg, error_x, error_y, UI_FONT_SIZE_ERROR, RED);
     }
     
@@ -143,8 +143,8 @@ static void draw_ip_input_screen(InputState* state) {
     int instruction_width = font_manager_measure_text(instruction, UI_FONT_SIZE_ERROR);
     int instruction_x = (UI_WINDOW_WIDTH - instruction_width) / 2;
     int instruction_y = state->show_error ? 
-        input_y + UI_INPUT_BOX_HEIGHT + 60 :  // Move down if error
-        input_y + UI_INPUT_BOX_HEIGHT + 30;   // Normal position
+        input_y + UI_INPUT_BOX_HEIGHT + 60 :
+        input_y + UI_INPUT_BOX_HEIGHT + 30;
     font_manager_draw_text(instruction, instruction_x, instruction_y, UI_FONT_SIZE_ERROR, GRAY);
 }
 

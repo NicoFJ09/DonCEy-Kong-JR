@@ -19,6 +19,10 @@
 // Minimum delay between sends in seconds (prevents server spam)
 #define SEND_THROTTLE_DELAY 0.05  // 50ms = max 20 messages/second
 
+// Buffer persistente para acumular datos entre llamadas de receive
+// Cada conexión necesita su propio buffer, indexado por socket_fd
+static char g_line_buffers[64][BUFFER_SIZE * 2] = {0};  // Hasta 64 conexiones
+
 bool connection_init(void) {
     #ifdef _WIN32
     WSADATA wsa_data;
@@ -150,10 +154,48 @@ char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
         return NULL;
     }
     
+    // Seleccionar el buffer correcto para esta conexión
+    int buf_idx = conn->socket_fd % 64;
+    char* line_buffer = g_line_buffers[buf_idx];
+    
+    // Buscar línea completa en el buffer existente
+    char* newline = strchr(line_buffer, '\n');
+    
+    if (newline) {
+        // Ya hay una línea completa en el buffer
+        *newline = '\0';
+        
+        // Copiar la línea al buffer de salida
+        strncpy(buffer, line_buffer, buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        
+        // Remover \r si existe
+        int len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\r') {
+            buffer[len - 1] = '\0';
+        }
+        
+        // Mover el resto del buffer hacia adelante
+        memmove(line_buffer, newline + 1, strlen(newline + 1) + 1);
+        
+        return buffer;
+    }
+    
+    // No hay línea completa, necesitamos leer más datos del socket
+    int current_len = strlen(line_buffer);
+    int remaining_space = (BUFFER_SIZE * 2) - current_len - 1;
+    
+    if (remaining_space <= 0) {
+        // Buffer lleno sin línea completa - error de protocolo
+        printf("ERROR: Line buffer overflow, resetting\n");
+        line_buffer[0] = '\0';
+        return NULL;
+    }
+    
     #ifdef _WIN32
-    int bytes = recv(conn->socket_fd, buffer, buffer_size - 1, 0);
+    int bytes = recv(conn->socket_fd, line_buffer + current_len, remaining_space, 0);
     #else
-    ssize_t bytes = recv(conn->socket_fd, buffer, buffer_size - 1, 0);
+    ssize_t bytes = recv(conn->socket_fd, line_buffer + current_len, remaining_space, 0);
     #endif
     
     if (bytes <= 0) {
@@ -161,11 +203,29 @@ char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
         return NULL;
     }
     
-    buffer[bytes] = '\0';
+    line_buffer[current_len + bytes] = '\0';
     
-    if (bytes > 0 && buffer[bytes - 1] == '\n') {
-        buffer[bytes - 1] = '\0';
+    // Buscar línea completa en el buffer actualizado
+    newline = strchr(line_buffer, '\n');
+    if (!newline) {
+        // Todavía no hay línea completa
+        return NULL;
     }
+    
+    *newline = '\0';
+    
+    // Copiar la línea al buffer de salida
+    strncpy(buffer, line_buffer, buffer_size - 1);
+    buffer[buffer_size - 1] = '\0';
+    
+    // Remover \r si existe
+    int len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == '\r') {
+        buffer[len - 1] = '\0';
+    }
+    
+    // Mover el resto del buffer hacia adelante
+    memmove(line_buffer, newline + 1, strlen(newline + 1) + 1);
     
     return buffer;
 }
@@ -175,8 +235,19 @@ char* connection_receive_with_timeout(Connection* conn, char* buffer, int buffer
         return NULL;
     }
     
+    // Primero verificar si hay una línea completa en el buffer persistente
+    int buf_idx = conn->socket_fd % 64;
+    char* line_buffer = g_line_buffers[buf_idx];
+    
+    // Si hay una línea completa en el buffer, devolverla inmediatamente
+    char* newline = strchr(line_buffer, '\n');
+    if (newline) {
+        // Usar connection_receive() que maneja correctamente el buffer
+        return connection_receive(conn, buffer, buffer_size);
+    }
+    
     #ifdef _WIN32
-    // Windows: Use select with timeout
+    // Windows: Use select with timeout (solo si buffer está vacío)
     fd_set read_fds;
     struct timeval timeout;
     

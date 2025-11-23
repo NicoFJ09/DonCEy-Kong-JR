@@ -33,6 +33,8 @@ UTILS_SOURCES = src/utils/font_manager.c \
                 src/utils/message_listener.c
 
 GAME_SOURCES = src/game/game_flow.c \
+               src/game/level.c \
+               src/game/player.c \
                src/game/screens/ip_input_screen.c \
                src/game/screens/title_screen.c \
                src/game/screens/player_screen.c \
@@ -54,6 +56,8 @@ UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o \
                 $(OBJ_DIR)/message_listener.o
 
 GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
+               $(OBJ_DIR)/level.o \
+               $(OBJ_DIR)/player.o \
                $(OBJ_DIR)/ip_input_screen.o \
                $(OBJ_DIR)/title_screen.o \
                $(OBJ_DIR)/player_screen.o \
@@ -72,6 +76,8 @@ HEADERS = src/network/connection.h \
           src/utils/constants.h \
           src/utils/message_listener.h \
           src/game/game_flow.h \
+          src/game/level.h \
+          src/game/player.h \
           src/game/screens/ip_input_screen.h \
           src/game/screens/title_screen.h \
           src/game/screens/player_screen.h \
@@ -110,6 +116,12 @@ $(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/game_flow.o: src/game/game_flow.c src/game/game_flow.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/level.o: src/game/level.c src/game/level.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player.o: src/game/player.c src/game/player.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
