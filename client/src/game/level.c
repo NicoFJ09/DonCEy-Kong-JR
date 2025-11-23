@@ -1,181 +1,136 @@
 #include "level.h"
 #include "../rendering/sprite_manager.h"
 #include "../utils/constants.h"
+#include "../external/cJSON.h"
 #include "raylib.h"
 #include <stdlib.h>
 #include <stdio.h>
 
 // ============================================================
-// SIMPLE TEST LEVEL DATA
+// LEVEL CREATION FROM SERVER JSON
 // ============================================================
 
-// Platform definitions in BLOCKS (each block = 24px)
-// Format: {x_block, y_block, width_blocks}
-// Height is ALWAYS 1 block
-typedef struct {
-    int x_block;
-    int y_block;
-    int width_blocks;
-} PlatformDef;
-
-static PlatformDef PLATFORM_DEFS[] = {
-    // Main map layout
-    {0, 36, 15},   // Spawn platform: x=0 (left border), y=36 blocks (864px, right above water), 15 blocks wide
-    {0, 9, 30},    // Top left platform: x=0 (left border), y=9 blocks (216px), 30 blocks wide
-    {30, 10, 12},  // Top right platform: x=30 blocks (720px), y=10 blocks (240px, one block lower), 12 blocks wide
-    {36, 20, 14},  // Right platform: x=38 blocks (912px), y=20 blocks (480px, 10 blocks below top right), 12 blocks wide (aligned to right)
-    {12, 18, 6},   // Platform above third vine: x=12 blocks (288), y=18 blocks (432px), 6 blocks wide
-    {12, 24, 9}    // Platform below (15 blocks below top): x=12 blocks (288px), y=24 blocks (576px), 9 blocks wide
-
-    // Old test platforms (commented out)
-    // {16, 23, 17},  // Bottom platform: x=16 blocks (384px), y=23 blocks (552px), 17 blocks wide
-    // {16, 8, 17}    // Top platform: x=16 blocks (384px), y=3 blocks (72px), 17 blocks wide
-};
-
-// Column definitions in BLOCKS
-// Format: {x_block, y_block, wide}
-// x_block = X position in blocks (centered on grass)
-// y_block = Y position in blocks (top of grass, stems extend down to water)
-// wide = true for wide grass/stem (96px/48px), false for normal (72px/24px)
-typedef struct {
-    int x_block;
-    int y_block;
-    bool wide;
-} ColumnDef;
-
-static ColumnDef COLUMN_DEFS[] = {
-    // Columns to the right of spawn platform (spawn platform ends at x=15)
-    {27, 34, true},   // Wide column: 5 blocks right of spawn platform, 2 stems + grass (y=34)
-    {32, 35, false},  // Normal column: after 1 block gap, 1 stem + grass (y=35)
-    {37, 34, true},   // Wide column: after 1 block gap, 2 stems + grass (y=34)
-    {43, 33, true}    // Wide column: after 1 block gap, 3 stems + grass (y=33)
-
-    // Old test columns (commented out)
-    // {10, 25, false},  // Normal column at x=10 blocks (240px), y=25 blocks (600px)
-    // {40, 20, true},   // Wide column at x=40 blocks (960px), y=20 blocks (480px)
-};
-
-// ============================================================
-// VINE GROUP SYSTEM
-// ============================================================
-// Spacing is ALWAYS VINE_SPACING (from constants.h)
-// Heights use VINE BLOCKS (VINE_SPRITE_HEIGHT units) - matches visual representation!
-
-// Individual vine height definition (in BLOCKS, not pixels)
-typedef struct {
-    int y_top_block;      // Top position in 24px blocks from top of screen
-    int height_blocks;    // Height in 24px blocks (e.g., 10 blocks = 240px tall vine)
-} VineHeight;
-
-
-
-// Custom heights for group 1 - vines below top left platform
-// Top platform is at block 9 (216px), vines start at block 10 (right below it)
-// Heights in 24px blocks - each block = one vine segment
-static VineHeight GROUP1_HEIGHTS[] = {
-    {10, 24},  // Vine 1: starts at block 10 (240px), 24 blocks tall (576px)
-    {10, 21},  // Vine 2: starts at block 10 (240px), 21 blocks tall (504px)
-    {19, 15}   // Vine 3: starts at block 19 (456px), 15 blocks tall (360px)
-};
-
-static VineHeight GROUP2_HEIGHTS[] = {
-    {10, 18}
-};
-
-static VineHeight GROUP3A_HEIGHTS[] = {
-    {10, 9},
-    {11, 9}
-};
-
-static VineHeight GROUP3B_HEIGHTS[] = {
-    {11, 13},
-    {21, 5},
-    {21, 9},
-    {6, 21},
-    {6, 24}
-};
-
-// Vine group definitions in BLOCKS
-// x_block will be converted to pixels, spacing is automatic (VINE_SPACING)
-typedef struct {
-    int x_block;                // X position in blocks (will be * 24)
-    int vine_count;             // How many VISIBLE vines to create
-    VineHeight* heights;        // Array of heights for each vine (NULL = all use default)
-    int default_y_top_block;    // Default top block if heights array is NULL
-    int default_height_blocks;  // Default height in blocks if heights array is NULL
-} VineGroupDef;
-
-static VineGroupDef VINE_GROUP_DEFS[] = {
-    {8, 3, GROUP1_HEIGHTS, 0, 0},
-    {23, 1, GROUP2_HEIGHTS, 0, 0},
-    {28, 2, GROUP3A_HEIGHTS, 0, 0},
-    {35, 5, GROUP3B_HEIGHTS, 0, 0}
-};
-
-#define PLATFORM_COUNT (sizeof(PLATFORM_DEFS) / sizeof(PlatformDef))
-#define COLUMN_COUNT (sizeof(COLUMN_DEFS) / sizeof(ColumnDef))
-#define VINE_GROUP_COUNT (sizeof(VINE_GROUP_DEFS) / sizeof(VineGroupDef))
-
-// No goal for now
-#define CAGE_X 0.0f
-#define CAGE_Y 0.0f
-#define MARIO_X 0.0f
-#define MARIO_Y 0.0f
-
-// ============================================================
-// LEVEL CREATION
-// ============================================================
-
-Level* level_create(void) {
-    Level* level = (Level*)malloc(sizeof(Level));
-    
-    // Water - use constant (positioned at block 37, one block from bottom)
-    level->water_level = WATER_LEVEL;
-
-#if DEBUG_MODE
-    printf("Water level set to: %.0f pixels (block %d of %d)\n",
-           level->water_level, WATER_LEVEL_BLOCKS, LEVEL_HEIGHT / 24);
-#endif
-    
-    // Platforms - convert from blocks to pixels
-    level->platform_count = (int)PLATFORM_COUNT;
-    level->platforms = (Platform*)malloc(sizeof(Platform) * PLATFORM_COUNT);
-    for (size_t i = 0; i < PLATFORM_COUNT; i++) {
-        level->platforms[i].x = PLATFORM_DEFS[i].x_block * PLATFORM_BLOCK_SIZE;
-        level->platforms[i].y = PLATFORM_DEFS[i].y_block * PLATFORM_BLOCK_SIZE;
-        level->platforms[i].width_blocks = PLATFORM_DEFS[i].width_blocks;
+/**
+ * Create level from server JSON
+ * @param json_data JSON string (without "MAP_DATA:" prefix)
+ * @return Level* or NULL on parse error
+ */
+Level* level_create_from_json(const char* json_data) {
+    if (!json_data) {
+        printf("ERROR: NULL JSON data\n");
+        return NULL;
     }
 
-    // Columns - convert from blocks to pixels
-    level->column_count = (int)COLUMN_COUNT;
-    level->columns = (Column*)malloc(sizeof(Column) * COLUMN_COUNT);
-    for (size_t i = 0; i < COLUMN_COUNT; i++) {
-        // Grass sprites: normal=72px wide, wide=96px wide
-        int grass_width = COLUMN_DEFS[i].wide ? 96 : 72;
+    cJSON* root = cJSON_Parse(json_data);
+    if (!root) {
+        printf("ERROR: Failed to parse JSON: %s\n", cJSON_GetErrorPtr());
+        return NULL;
+    }
 
-        // X position: center the grass at x_block position
-        // Grass is centered at x_block position
-        float grass_center_x = COLUMN_DEFS[i].x_block * PLATFORM_BLOCK_SIZE;
+    Level* level = (Level*)malloc(sizeof(Level));
+    if (!level) {
+        printf("ERROR: Failed to allocate level\n");
+        cJSON_Delete(root);
+        return NULL;
+    }
 
-        level->columns[i].x = grass_center_x - (grass_width / 2.0f);  // Top-left of grass
-        level->columns[i].y = COLUMN_DEFS[i].y_block * PLATFORM_BLOCK_SIZE;  // Top of grass
-        level->columns[i].wide = COLUMN_DEFS[i].wide;
+    cJSON* platforms_array = cJSON_GetObjectItem(root, "platforms");
+    if (!platforms_array || !cJSON_IsArray(platforms_array)) {
+        printf("ERROR: Missing or invalid 'platforms' array\n");
+        free(level);
+        cJSON_Delete(root);
+        return NULL;
+    }
+
+    int platform_count = cJSON_GetArraySize(platforms_array);
+    level->platform_count = platform_count;
+    level->platforms = (Platform*)malloc(sizeof(Platform) * platform_count);
+
+    for (int i = 0; i < platform_count; i++) {
+        cJSON* p = cJSON_GetArrayItem(platforms_array, i);
+        cJSON* xBlock = cJSON_GetObjectItem(p, "xBlock");
+        cJSON* yBlock = cJSON_GetObjectItem(p, "yBlock");
+        cJSON* widthBlocks = cJSON_GetObjectItem(p, "widthBlocks");
+
+        if (!xBlock || !yBlock || !widthBlocks) {
+            printf("ERROR: Invalid platform at index %d\n", i);
+            free(level->platforms);
+            free(level);
+            cJSON_Delete(root);
+            return NULL;
+        }
+
+        level->platforms[i].x = xBlock->valueint * PLATFORM_BLOCK_SIZE;
+        level->platforms[i].y = yBlock->valueint * PLATFORM_BLOCK_SIZE;
+        level->platforms[i].width_blocks = widthBlocks->valueint;
+    }
+
+    cJSON* columns_array = cJSON_GetObjectItem(root, "columns");
+    if (!columns_array || !cJSON_IsArray(columns_array)) {
+        printf("ERROR: Missing or invalid 'columns' array\n");
+        free(level->platforms);
+        free(level);
+        cJSON_Delete(root);
+        return NULL;
+    }
+
+    int column_count = cJSON_GetArraySize(columns_array);
+    level->column_count = column_count;
+    level->columns = (Column*)malloc(sizeof(Column) * column_count);
+
+    for (int i = 0; i < column_count; i++) {
+        cJSON* c = cJSON_GetArrayItem(columns_array, i);
+        cJSON* xBlock = cJSON_GetObjectItem(c, "xBlock");
+        cJSON* yBlock = cJSON_GetObjectItem(c, "yBlock");
+        cJSON* wide = cJSON_GetObjectItem(c, "wide");
+
+        if (!xBlock || !yBlock || !cJSON_IsBool(wide)) {
+            printf("ERROR: Invalid column at index %d\n", i);
+            free(level->columns);
+            free(level->platforms);
+            free(level);
+            cJSON_Delete(root);
+            return NULL;
+        }
+
+        int grass_width = cJSON_IsTrue(wide) ? 96 : 72;
+        float grass_center_x = xBlock->valueint * PLATFORM_BLOCK_SIZE;
+        level->columns[i].x = grass_center_x - (grass_width / 2.0f);
+        level->columns[i].y = yBlock->valueint * PLATFORM_BLOCK_SIZE;
+        level->columns[i].wide = cJSON_IsTrue(wide);
         level->columns[i].grass_width = grass_width;
     }
 
-    // Vines - Auto-generate from vine groups
-    // First, calculate total vine count across all groups
-    int total_visible = 0;
-    for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        total_visible += VINE_GROUP_DEFS[g].vine_count;
+    cJSON* vine_groups_array = cJSON_GetObjectItem(root, "vineGroups");
+    if (!vine_groups_array || !cJSON_IsArray(vine_groups_array)) {
+        printf("ERROR: Missing or invalid 'vineGroups' array\n");
+        free(level->columns);
+        free(level->platforms);
+        free(level);
+        cJSON_Delete(root);
+        return NULL;
     }
 
-    // Total vines = visible + center vines
-    // Each group with N vines creates (N-1) center vines
+    int total_visible = 0;
+    int vine_group_count = cJSON_GetArraySize(vine_groups_array);
+
+    for (int g = 0; g < vine_group_count; g++) {
+        cJSON* group = cJSON_GetArrayItem(vine_groups_array, g);
+        cJSON* heights = cJSON_GetObjectItem(group, "heights");
+        if (heights && cJSON_IsArray(heights)) {
+            total_visible += cJSON_GetArraySize(heights);
+        }
+    }
+
     int total_center = 0;
-    for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        if (VINE_GROUP_DEFS[g].vine_count > 1) {
-            total_center += (VINE_GROUP_DEFS[g].vine_count - 1);
+    for (int g = 0; g < vine_group_count; g++) {
+        cJSON* group = cJSON_GetArrayItem(vine_groups_array, g);
+        cJSON* heights = cJSON_GetObjectItem(group, "heights");
+        if (heights && cJSON_IsArray(heights)) {
+            int vine_count = cJSON_GetArraySize(heights);
+            if (vine_count > 1) {
+                total_center += (vine_count - 1);
+            }
         }
     }
 
@@ -186,26 +141,42 @@ Level* level_create(void) {
     int vine_index = 0;
     int next_id = 1;
 
-    // Process each vine group
-    for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        VineGroupDef* group = &VINE_GROUP_DEFS[g];
-        float group_x_pixels = group->x_block * PLATFORM_BLOCK_SIZE;  // Convert blocks to pixels
+    for (int g = 0; g < vine_group_count; g++) {
+        cJSON* group = cJSON_GetArrayItem(vine_groups_array, g);
+        cJSON* xBlock = cJSON_GetObjectItem(group, "xBlock");
+        cJSON* heights = cJSON_GetObjectItem(group, "heights");
 
-        // Generate vines for this group (spacing is ALWAYS VINE_SPACING)
-        for (int i = 0; i < group->vine_count; i++) {
-            // Get height for this vine (convert blocks to pixels)
-            float vine_y_top, vine_y_bottom;
-            if (group->heights != NULL) {
-                // Use custom height - convert blocks to pixels
-                vine_y_top = group->heights[i].y_top_block * VINE_SPRITE_HEIGHT;
-                vine_y_bottom = vine_y_top + (group->heights[i].height_blocks * VINE_SPRITE_HEIGHT);
-            } else {
-                // Use default height - convert blocks to pixels
-                vine_y_top = group->default_y_top_block * VINE_SPRITE_HEIGHT;
-                vine_y_bottom = vine_y_top + (group->default_height_blocks * VINE_SPRITE_HEIGHT);
+        if (!xBlock || !heights || !cJSON_IsArray(heights)) {
+            printf("ERROR: Invalid vine group at index %d\n", g);
+            free(level->vines);
+            free(level->columns);
+            free(level->platforms);
+            free(level);
+            cJSON_Delete(root);
+            return NULL;
+        }
+
+        float group_x_pixels = xBlock->valueint * PLATFORM_BLOCK_SIZE;
+        int vine_count = cJSON_GetArraySize(heights);
+
+        for (int i = 0; i < vine_count; i++) {
+            cJSON* vh = cJSON_GetArrayItem(heights, i);
+            cJSON* yTopBlock = cJSON_GetObjectItem(vh, "yTopBlock");
+            cJSON* heightBlocks = cJSON_GetObjectItem(vh, "heightBlocks");
+
+            if (!yTopBlock || !heightBlocks) {
+                printf("ERROR: Invalid vine height at group %d, vine %d\n", g, i);
+                free(level->vines);
+                free(level->columns);
+                free(level->platforms);
+                free(level);
+                cJSON_Delete(root);
+                return NULL;
             }
 
-            // Add visible vine
+            float vine_y_top = yTopBlock->valueint * VINE_SPRITE_HEIGHT;
+            float vine_y_bottom = vine_y_top + (heightBlocks->valueint * VINE_SPRITE_HEIGHT);
+
             Vine visible;
             visible.id = next_id++;
             visible.x = group_x_pixels + (i * VINE_SPACING);
@@ -216,59 +187,41 @@ Level* level_create(void) {
             level->vines[vine_index] = visible;
             vine_index++;
 
-            // Add center vine between this and next visible vine (if not last in group)
-            if (i < group->vine_count - 1) {
-                // Get next vine's height (convert blocks to pixels)
-                float next_y_top, next_y_bottom;
-                if (group->heights != NULL) {
-                    next_y_top = group->heights[i + 1].y_top_block * VINE_SPRITE_HEIGHT;
-                    next_y_bottom = next_y_top + (group->heights[i + 1].height_blocks * VINE_SPRITE_HEIGHT);
-                } else {
-                    next_y_top = group->default_y_top_block * VINE_SPRITE_HEIGHT;
-                    next_y_bottom = next_y_top + (group->default_height_blocks * VINE_SPRITE_HEIGHT);
-                }
+            if (i < vine_count - 1) {
+                cJSON* next_vh = cJSON_GetArrayItem(heights, i + 1);
+                cJSON* next_yTopBlock = cJSON_GetObjectItem(next_vh, "yTopBlock");
+                cJSON* next_heightBlocks = cJSON_GetObjectItem(next_vh, "heightBlocks");
 
-                // CENTER VINE RULE:
-                // centerTop = max(leftTop, rightTop) - lowest starting point
-                // centerBottom = min(leftBottom, rightBottom) - highest ending point
-                // This ensures center only exists where BOTH vines overlap
+                float next_y_top = next_yTopBlock->valueint * VINE_SPRITE_HEIGHT;
+                float next_y_bottom = next_y_top + (next_heightBlocks->valueint * VINE_SPRITE_HEIGHT);
+
                 float center_y_top = (vine_y_top > next_y_top) ? vine_y_top : next_y_top;
                 float center_y_bottom = (vine_y_bottom < next_y_bottom) ? vine_y_bottom : next_y_bottom;
 
                 Vine center;
                 center.id = next_id++;
-                center.x = group_x_pixels + (i * VINE_SPACING) + (VINE_SPACING / 2.0f);  // Midpoint
+                center.x = group_x_pixels + (i * VINE_SPACING) + (VINE_SPACING / 2.0f);
                 center.y_top = center_y_top;
                 center.y_bottom = center_y_bottom;
-                center.visible = false;  // INVISIBLE bridge
+                center.visible = false;
 
                 level->vines[vine_index] = center;
                 vine_index++;
             }
         }
     }
-    
-    // Goal
-    level->cage_x = CAGE_X;
-    level->cage_y = CAGE_Y;
-    level->mario_x = MARIO_X;
-    level->mario_y = MARIO_Y;
+
+    level->water_level = WATER_LEVEL;
+    level->cage_x = 0.0f;
+    level->cage_y = 0.0f;
+    level->mario_x = 0.0f;
+    level->mario_y = 0.0f;
+
+    cJSON_Delete(root);
 
 #if DEBUG_MODE
-    printf("✓ Level created: %d platforms, %d columns, %d vines (%d groups)\n",
-           level->platform_count, level->column_count, level->vine_count, (int)VINE_GROUP_COUNT);
-    printf("  Vine groups:\n");
-    for (size_t g = 0; g < VINE_GROUP_COUNT; g++) {
-        VineGroupDef* vg = &VINE_GROUP_DEFS[g];
-        printf("    Group %zu: %d vines at x=%d blocks (%.0fpx), spacing=%.0fpx\n",
-               g+1, vg->vine_count, vg->x_block, vg->x_block * 24.0f, VINE_SPACING);
-    }
-    printf("  Complete vine layout:\n");
-    for (int i = 0; i < level->vine_count; i++) {
-        Vine* v = &level->vines[i];
-        printf("    Vine %d: x=%.0f, y=%.0f-%.0f, %s\n",
-               v->id, v->x, v->y_top, v->y_bottom, v->visible ? "VISIBLE" : "CENTER (invisible)");
-    }
+    printf("✓ Level created from JSON: %d platforms, %d columns, %d vines (%d groups)\n",
+           level->platform_count, level->column_count, level->vine_count, vine_group_count);
 #endif
 
     return level;
@@ -282,11 +235,9 @@ static void render_water(Level* level) {
     SpriteSheet* water_sprite = sprite_manager_get(SPRITE_WATER);
     if (!water_sprite || !water_sprite->loaded) return;
 
-    // Tile water texture horizontally at water level (single row)
-    int water_width = water_sprite->frame_width;   // 30px
-    int water_height = water_sprite->frame_height; // 24px
+    int water_width = water_sprite->frame_width;
+    int water_height = water_sprite->frame_height;
 
-    // Tile horizontally only - single row at water level
     for (int x = 0; x < LEVEL_WIDTH; x += water_width) {
         Rectangle source = {0, 0, water_width, water_height};
         Rectangle dest = {x, level->water_level, water_width, water_height};
@@ -301,19 +252,16 @@ static void render_platforms(Level* level) {
     for (int i = 0; i < level->platform_count; i++) {
         Platform* p = &level->platforms[i];
 
-        // Draw individual blocks horizontally (tiled, not scaled)
-        // Each block is PLATFORM_BLOCK_SIZE × PLATFORM_BLOCK_SIZE (24x24)
         Rectangle source = {0, 0,
-                           platform_sprite->frame_width,   // 24
-                           platform_sprite->frame_height}; // 24
+                           platform_sprite->frame_width,
+                           platform_sprite->frame_height};
 
-        // Draw each block side-by-side
         for (int block = 0; block < p->width_blocks; block++) {
             Rectangle dest = {
-                p->x + (block * PLATFORM_BLOCK_SIZE),  // Offset each block horizontally
+                p->x + (block * PLATFORM_BLOCK_SIZE),
                 p->y,
-                PLATFORM_BLOCK_SIZE,  // 24px width
-                PLATFORM_BLOCK_SIZE   // 24px height
+                PLATFORM_BLOCK_SIZE,
+                PLATFORM_BLOCK_SIZE
             };
 
             DrawTexturePro(platform_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
@@ -336,15 +284,13 @@ static void render_columns(Level* level) {
         if (!stem_sprite || !stem_sprite->loaded) continue;
         if (!grass_sprite || !grass_sprite->loaded) continue;
 
-        int stem_width = stem_sprite->frame_width;   // 24 or 48
-        int stem_height = stem_sprite->frame_height; // 24
-        int grass_height = grass_sprite->frame_height; // 24
+        int stem_width = stem_sprite->frame_width;
+        int stem_height = stem_sprite->frame_height;
+        int grass_height = grass_sprite->frame_height;
 
-        // Draw stems vertically from 24px below grass down to water level
-        // Stems are centered under the grass
         float stem_x = col->x + (col->grass_width / 2.0f) - (stem_width / 2.0f);
-        float stem_start_y = col->y + 24; // Start 24px below grass
-        float stem_end_y = level->water_level; // End directly at water level
+        float stem_start_y = col->y + 24;
+        float stem_end_y = level->water_level;
 
         for (float y = stem_start_y; y < stem_end_y; y += stem_height) {
             Rectangle source = {0, 0, stem_width, stem_height};
@@ -352,7 +298,6 @@ static void render_columns(Level* level) {
             DrawTexturePro(stem_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
         }
 
-        // Draw grass on top at column position
         Rectangle source = {0, 0, grass_sprite->frame_width, grass_height};
         Rectangle dest = {col->x, col->y, grass_sprite->frame_width, grass_height};
         DrawTexturePro(grass_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
@@ -360,24 +305,19 @@ static void render_columns(Level* level) {
 }
 
 static void render_vines(Level* level) {
-    // Load all 3 vine sprite variants
     SpriteSheet* vine1 = sprite_manager_get(SPRITE_VINE_1);
     SpriteSheet* vine2 = sprite_manager_get(SPRITE_VINE_2);
     SpriteSheet* vine3 = sprite_manager_get(SPRITE_VINE_3);
-    
+
     if (!vine1 || !vine1->loaded || !vine2 || !vine2->loaded || !vine3 || !vine3->loaded) return;
 
     for (int i = 0; i < level->vine_count; i++) {
         Vine* v = &level->vines[i];
 
-        // Only render visible vines
         if (!v->visible) continue;
 
-        // Stack vine segments from top to bottom (24px per block)
-        // Alternate between vine1, vine2, vine3 for visual variety
         int segment_index = 0;
         for (float y = v->y_top; y < v->y_bottom; y += VINE_HEIGHT) {
-            // Cycle through vine sprites: 1 → 2 → 3 → 1 → 2 → 3...
             SpriteSheet* current_sprite;
             int sprite_variant = segment_index % 3;
             if (sprite_variant == 0) {
@@ -388,12 +328,12 @@ static void render_vines(Level* level) {
                 current_sprite = vine3;
             }
 
-            Rectangle source = {0, 0, 24, 24};  // Native 24×24px sprite
+            Rectangle source = {0, 0, 24, 24};
             Rectangle dest = {
-                v->x - VINE_WIDTH / 2,  // Center vine on x position
+                v->x - VINE_WIDTH / 2,
                 y,
-                VINE_WIDTH,   // 24px width (no scaling)
-                VINE_HEIGHT   // 24px height (no scaling)
+                VINE_WIDTH,
+                VINE_HEIGHT
             };
             DrawTexturePro(current_sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
             
@@ -403,18 +343,14 @@ static void render_vines(Level* level) {
 }
 
 // ============================================================
-// MAIN RENDER FUNCTION
+// PUBLIC RENDERING
 // ============================================================
 
 void level_render(Level* level) {
-    // Render order (back to front):
-    render_water(level);      // Layer 1: Water (back)
-    render_columns(level);    // Layer 2: Columns
-    render_vines(level);      // Layer 3: Vines
-    render_platforms(level);  // Layer 4: Platforms (always on top of vines)
-    // Layer 5: Cage and Mario (coming next)
-    // Layer 6: Enemies and Fruits (later)
-    // Layer 7: Player (later)
+    render_water(level);
+    render_columns(level);
+    render_vines(level);
+    render_platforms(level);
 }
 
 // ============================================================

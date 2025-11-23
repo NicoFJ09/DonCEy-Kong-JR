@@ -2,17 +2,15 @@
 #include <stdio.h>
 #include <string.h>
 
+// ============================================================
+// GLOBALS
+// ============================================================
+
 static SpriteManager manager = {0};
 
-/*
- * =================================================================
- * SPRITE CONFIGURATION
- * 
- * Format: {path, frame_width, frame_height, frame_count, spacing}
- * 
- * spacing = pixels between frames (usually 2 these sprites)
- * =================================================================
- */
+// ============================================================
+// SPRITE CONFIGURATION
+// ============================================================
 static const struct {
     const char* path;
     int frame_width;
@@ -73,6 +71,10 @@ static const struct {
     [SPRITE_LOGO] = {"ui/logo/logo.png", 310, 84, 1, 0},
 };
 
+// ============================================================
+// INITIALIZATION AND CLEANUP
+// ============================================================
+
 bool sprite_manager_init(const char* assets_path) {
     if (manager.initialized) {
         printf("Warning: Sprite manager already initialized\n");
@@ -119,26 +121,20 @@ bool sprite_manager_init(const char* assets_path) {
     return loaded_count > 0;
 }
 
+// ============================================================
+// SPRITE ACCESS
+// ============================================================
+
 SpriteSheet* sprite_manager_get(SpriteType type) {
     if (type < 0 || type >= SPRITE_COUNT) return NULL;
     if (!manager.sprites[type].loaded) return NULL;
     return &manager.sprites[type];
 }
 
-/*
- * =================================================================
- * DRAW FRAME - WITH 2-PIXEL SPACING SUPPORT
- * 
- * CRITICAL: Accounts for spacing between frames!
- * 
- * Formula: x_position = frame * (frame_width + spacing)
- * 
- * Example with 2px spacing:
- *   Frame 0: x = 0 * (16 + 2) = 0
- *   Frame 1: x = 1 * (16 + 2) = 18  (16 + 2 pixel gap)
- *   Frame 2: x = 2 * (16 + 2) = 36  (16 + 2 + 16 + 2)
- * =================================================================
- */
+// ============================================================
+// DRAWING
+// ============================================================
+
 void sprite_manager_draw_frame(SpriteType type, int frame, float x, float y, float scale, Color tint) {
     SpriteSheet* sprite = sprite_manager_get(type);
     if (!sprite) return;

@@ -22,6 +22,8 @@ endif
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
+EXTERNAL_SOURCES = src/external/cJSON.c
+
 NETWORK_SOURCES = src/network/connection.c
 
 RENDERING_SOURCES = src/rendering/sprite_manager.c \
@@ -43,7 +45,9 @@ GAME_SOURCES = src/game/game_flow.c \
                src/game/screens/spectator_screen.c
 
 MAIN_SOURCE = src/main.c
-SOURCES = $(MAIN_SOURCE) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(UTILS_SOURCES) $(GAME_SOURCES)
+SOURCES = $(MAIN_SOURCE) $(EXTERNAL_SOURCES) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(UTILS_SOURCES) $(GAME_SOURCES)
+
+EXTERNAL_OBJECTS = $(OBJ_DIR)/cJSON.o
 
 NETWORK_OBJECTS = $(OBJ_DIR)/connection.o
 
@@ -65,9 +69,10 @@ GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
                $(OBJ_DIR)/player_selection_screen.o \
                $(OBJ_DIR)/spectator_screen.o
 
-OBJECTS = $(OBJ_DIR)/main.o $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(UTILS_OBJECTS) $(GAME_OBJECTS)
+OBJECTS = $(OBJ_DIR)/main.o $(EXTERNAL_OBJECTS) $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(UTILS_OBJECTS) $(GAME_OBJECTS)
 
-HEADERS = src/network/connection.h \
+HEADERS = src/external/cJSON.h \
+          src/network/connection.h \
           src/rendering/sprite_manager.h \
           src/rendering/animation.h \
           src/rendering/renderer.h \
@@ -95,6 +100,9 @@ $(TARGET): $(OBJECTS)
 	@echo "✓ Build successful: $(TARGET)"
 
 $(OBJ_DIR)/main.o: src/main.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/cJSON.o: src/external/cJSON.c src/external/cJSON.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
@@ -142,34 +150,7 @@ $(OBJ_DIR)/player_selection_screen.o: src/game/screens/player_selection_screen.c
 $(OBJ_DIR)/spectator_screen.o: src/game/screens/spectator_screen.c src/game/screens/spectator_screen.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_DIR)/message_listener.o: src/utils/message_listener.c src/utils/message_listener.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/game_flow.o: src/game/game_flow.c src/game/game_flow.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/title_screen.o: src/game/screens/title_screen.c src/game/screens/title_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/player_screen.o: src/game/screens/player_screen.c src/game/screens/player_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/lose_screen.o: src/game/screens/lose_screen.c src/game/screens/lose_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/player_selection_screen.o: src/game/screens/player_selection_screen.c src/game/screens/player_selection_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/spectator_screen.o: src/game/screens/spectator_screen.c src/game/screens/spectator_screen.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

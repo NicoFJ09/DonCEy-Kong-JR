@@ -5,7 +5,10 @@
 #include <string.h>
 #include <stdio.h>
 
-// Input state
+// ============================================================
+// INPUT STATE
+// ============================================================
+
 typedef struct {
     char text[UI_INPUT_MAX_CHARS + 1];
     int cursor_pos;
@@ -14,7 +17,9 @@ typedef struct {
     bool show_error;
 } InputState;
 
-
+// ============================================================
+// INPUT HANDLING
+// ============================================================
 
 static void handle_text_input(InputState* state) {
     static int backspace_hold_frames = 0;
@@ -91,6 +96,10 @@ static void update_cursor_blink(InputState* state) {
     }
 }
 
+// ============================================================
+// RENDERING
+// ============================================================
+
 static void draw_ip_input_screen(InputState* state) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
@@ -147,6 +156,10 @@ static void draw_ip_input_screen(InputState* state) {
         input_y + UI_INPUT_BOX_HEIGHT + 30;
     font_manager_draw_text(instruction, instruction_x, instruction_y, UI_FONT_SIZE_ERROR, GRAY);
 }
+
+// ============================================================
+// IP INPUT SCREEN
+// ============================================================
 
 bool show_ip_input_screen(char* ip_buffer, size_t buffer_size, bool show_error) {
     // Initialize

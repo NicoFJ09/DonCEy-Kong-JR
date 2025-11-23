@@ -118,6 +118,7 @@ public class ClientHandler extends Thread {
                     sendMessage("ACCEPTED:PLAYER");
                     sendMessage("CLIENT_ID:" + id);
                     sendMessage("SESSION_START");
+                    sendMapData();
                     return ClientType.PLAYER;
                 } else {
                     sendMessage("REJECTED:Players full");
@@ -129,12 +130,13 @@ public class ClientHandler extends Thread {
                 try {
                     String[] parts = selection.split(":");
                     Integer playerId = Integer.parseInt(parts[1]);
-                    
+
                     if (server.registerSpectator(id, playerId)) {
                         watchedPlayerId = playerId;
                         sendMessage("ACCEPTED:SPECTATOR");
                         sendMessage("CLIENT_ID:" + id);
                         sendMessage("SESSION_START");
+                        sendMapData();
                         return ClientType.SPECTATOR;
                     } else {
                         sendMessage("REJECTED:Cannot join - spectators full");
@@ -162,21 +164,31 @@ public class ClientHandler extends Thread {
     
     private void sendPlayerList() {
         Map<Integer, NetworkPlayer> players = server.getPlayers();
-        
+
         sendMessage("PLAYER_LIST_START");
-        
+
         for (NetworkPlayer player : players.values()) {
-            sendMessage("PLAYER:" + player.getId() + ":" + 
-                       player.getAddress() + ":" + 
-                       player.getSpectatorCount() + ":" + 
+            sendMessage("PLAYER:" + player.getId() + ":" +
+                       player.getAddress() + ":" +
+                       player.getSpectatorCount() + ":" +
                        Config.SPECTATORS_PER_PLAYER);
         }
-        
+
         sendMessage("PLAYER_LIST_END");
-        
+
         System.out.println("  Sent player list to client #" + id + " (" + players.size() + " players)");
     }
-    
+
+    private void sendMapData() {
+        try {
+            String jsonData = server.getMapData().toJson();
+            sendMessage("MAP_DATA:" + jsonData);
+            System.out.println("  Sent MAP_DATA to client #" + id + " (" + jsonData.length() + " bytes)");
+        } catch (Exception e) {
+            System.err.println("Error sending map data to client #" + id + ": " + e.getMessage());
+        }
+    }
+
     private boolean handlePlayerSession() throws IOException {
         System.out.println("Client #" + id + " joined as PLAYER");
         return placeholderGameLoop();

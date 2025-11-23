@@ -22,6 +22,10 @@ typedef struct {
     bool connected;
     int client_id;  // Server-assigned client ID
     double last_send_time;  // Last time a message was sent (for throttling)
+
+    // Map data from server
+    char* map_json;      // Allocated string copy of JSON map data
+    bool map_loaded;     // Flag indicating JSON is ready for use
 } Connection;
 
 /**

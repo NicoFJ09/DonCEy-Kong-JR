@@ -4,6 +4,10 @@
 #include "raylib.h"
 #include <stdio.h>
 
+// ============================================================
+// RENDERING
+// ============================================================
+
 static void draw_lose_screen(LoseOption selected, int client_id) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
@@ -37,6 +41,10 @@ static void draw_lose_screen(LoseOption selected, int client_id) {
         font_manager_draw_text(options[i], text_x, text_y, UI_FONT_SIZE_NORMAL, color);
     }
 }
+
+// ============================================================
+// LOSE SCREEN
+// ============================================================
 
 LoseOption show_lose_screen(int client_id) {
     printf("\n========================================\n");

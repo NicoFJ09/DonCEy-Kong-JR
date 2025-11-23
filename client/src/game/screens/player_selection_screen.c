@@ -6,6 +6,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+// ============================================================
+// DATA STRUCTURES
+// ============================================================
+
 #define MAX_PLAYERS 2
 
 typedef struct {
@@ -21,6 +25,10 @@ typedef struct {
     char error_message[256];
     bool show_error;
 } PlayerList;
+
+// ============================================================
+// PLAYER LIST FETCHING
+// ============================================================
 
 static bool fetch_player_list(Connection* conn, PlayerList* list) {
     list->show_error = false;
@@ -135,6 +143,10 @@ static bool fetch_player_list(Connection* conn, PlayerList* list) {
     return true;
 }
 
+// ============================================================
+// RENDERING
+// ============================================================
+
 static void draw_player_selection_screen(PlayerList* list, int selected_index, int client_id) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
@@ -192,6 +204,10 @@ static void draw_player_selection_screen(PlayerList* list, int selected_index, i
     int refresh_width = font_manager_measure_text(refresh_text, UI_FONT_SIZE_NORMAL);
     font_manager_draw_text(refresh_text, UI_WINDOW_WIDTH - refresh_width - UI_BUTTON_MARGIN, button_y, UI_FONT_SIZE_NORMAL, refresh_color);
 }
+
+// ============================================================
+// PLAYER SELECTION SCREEN
+// ============================================================
 
 int show_player_selection_screen(Connection* conn, int client_id, const char* error_message) {
     printf("\n========================================\n");

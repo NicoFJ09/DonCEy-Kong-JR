@@ -6,10 +6,17 @@
 #include "raylib.h"
 #include <stdio.h>
 
-// Global level reference for player collision
+// ============================================================
+// GLOBALS
+// ============================================================
+
 Level* g_current_level = NULL;
 
-void show_player_screen(int client_id) {
+// ============================================================
+// PLAYER SCREEN
+// ============================================================
+
+void show_player_screen(int client_id, Connection* conn) {
 #if DEBUG_MODE
     printf("\n========================================\n");
     printf("Player Screen Active - TESTING MODE\n");
@@ -21,8 +28,17 @@ void show_player_screen(int client_id) {
     printf("  ESC: Exit\n\n");
 #endif
 
-    // Create test level
-    g_current_level = level_create();
+    // Create level from server JSON (REQUIRED)
+    if (!conn || !conn->map_loaded || !conn->map_json) {
+        printf("FATAL ERROR: No map data from server\n");
+        return;
+    }
+
+    g_current_level = level_create_from_json(conn->map_json);
+    if (!g_current_level) {
+        printf("FATAL ERROR: Failed to parse server map JSON\n");
+        return;
+    }
 
     // Create player - start on platform center (convert blocks to pixels)
     Player player;

@@ -35,6 +35,15 @@
 #define PROTO_PLAYER_INFO "PLAYER:"
 
 // ============================================================
+// MAP DATA PROTOCOL
+// Server sends map geometry once per session after SESSION_START
+// Format: MAP_DATA:{json}
+// JSON contains block coordinates, client converts to pixels
+// ============================================================
+#define PROTO_MAP_DATA "MAP_DATA:"
+#define MAP_JSON_BUFFER_SIZE 8192
+
+// ============================================================
 // UI CONSTANTS
 // ============================================================
 
@@ -110,7 +119,7 @@
 // Climb speeds (different for center vs side vines, up vs down)
 #define CLIMB_SPEED_CENTER_UP 250.0f    // Fast up on center vine
 #define CLIMB_SPEED_CENTER_DOWN 250.0f  // Fast down on center vine
-#define CLIMB_SPEED_SIDE_UP 150.0f      // Normal up on side vines
+#define CLIMB_SPEED_SIDE_UP 100.0f      // Normal up on side vines
 #define CLIMB_SPEED_SIDE_DOWN 250.0f    // Fast down on side vines
 
 // Animation

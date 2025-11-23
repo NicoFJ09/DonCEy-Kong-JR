@@ -5,6 +5,10 @@
 #include "raylib.h"
 #include <stdio.h>
 
+// ============================================================
+// RENDERING
+// ============================================================
+
 static void draw_title_screen(MenuOption selected, int client_id, const char* error_message) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
@@ -49,6 +53,10 @@ static void draw_title_screen(MenuOption selected, int client_id, const char* er
         font_manager_draw_text(options[i], text_x, text_y, UI_FONT_SIZE_NORMAL, color);
     }
 }
+
+// ============================================================
+// TITLE SCREEN
+// ============================================================
 
 MenuOption show_title_screen(int client_id, const char* error_message) {
     MenuOption selected = MENU_PLAY;

@@ -78,10 +78,12 @@ typedef struct {
 // ============================================================
 
 /**
- * Create and initialize hardcoded level
- * @return Pointer to initialized level
+ * Create level from server-provided JSON map data
+ * Server MUST send valid map data or game will fail
+ * @param json_data JSON string (without "MAP_DATA:" prefix)
+ * @return Level* or NULL on parse error
  */
-Level* level_create(void);
+Level* level_create_from_json(const char* json_data);
 
 /**
  * Render complete level

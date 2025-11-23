@@ -16,12 +16,17 @@
     #include <sys/select.h>
 #endif
 
-// Minimum delay between sends in seconds (prevents server spam)
-#define SEND_THROTTLE_DELAY 0.05  // 50ms = max 20 messages/second
+// ============================================================
+// CONSTANTS AND GLOBALS
+// ============================================================
 
-// Buffer persistente para acumular datos entre llamadas de receive
-// Cada conexión necesita su propio buffer, indexado por socket_fd
-static char g_line_buffers[64][BUFFER_SIZE * 2] = {0};  // Hasta 64 conexiones
+#define SEND_THROTTLE_DELAY 0.05
+
+static char g_line_buffers[64][BUFFER_SIZE * 2] = {0};
+
+// ============================================================
+// INITIALIZATION AND CLEANUP
+// ============================================================
 
 bool connection_init(void) {
     #ifdef _WIN32
@@ -89,12 +94,17 @@ Connection* connection_create(const char* ip, int port) {
     conn->connected = true;
     conn->client_id = -1;
     conn->last_send_time = 0.0;
+    conn->map_json = NULL;
+    conn->map_loaded = false;
     printf("Connected to server!\n\n");
-    
+
     return conn;
 }
 
-// Internal send function - actually sends data over socket
+// ============================================================
+// SENDING MESSAGES
+// ============================================================
+
 static bool connection_send_internal(Connection* conn, const char* message) {
     if (!conn || !conn->connected) {
         return false;
@@ -148,6 +158,10 @@ bool connection_send_immediate(Connection* conn, const char* message) {
     }
     return result;
 }
+
+// ============================================================
+// RECEIVING MESSAGES
+// ============================================================
 
 char* connection_receive(Connection* conn, char* buffer, int buffer_size) {
     if (!conn || !conn->connected) {
@@ -323,6 +337,10 @@ bool connection_has_data(Connection* conn) {
     #endif
 }
 
+// ============================================================
+// CONNECTION MANAGEMENT
+// ============================================================
+
 void connection_close(Connection* conn) {
     if (conn) {
         if (conn->connected) {
@@ -334,6 +352,11 @@ void connection_close(Connection* conn) {
             close(conn->socket_fd);
             #endif
             conn->connected = false;
+        }
+        // Free map JSON if allocated
+        if (conn->map_json) {
+            free(conn->map_json);
+            conn->map_json = NULL;
         }
         free(conn);
     }

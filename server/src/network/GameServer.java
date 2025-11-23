@@ -1,6 +1,8 @@
 package server.src.network;
 
 import server.src.utils.Config;
+import server.src.game.MapData;
+import server.src.game.DefaultMap;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -10,17 +12,23 @@ public class GameServer {
     private ServerSocket serverSocket;
     private volatile boolean running;
     private Integer nextClientId;
-    
+
     private Map<Integer, NetworkPlayer> players;
     private Map<Integer, Integer> spectators;
     private Map<Integer, ClientHandler> clientHandlers;
-    
+    private MapData currentMap;
+
     public GameServer() {
         this.running = false;
         this.nextClientId = 1;
         this.players = new ConcurrentHashMap<>();
         this.spectators = new ConcurrentHashMap<>();
         this.clientHandlers = new ConcurrentHashMap<>();
+        this.currentMap = DefaultMap.create();
+        System.out.println("✓ Map initialized with " +
+                         currentMap.getPlatforms().size() + " platforms, " +
+                         currentMap.getColumns().size() + " columns, " +
+                         currentMap.getVineGroups().size() + " vine groups");
     }
     
     public void start() {
@@ -207,7 +215,11 @@ public class GameServer {
     public synchronized NetworkPlayer getPlayer(Integer playerId) {
         return players.get(playerId);
     }
-    
+
+    public MapData getMapData() {
+        return currentMap;
+    }
+
     public synchronized void sendMessageToClient(Integer clientId, String message) {
         ClientHandler handler = clientHandlers.get(clientId);
         if (handler != null) {

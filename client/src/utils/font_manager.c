@@ -1,8 +1,16 @@
 #include "font_manager.h"
 #include <stdio.h>
 
+// ============================================================
+// GLOBALS
+// ============================================================
+
 static Font press_start_font;
 static bool font_loaded = false;
+
+// ============================================================
+// INITIALIZATION AND CLEANUP
+// ============================================================
 
 void font_manager_init(void) {
     if (!font_loaded) {
@@ -30,6 +38,10 @@ void font_manager_cleanup(void) {
         font_loaded = false;
     }
 }
+
+// ============================================================
+// TEXT RENDERING
+// ============================================================
 
 void font_manager_draw_text(const char* text, int x, int y, int font_size, Color color) {
     if (font_loaded) {

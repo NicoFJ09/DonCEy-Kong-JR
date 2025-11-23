@@ -14,6 +14,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// ============================================================
+// MAIN GAME FLOW
+// ============================================================
+
 bool game_flow_run(void) {
     font_manager_init();
 
@@ -146,13 +150,30 @@ bool game_flow_run(void) {
                     if (strncmp(buffer, "SESSION_START", 13) != 0) {
                         printf("WARNING: Expected SESSION_START, got: %s\n", buffer);
                     }
-                    
+
+                    // Read MAP_DATA
+                    char map_buffer[MAP_JSON_BUFFER_SIZE];
+                    if (!connection_receive_with_timeout(conn, map_buffer, MAP_JSON_BUFFER_SIZE, 5.0)) {
+                        printf("ERROR: Timeout receiving MAP_DATA\n");
+                        break;
+                    }
+                    printf("DEBUG: Received: %.50s...\n", map_buffer);
+                    if (strncmp(map_buffer, PROTO_MAP_DATA, strlen(PROTO_MAP_DATA)) != 0) {
+                        printf("ERROR: Expected MAP_DATA, got: %s\n", map_buffer);
+                        break;
+                    }
+                    // Extract JSON and store in connection
+                    const char* json_data = map_buffer + strlen(PROTO_MAP_DATA);
+                    conn->map_json = strdup(json_data);
+                    conn->map_loaded = true;
+                    printf("✓ Map data loaded (%zu bytes)\n", strlen(conn->map_json));
+
                     pthread_t listener_thread = message_listener_start(conn);
-                    
+
                     // Player screen loop
                     bool playing = true;
                     while (playing && conn->connected && !WindowShouldClose()) {
-                        show_player_screen(conn->client_id);
+                        show_player_screen(conn->client_id, conn);
                         
                         LoseOption choice = show_lose_screen(conn->client_id);
                         
@@ -248,7 +269,24 @@ bool game_flow_run(void) {
                             if (strncmp(buffer, "SESSION_START", 13) != 0) {
                                 printf("WARNING: Expected SESSION_START, got: %s\n", buffer);
                             }
-                            
+
+                            // Read MAP_DATA
+                            char map_buffer[MAP_JSON_BUFFER_SIZE];
+                            if (!connection_receive_with_timeout(conn, map_buffer, MAP_JSON_BUFFER_SIZE, 5.0)) {
+                                printf("ERROR: Timeout receiving MAP_DATA\n");
+                                continue;
+                            }
+                            printf("DEBUG: Received: %.50s...\n", map_buffer);
+                            if (strncmp(map_buffer, PROTO_MAP_DATA, strlen(PROTO_MAP_DATA)) != 0) {
+                                printf("ERROR: Expected MAP_DATA, got: %s\n", map_buffer);
+                                continue;
+                            }
+                            // Extract JSON and store in connection
+                            const char* json_data = map_buffer + strlen(PROTO_MAP_DATA);
+                            conn->map_json = strdup(json_data);
+                            conn->map_loaded = true;
+                            printf("✓ Map data loaded (%zu bytes)\n", strlen(conn->map_json));
+
                             // Enter spectator screen with kick message buffer
                             char kick_message[256] = "";
                             bool voluntary = show_spectator_screen(conn, player_id, conn->client_id, kick_message, sizeof(kick_message));

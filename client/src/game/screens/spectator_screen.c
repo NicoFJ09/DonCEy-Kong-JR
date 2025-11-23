@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
+// ============================================================
+// SPECTATOR SCREEN
+// ============================================================
+
 bool show_spectator_screen(Connection* conn, int player_id, int client_id, char* kick_message, int kick_message_size) {
     printf("\n========================================\n");
     printf("Spectator Screen Active\n");
