@@ -43,7 +43,12 @@ typedef struct {
 } ColumnDef;
 
 static ColumnDef COLUMN_DEFS[] = {
-    // No columns for now - will be added later
+    // Columns to the right of spawn platform (spawn platform ends at x=15)
+    {27, 34, true},   // Wide column: 5 blocks right of spawn platform, 2 stems + grass (y=34)
+    {32, 35, false},  // Normal column: after 1 block gap, 1 stem + grass (y=35)
+    {37, 34, true},   // Wide column: after 1 block gap, 2 stems + grass (y=34)
+    {43, 33, true}    // Wide column: after 1 block gap, 3 stems + grass (y=33)
+
     // Old test columns (commented out)
     // {10, 25, false},  // Normal column at x=10 blocks (240px), y=25 blocks (600px)
     // {40, 20, true},   // Wide column at x=40 blocks (960px), y=20 blocks (480px)
