@@ -89,8 +89,8 @@ static VineHeight GROUP3A_HEIGHTS[] = {
 
 static VineHeight GROUP3B_HEIGHTS[] = {
     {11, 13},
-    {11, 15},
-    {11, 18},
+    {21, 5},
+    {21, 9},
     {6, 21},
     {6, 24}
 };

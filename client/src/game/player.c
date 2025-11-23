@@ -99,6 +99,75 @@ void player_init(Player* player, float x, float y) {
 }
 
 // ============================================================
+// COLLISION HELPER
+// ============================================================
+
+// Check if a specific lateral position would collide with platforms
+// Returns true if the given lateral_pos would put player hitbox inside a platform
+static bool would_collide_at_position(Player* player, int lateral_pos) {
+    if (!g_current_level) return false;
+    
+    // Get current vine position
+    Vine* attached_vine = NULL;
+    for (int i = 0; i < g_current_level->vine_count; i++) {
+        if (g_current_level->vines[i].id == player->attached_vine_id) {
+            attached_vine = &g_current_level->vines[i];
+            break;
+        }
+    }
+    if (!attached_vine) return false;
+
+    // Calculate where player X would be with this lateral position
+    float test_x;
+    if (lateral_pos == 0) {
+        // CENTER position
+        test_x = attached_vine->x - PLAYER_WIDTH / 2;
+    } else {
+        // LEFT (-1) or RIGHT (1) side
+        float hand_adjustment = (lateral_pos == -1) ? HAND_OFFSET_FROM_CENTER : -HAND_OFFSET_FROM_CENTER;
+        float lateral_offset = lateral_pos * VINE_LATERAL_OFFSET;
+        test_x = attached_vine->x - PLAYER_WIDTH / 2 + hand_adjustment + lateral_offset;
+    }
+
+    // Calculate collision box at test position
+    float collision_left, collision_right;
+    if (lateral_pos == -1) {
+        // LEFT side: only left half has collision
+        collision_left = test_x + COLLISION_OFFSET_X;
+        collision_right = test_x + PLAYER_WIDTH / 2;
+    } else if (lateral_pos == 1) {
+        // RIGHT side: only right half has collision
+        collision_left = test_x + PLAYER_WIDTH / 2;
+        collision_right = test_x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+    } else {
+        // CENTER: full collision box
+        collision_left = test_x + COLLISION_OFFSET_X;
+        collision_right = test_x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+    }
+
+    float collision_top = player->y + COLLISION_OFFSET_Y;
+    float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+
+    // Check against all platforms
+    for (int p = 0; p < g_current_level->platform_count; p++) {
+        Platform* platform = &g_current_level->platforms[p];
+        float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
+        float platform_bottom = platform->y + PLATFORM_BLOCK_SIZE;
+
+        // Check if collision box would overlap with platform
+        bool horizontal_overlap = (collision_right > platform->x && 
+                                  collision_left < platform->x + platform_width_px);
+        bool vertical_overlap = (collision_bottom > platform->y && 
+                                collision_top < platform_bottom);
+
+        if (horizontal_overlap && vertical_overlap) {
+            return true;  // Would collide!
+        }
+    }
+    return false;  // No collision
+}
+
+// ============================================================
 // INPUT HANDLING
 // ============================================================
 
@@ -135,49 +204,9 @@ void player_handle_input(Player* player) {
         // lateral_position: -1=LEFT side, 0=CENTER, 1=RIGHT side
         // ========================================
 
-        // Check if lateral movement is blocked by platforms
-        bool left_blocked = false;
-        bool right_blocked = false;
-
-        if (g_current_level) {
-            // Check all platforms for blocking lateral movement
-            float player_center_x = player->x + PLAYER_WIDTH / 2;
-            float collision_top = player->y + COLLISION_OFFSET_Y;
-            float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
-
-            for (int p = 0; p < g_current_level->platform_count; p++) {
-                Platform* platform = &g_current_level->platforms[p];
-                float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
-                float platform_bottom = platform->y + PLATFORM_BLOCK_SIZE;
-
-                // Check vertical overlap with platform
-                bool vertically_overlaps = (collision_bottom > platform->y && 
-                                           collision_top < platform_bottom);
-
-                if (vertically_overlaps) {
-                    // Check if platform is to the LEFT (blocks left movement)
-                    if (player_center_x > platform->x + platform_width_px &&
-                        player_center_x < platform->x + platform_width_px + VINE_SPACING) {
-                        left_blocked = true;
-                    }
-
-                    // Check if platform is to the RIGHT (blocks right movement)
-                    if (player_center_x < platform->x &&
-                        player_center_x > platform->x - VINE_SPACING) {
-                        right_blocked = true;
-                    }
-                }
-            }
-        }
-
         if (IsKeyPressed(KEY_LEFT)) {
             if (player->lateral_position == -1) {
-                // ON_LEFT_SIDE + press LEFT → Try to move to CENTER vine (if not blocked)
-                if (left_blocked) {
-                    // Cannot move left - wall is blocking
-                    return;
-                }
-                
+                // ON_LEFT_SIDE + press LEFT → Try to move to CENTER vine
                 if (g_current_level) {
                     Vine* current_vine = NULL;
                     for (int i = 0; i < g_current_level->vine_count; i++) {
@@ -216,11 +245,9 @@ void player_handle_input(Player* player) {
                 }
             }
             else if (player->lateral_position == 0) {
-                // ON_CENTER + press LEFT → Move to left visible vine (if not blocked)
-                if (left_blocked) {
-                    // Cannot move left - wall is blocking
-                    return;
-                }
+                // ON_CENTER + press LEFT → Move to left visible vine
+                // Note: We DON'T check collision here because we're moving to a different vine
+                // The vine position itself determines if we can move there
                 
                 if (g_current_level) {
                     Vine* current_vine = NULL;
@@ -262,9 +289,10 @@ void player_handle_input(Player* player) {
                 }
             }
             else if (player->lateral_position == 1) {
-                // ON_RIGHT_SIDE + press LEFT → Switch to LEFT SIDE (same vine, if not blocked)
-                if (left_blocked) {
-                    // Cannot switch to left side - wall would clip
+                // ON_RIGHT_SIDE + press LEFT → Switch to LEFT SIDE (same vine)
+                // Check if switching sides would cause collision
+                if (would_collide_at_position(player, -1)) {
+                    // Cannot switch to left side - would collide
                     return;
                 }
                 player->lateral_position = -1;
@@ -273,12 +301,7 @@ void player_handle_input(Player* player) {
         }
         else if (IsKeyPressed(KEY_RIGHT)) {
             if (player->lateral_position == 1) {
-                // ON_RIGHT_SIDE + press RIGHT → Try to move to CENTER vine (if not blocked)
-                if (right_blocked) {
-                    // Cannot move right - wall is blocking
-                    return;
-                }
-                
+                // ON_RIGHT_SIDE + press RIGHT → Try to move to CENTER vine
                 if (g_current_level) {
                     Vine* current_vine = NULL;
                     for (int i = 0; i < g_current_level->vine_count; i++) {
@@ -317,11 +340,9 @@ void player_handle_input(Player* player) {
                 }
             }
             else if (player->lateral_position == 0) {
-                // ON_CENTER + press RIGHT → Move to right visible vine (if not blocked)
-                if (right_blocked) {
-                    // Cannot move right - wall is blocking
-                    return;
-                }
+                // ON_CENTER + press RIGHT → Move to right visible vine
+                // Note: We DON'T check collision here because we're moving to a different vine
+                // The vine position itself determines if we can move there
                 
                 if (g_current_level) {
                     Vine* current_vine = NULL;
@@ -363,9 +384,10 @@ void player_handle_input(Player* player) {
                 }
             }
             else if (player->lateral_position == -1) {
-                // ON_LEFT_SIDE + press RIGHT → Switch to RIGHT SIDE (same vine, if not blocked)
-                if (right_blocked) {
-                    // Cannot switch to right side - wall would clip
+                // ON_LEFT_SIDE + press RIGHT → Switch to RIGHT SIDE (same vine)
+                // Check if switching sides would cause collision
+                if (would_collide_at_position(player, 1)) {
+                    // Cannot switch to right side - would collide
                     return;
                 }
                 player->lateral_position = 1;
