@@ -53,7 +53,7 @@ void show_player_screen(int client_id) {
 
         // ALWAYS render (even when paused) to keep window responsive
         BeginDrawing();
-            ClearBackground((Color){135, 206, 235, 255}); // Sky blue
+            ClearBackground(BLACK);
 
             // Render level (background)
             level_render(g_current_level);

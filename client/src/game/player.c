@@ -351,13 +351,15 @@ void player_handle_input(Player* player) {
                         Vine* vine = &g_current_level->vines[i];
                         if (!vine->visible) continue;
 
-                        float player_center_x = player->x + PLAYER_WIDTH / 2;
-                        float distance = fabs(player_center_x - vine->x);
+                        // Use collision box for vine grabbing
+                        float collision_center_x = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH / 2;
+                        float distance = fabs(collision_center_x - vine->x);
+                        float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
 
                         // Check if player is close to vine and within vine's Y range
                         if (distance < GRAB_RANGE &&
-                            player->y >= vine->y_top - VINE_Y_TOLERANCE &&
-                            player->y + PLAYER_HEIGHT <= vine->y_bottom + VINE_Y_TOLERANCE) {
+                            player->y + COLLISION_OFFSET_Y >= vine->y_top - VINE_Y_TOLERANCE &&
+                            collision_bottom <= vine->y_bottom + VINE_Y_TOLERANCE) {
 
                             player->climbing = true;
                             player->attached_vine_id = vine->id;
@@ -365,7 +367,7 @@ void player_handle_input(Player* player) {
                             player->state = STATE_CLIMBING;
 
                             // RULESET: Snap to LEFT or RIGHT side based on approach
-                            if (player_center_x > vine->x) {
+                            if (collision_center_x > vine->x) {
                                 // Approaching from right → snap to RIGHT SIDE
                                 player->lateral_position = 1;  // RIGHT
                                 player->direction = DIR_RIGHT;  // Face right (right-side climb)
@@ -445,7 +447,143 @@ void player_update(Player* player, float deltaTime) {
     }
     player->y += player->velocity_y * deltaTime;
 
-    // Vine boundary checks - MUST happen AFTER Y position update
+    // Check collision with ALL platforms and grass (columns) FIRST
+    // Platforms work both when walking AND when climbing (act as barriers on vines)
+    // This MUST happen before vine boundary checks so platforms take priority
+    if (g_current_level) {
+        bool collided = false;
+
+        // Check platform collisions
+        for (int p = 0; p < g_current_level->platform_count; p++) {
+            Platform* platform = &g_current_level->platforms[p];
+
+            // Calculate platform width in pixels from blocks
+            float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
+            float platform_bottom = platform->y + PLATFORM_BLOCK_SIZE;  // Platforms are 24px tall
+
+            // Collision box depends on lateral position when climbing
+            float collision_left, collision_right, collision_top, collision_bottom;
+
+            if (player->climbing) {
+                // On vines: collision only on the side we're on
+                float player_center_x = player->x + PLAYER_WIDTH / 2;
+
+                if (player->lateral_position == -1) {
+                    // LEFT side: only left half of sprite has collision
+                    collision_left = player->x + COLLISION_OFFSET_X;
+                    collision_right = player_center_x;  // Only up to center
+                } else if (player->lateral_position == 1) {
+                    // RIGHT side: only right half of sprite has collision
+                    collision_left = player_center_x;  // Start from center
+                    collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                } else {
+                    // CENTER: full collision box
+                    collision_left = player->x + COLLISION_OFFSET_X;
+                    collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                }
+
+                collision_top = player->y + COLLISION_OFFSET_Y;
+                collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+            } else {
+                // Not climbing: use full collision box
+                collision_left = player->x + COLLISION_OFFSET_X;
+                collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                collision_top = player->y + COLLISION_OFFSET_Y;
+                collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+            }
+
+            // Check if player is horizontally aligned with platform
+            bool horizontally_aligned = (collision_right > platform->x &&
+                                        collision_left < platform->x + platform_width_px);
+
+            if (horizontally_aligned) {
+                // TOP collision - player lands ON top of platform
+                if (collision_bottom >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
+                    collision_bottom <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
+                    player->velocity_y >= 0) {
+
+                    // Adjust player position to account for collision offset
+                    player->y = platform->y - COLLISION_OFFSET_Y - COLLISION_HEIGHT;
+                    player->velocity_y = 0;
+
+                    // Only detach from vine and set on_ground if NOT climbing
+                    if (!player->climbing) {
+                        player->on_ground = true;
+                        collided = true;
+                        if (player->velocity_x == 0) {
+                            player->state = STATE_IDLE;
+                        }
+                    }
+                    // If climbing, just stop movement but stay on vine
+                    break;  // Stop checking once we hit a platform
+                }
+
+                // BOTTOM collision - player hits bottom of platform (blocks upward movement)
+                // This prevents climbing through platforms from below
+                if (collision_top <= platform_bottom + PLATFORM_COLLISION_TOLERANCE &&
+                    collision_top >= platform_bottom - PLATFORM_COLLISION_TOLERANCE &&
+                    player->velocity_y < 0) {
+
+                    // Adjust player position to account for collision offset
+                    player->y = platform_bottom - COLLISION_OFFSET_Y;
+                    player->velocity_y = 0;
+                    // Stay on vine, just blocked by platform
+                    break;  // Stop checking once we hit a platform
+                }
+            }
+        }
+
+        // Check grass (column) collisions - same as platforms
+        if (!collided) {
+            for (int c = 0; c < g_current_level->column_count; c++) {
+                Column* column = &g_current_level->columns[c];
+
+                // Grass collision - player stands ON top of grass (same as platform)
+                // Grass is 24px tall, positioned at column->y
+                float grass_top = column->y;
+
+                // Use tighter collision box for grass detection
+                float collision_left = player->x + COLLISION_OFFSET_X;
+                float collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+
+                if (collision_bottom >= grass_top - PLATFORM_COLLISION_TOLERANCE &&
+                    collision_bottom <= grass_top + PLATFORM_COLLISION_TOLERANCE &&
+                    collision_right > column->x &&
+                    collision_left < column->x + column->grass_width &&
+                    player->velocity_y >= 0) {
+
+                    // Adjust player position to account for collision offset
+                    player->y = grass_top - COLLISION_OFFSET_Y - COLLISION_HEIGHT;
+                    player->velocity_y = 0;
+                    player->on_ground = true;
+                    collided = true;
+
+                    // If climbing and hit grass, detach from vine
+                    if (player->climbing) {
+                        player->climbing = false;
+                        player->attached_vine_id = -1;
+                        player->lateral_position = 0;
+                    }
+
+                    if (player->velocity_x == 0) {
+                        player->state = STATE_IDLE;
+                    }
+                    break;  // Stop checking once we hit grass
+                }
+            }
+        }
+
+        if (!collided && !player->climbing) {
+            player->on_ground = false;
+            if (player->velocity_y > 0) {
+                player->state = STATE_FALLING;
+            }
+        }
+    }
+
+    // Vine boundary checks - MUST happen AFTER platform collision checks
+    // Platforms take priority over vine boundaries
     if (player->climbing && g_current_level && player->attached_vine_id >= 0) {
         Vine* attached_vine = NULL;
         for (int i = 0; i < g_current_level->vine_count; i++) {
@@ -475,75 +613,9 @@ void player_update(Player* player, float deltaTime) {
         }
     }
 
-    // Check collision with ALL platforms and grass (columns)
-    if (!player->climbing && g_current_level) {
-        bool collided = false;
-
-        // Check platform collisions
-        for (int p = 0; p < g_current_level->platform_count; p++) {
-            Platform* platform = &g_current_level->platforms[p];
-
-            // Calculate platform width in pixels from blocks
-            float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
-
-            // Platform collision - player stands ON top of platform
-            // Platform Y is the TOP surface where player should stand
-            if (player->y + PLAYER_HEIGHT >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
-                player->y + PLAYER_HEIGHT <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
-                player->x + PLAYER_WIDTH > platform->x &&
-                player->x < platform->x + platform_width_px &&
-                player->velocity_y >= 0) {
-
-                player->y = platform->y - PLAYER_HEIGHT;  // Stand ON platform surface
-                player->velocity_y = 0;
-                player->on_ground = true;
-                collided = true;
-
-                if (player->velocity_x == 0) {
-                    player->state = STATE_IDLE;
-                }
-                break;  // Stop checking once we hit a platform
-            }
-        }
-
-        // Check grass (column) collisions - same as platforms
-        if (!collided) {
-            for (int c = 0; c < g_current_level->column_count; c++) {
-                Column* column = &g_current_level->columns[c];
-
-                // Grass collision - player stands ON top of grass (same as platform)
-                // Grass is 24px tall, positioned at column->y
-                float grass_top = column->y;
-
-                if (player->y + PLAYER_HEIGHT >= grass_top - PLATFORM_COLLISION_TOLERANCE &&
-                    player->y + PLAYER_HEIGHT <= grass_top + PLATFORM_COLLISION_TOLERANCE &&
-                    player->x + PLAYER_WIDTH > column->x &&
-                    player->x < column->x + column->grass_width &&
-                    player->velocity_y >= 0) {
-
-                    player->y = grass_top - PLAYER_HEIGHT;  // Stand ON grass surface
-                    player->velocity_y = 0;
-                    player->on_ground = true;
-                    collided = true;
-
-                    if (player->velocity_x == 0) {
-                        player->state = STATE_IDLE;
-                    }
-                    break;  // Stop checking once we hit grass
-                }
-            }
-        }
-
-        if (!collided) {
-            player->on_ground = false;
-            if (!player->climbing && player->velocity_y > 0) {
-                player->state = STATE_FALLING;
-            }
-        }
-    }
-    
-    // Check water collision - dies on contact (bottom of player touches water)
-    if (player->y + PLAYER_HEIGHT >= WATER_LEVEL) {
+    // Check water collision - dies on contact (bottom of collision box touches water)
+    float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+    if (collision_bottom >= WATER_LEVEL) {
 #if DEBUG_MODE
         printf("Player touched water! Respawning...\n");
 #endif
@@ -556,10 +628,12 @@ void player_update(Player* player, float deltaTime) {
         player->lateral_position = 0;
         player->on_ground = false;
     }
-    
-    // Keep player on screen
-    if (player->x < 0) player->x = 0;
-    if (player->x + PLAYER_WIDTH > UI_WINDOW_WIDTH) player->x = UI_WINDOW_WIDTH - PLAYER_WIDTH;
+
+    // Keep player on screen (use collision box edges)
+    float collision_left = player->x + COLLISION_OFFSET_X;
+    float collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+    if (collision_left < 0) player->x = -COLLISION_OFFSET_X;
+    if (collision_right > UI_WINDOW_WIDTH) player->x = UI_WINDOW_WIDTH - COLLISION_OFFSET_X - COLLISION_WIDTH;
 }
 
 // ============================================================
@@ -604,8 +678,47 @@ void player_render(Player* player) {
     }
 
 #if DEBUG_MODE
-    // Debug: draw hitbox
-    DrawRectangleLines(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, GREEN);
+    // Debug: draw sprite bounding box (full size)
+    DrawRectangleLines(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, BLUE);
+
+    // Debug: draw actual collision box (depends on lateral position)
+    float collision_left, collision_right, collision_top, collision_bottom;
+
+    if (player->climbing) {
+        // On vines: collision only on the side we're on
+        float player_center_x = player->x + PLAYER_WIDTH / 2;
+
+        if (player->lateral_position == -1) {
+            // LEFT side: only left half
+            collision_left = player->x + COLLISION_OFFSET_X;
+            collision_right = player_center_x;
+        } else if (player->lateral_position == 1) {
+            // RIGHT side: only right half
+            collision_left = player_center_x;
+            collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+        } else {
+            // CENTER: full collision box
+            collision_left = player->x + COLLISION_OFFSET_X;
+            collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+        }
+
+        collision_top = player->y + COLLISION_OFFSET_Y;
+        collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+    } else {
+        // Not climbing: use full collision box
+        collision_left = player->x + COLLISION_OFFSET_X;
+        collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+        collision_top = player->y + COLLISION_OFFSET_Y;
+        collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+    }
+
+    DrawRectangleLines(
+        collision_left,
+        collision_top,
+        collision_right - collision_left,
+        collision_bottom - collision_top,
+        GREEN
+    );
 
     // Debug: draw state info
     const char* state_name = "UNKNOWN";

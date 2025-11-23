@@ -19,8 +19,16 @@ typedef struct {
 } PlatformDef;
 
 static PlatformDef PLATFORM_DEFS[] = {
-    {16, 23, 17},  // Bottom platform: x=16 blocks (384px), y=23 blocks (552px), 17 blocks wide
-    {16, 8, 17}    // Top platform: x=16 blocks (384px), y=3 blocks (72px), 17 blocks wide
+    // Main map layout
+    {0, 36, 15},   // Spawn platform: x=0 (left border), y=36 blocks (864px, right above water), 15 blocks wide
+    {0, 9, 30},    // Top left platform: x=0 (left border), y=9 blocks (216px), 30 blocks wide
+    {30, 10, 12},  // Top right platform: x=30 blocks (720px), y=10 blocks (240px, one block lower), 12 blocks wide
+    {12, 18, 6},   // Platform above third vine: x=12 blocks (288), y=18 blocks (432px), 6 blocks wide
+    {12, 24, 9}    // Platform below (15 blocks below top): x=12 blocks (288px), y=24 blocks (576px), 9 blocks wide
+
+    // Old test platforms (commented out)
+    // {16, 23, 17},  // Bottom platform: x=16 blocks (384px), y=23 blocks (552px), 17 blocks wide
+    // {16, 8, 17}    // Top platform: x=16 blocks (384px), y=3 blocks (72px), 17 blocks wide
 };
 
 // Column definitions in BLOCKS
@@ -35,9 +43,10 @@ typedef struct {
 } ColumnDef;
 
 static ColumnDef COLUMN_DEFS[] = {
-    // Example columns - adjust as needed
-    {10, 25, false},  // Normal column at x=10 blocks (240px), y=25 blocks (600px)
-    {40, 20, true},   // Wide column at x=40 blocks (960px), y=20 blocks (480px)
+    // No columns for now - will be added later
+    // Old test columns (commented out)
+    // {10, 25, false},  // Normal column at x=10 blocks (240px), y=25 blocks (600px)
+    // {40, 20, true},   // Wide column at x=40 blocks (960px), y=20 blocks (480px)
 };
 
 // ============================================================
@@ -54,11 +63,12 @@ typedef struct {
 
 
 
-// Example: Custom heights for group 1 (in 24px blocks)
+// Custom heights for group 1 - vines below top left platform
+// Top platform is at block 9 (216px), vines start at block 10 (right below it)
 static VineHeight GROUP1_HEIGHTS[] = {
-    {9, 12},   // Vine 1: starts at block 3 (72px), 17 blocks tall (408px)
-    {9, 9},   // Vine 2: starts at block 3 (72px), 17 blocks tall (408px)
-    {9, 12}    // Vine 3: starts at block 3 (72px), 17 blocks tall (408px)
+    {10, 22},  // Vine 1: starts at block 10 (240px), extends 27 blocks down (648px) to water
+    {10, 21},  // Vine 2: starts at block 10 (240px), 1 block shorter (624px)
+    {19, 15}   // Vine 3: starts 8 blocks below platform = block 18 (432px), extends 19 blocks (456px) to water
 };
 
 // Vine group definitions in BLOCKS
@@ -72,11 +82,12 @@ typedef struct {
 } VineGroupDef;
 
 static VineGroupDef VINE_GROUP_DEFS[] = {
-    // Group 1: 3 vines at x=21 blocks (504px), custom heights
-    {21, 3, GROUP1_HEIGHTS, 0, 0},
+    // Group 1: 3 vines starting at x=4 blocks (96px), below top left platform
+    {8, 3, GROUP1_HEIGHTS, 0, 0}
 
-    // Group 2: 2 vines at x=37 blocks (888px), default heights
-    {37, 2, NULL, 0, 20}
+    // Old test vines (commented out)
+    // {21, 3, GROUP1_HEIGHTS, 0, 0},  // Group 1: 3 vines at x=21 blocks (504px), custom heights
+    // {37, 2, NULL, 0, 20}            // Group 2: 2 vines at x=37 blocks (888px), default heights
 };
 
 #define PLATFORM_COUNT (sizeof(PLATFORM_DEFS) / sizeof(PlatformDef))
@@ -361,8 +372,8 @@ void level_render(Level* level) {
     // Render order (back to front):
     render_water(level);      // Layer 1: Water (back)
     render_columns(level);    // Layer 2: Columns
-    render_platforms(level);  // Layer 3: Platforms
-    render_vines(level);      // Layer 4: Vines
+    render_vines(level);      // Layer 3: Vines
+    render_platforms(level);  // Layer 4: Platforms (always on top of vines)
     // Layer 5: Cage and Mario (coming next)
     // Layer 6: Enemies and Fruits (later)
     // Layer 7: Player (later)

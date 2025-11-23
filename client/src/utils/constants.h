@@ -87,13 +87,19 @@
 #define VINE_HEIGHT 72.0f
 #define VINE_Y_TOLERANCE 50.0f
 #define VINE_LATERAL_OFFSET 20.0f
-#define VINE_SPACING 60.0f
+#define VINE_SPACING 72.0f
 #define GRAB_RANGE 40.0f
 #define VINE_TRANSFER_TOLERANCE 5.0f
 
-// Player dimensions
+// Player dimensions (sprite is 32x16 scaled 3x = 96x48)
 #define PLAYER_WIDTH 96.0f
 #define PLAYER_HEIGHT 48.0f
+
+// Collision box adjustments (tighter hitbox to match visual sprite)
+#define COLLISION_OFFSET_X 16.0f  // 16px inset from each side (64px wide collision)
+#define COLLISION_OFFSET_Y 8.0f   // 8px inset from top (40px tall collision)
+#define COLLISION_WIDTH (PLAYER_WIDTH - (COLLISION_OFFSET_X * 2))   // 64px
+#define COLLISION_HEIGHT (PLAYER_HEIGHT - COLLISION_OFFSET_Y)       // 40px
 
 // Player physics
 #define MOVE_SPEED 300.0f
@@ -111,8 +117,8 @@
 #define ANIMATION_SPEED 0.15f  // Time per frame in seconds
 
 // Player spawn point in BLOCKS (converted to pixels in code)
-#define PLAYER_SPAWN_X_BLOCK 25   // x = 25 blocks (600px)
-#define PLAYER_SPAWN_Y_BLOCK 21   // y = 21 blocks (504px) - 2 blocks above bottom platform
+#define PLAYER_SPAWN_X_BLOCK 0    // x = 0 blocks (0px) - left border
+#define PLAYER_SPAWN_Y_BLOCK 34   // y = 34 blocks (816px) - 2 blocks above spawn platform
 
 // Hand offset for vine grabbing (sprite-specific, hands not centered)
 #define HAND_OFFSET_FROM_CENTER 16.0f
