@@ -73,9 +73,10 @@ void show_player_screen(int client_id, Connection* conn) {
                 // Check collision with player
                 if (enemy_collides_with_player(&g_current_level->enemies[i], player.x, player.y)) {
                     // TODO: Handle player death/respawn
-#if DEBUG_MODE
-                    printf("Player hit by enemy!\n");
-#endif
+                    printf("COLLISION! Player(%.0f,%.0f) Enemy[%d](%.0f,%.0f)\n", 
+                           player.x, player.y, i, 
+                           g_current_level->enemies[i].x, 
+                           g_current_level->enemies[i].y);
                 }
             }
         }
@@ -90,7 +91,9 @@ void show_player_screen(int client_id, Connection* conn) {
 
             // Render enemies
             for (int i = 0; i < g_current_level->enemy_count; i++) {
-                enemy_render(&g_current_level->enemies[i]);
+                if (g_current_level->enemies[i].active) {
+                    enemy_render(&g_current_level->enemies[i]);
+                }
             }
 
             // Render player (foreground)

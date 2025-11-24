@@ -1,6 +1,7 @@
 #include "enemy.h"
 #include "level.h"
 #include "../rendering/sprite_manager.h"
+#include "raylib.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -40,16 +41,20 @@ void enemy_init_red_crocodile(Enemy* enemy, void* level_ptr, int vine_index, flo
     enemy->velocity_x = 0;
     enemy->velocity_y = -RED_CROCODILE_CLIMB_SPEED;
     enemy->attached_vine_id = vine_index;
+    enemy->original_vine_id = vine_index;  // Remember starting vine
     enemy->target_platform_id = -1;
     enemy->moving_up = true;
-    enemy->patrol_start_y = vine->y_bottom;  // Bottom of vine
-    enemy->patrol_end_y = vine->y_top;       // Top of vine
+    enemy->ignore_platforms = (GetRandomValue(0, 100) < 50);  // 50% chance to ignore platforms initially
+    enemy->walked_distance = 0;
+    enemy->platform_timer = 0;
+    enemy->patrol_start_y = vine->y_top;      // Top of vine (smaller Y value)
+    enemy->patrol_end_y = vine->y_bottom;     // Bottom of vine (larger Y value)
     enemy->animation_time = 0;
     enemy->current_frame = 0;
     enemy->active = true;
     
-    printf("✓ Red crocodile spawned on vine index %d (ID=%d) at (%.0f, %.0f)\n", 
-           vine_index, vine->id, enemy->x, enemy->y);
+    printf("✓ Red crocodile spawned on vine index %d (ID=%d) at (%.0f, %.0f) patrol_range=(%.0f to %.0f) ACTIVE=%d\n", 
+           vine_index, vine->id, enemy->x, enemy->y, enemy->patrol_start_y, enemy->patrol_end_y, enemy->active);
 }
 
 // ============================================================
@@ -97,32 +102,6 @@ static bool find_platform_at_height(float x, float y, int* out_platform_id) {
     return false;
 }
 
-static bool find_vine_on_platform(int platform_id, int current_vine_id, int* out_vine_id) {
-    if (!g_current_level || platform_id < 0) return false;
-    
-    Platform* plat = &g_current_level->platforms[platform_id];
-    float plat_top = plat->y;
-    float plat_left = plat->x;
-    float plat_right = plat->x + (plat->width_blocks * PLATFORM_BLOCK_SIZE);
-    
-    // Look for vines that intersect with this platform
-    for (int i = 0; i < g_current_level->vine_count; i++) {
-        if (i == current_vine_id) continue;  // Skip current vine
-        
-        Vine* vine = &g_current_level->vines[i];
-        float vine_bottom = vine->y_bottom;
-        float vine_top = vine->y_top;
-        
-        // Check if vine passes through platform height and is on platform
-        if (vine_top <= plat_top && vine_bottom >= plat_top &&
-            vine->x >= plat_left && vine->x <= plat_right) {
-            *out_vine_id = i;
-            return true;
-        }
-    }
-    return false;
-}
-
 // ============================================================
 // RED CROCODILE UPDATE
 // ============================================================
@@ -135,27 +114,49 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
             // Move up the vine
             enemy->y += enemy->velocity_y * deltaTime;
             
-            // Check if reached top of vine OR passing through a platform
-            if (enemy->y <= enemy->patrol_end_y) {
-                // Reached top - check for platform at top
-                int platform_id = -1;
-                if (find_platform_at_height(enemy->x, enemy->patrol_end_y, &platform_id)) {
-                    // Found platform at top! Switch to walking
+            // Check for platforms on the way up (not just at extremes)
+            int platform_id = -1;
+            bool found_platform = find_platform_at_height(enemy->x, enemy->y, &platform_id);
+            
+            // Check if reached top of vine
+            if (enemy->y <= enemy->patrol_start_y) {
+                // Reached top - decide what to do
+                if (found_platform && !enemy->ignore_platforms) {
+                    // Found platform and willing to use it! Choose random direction
+                    bool go_right = (GetRandomValue(0, 100) < 50);
                     enemy->y = g_current_level->platforms[platform_id].y;  // Snap to platform
-                    enemy->state = ENEMY_STATE_WALKING_RIGHT;
+                    enemy->state = go_right ? ENEMY_STATE_WALKING_RIGHT : ENEMY_STATE_WALKING_LEFT;
                     enemy->target_platform_id = platform_id;
                     enemy->velocity_y = 0;
-                    enemy->velocity_x = RED_CROCODILE_WALK_SPEED;
-                    enemy->attached_vine_id = -1;
-                    printf("  Red croc reached platform %d at top, walking right\n", platform_id);
+                    enemy->velocity_x = go_right ? RED_CROCODILE_WALK_SPEED : -RED_CROCODILE_WALK_SPEED;
+                    enemy->attached_vine_id = -1;  // No longer attached to vine
+                    enemy->walked_distance = 0;  // Reset walked distance
+                    enemy->platform_timer = 0;   // Start timer to ignore vines briefly
+                    Platform* p = &g_current_level->platforms[platform_id];
+                    printf("  Red croc taking platform %d (x=%.0f, width=%d blocks), walking %s from x=%.0f\n", 
+                           platform_id, p->x, p->width_blocks, go_right ? "right" : "left", enemy->x);
                 } else {
-                    // No platform at top, reverse direction
-                    enemy->y = enemy->patrol_end_y;  // Clamp to top
+                    // No platform or ignoring it, reverse direction
+                    enemy->y = enemy->patrol_start_y;  // Clamp to top
                     enemy->moving_up = false;
                     enemy->state = ENEMY_STATE_CLIMBING_DOWN;
                     enemy->velocity_y = RED_CROCODILE_CLIMB_SPEED;
-                    printf("  Red croc reached top, reversing\n");
+                    enemy->ignore_platforms = (GetRandomValue(0, 100) < 50);  // New random decision
+                    printf("  Red croc reached top, reversing (ignore_platforms=%d)\n", enemy->ignore_platforms);
                 }
+            } else if (found_platform && !enemy->ignore_platforms) {
+                // Found platform while climbing and willing to use it - choose random direction
+                bool go_right = (GetRandomValue(0, 100) < 50);
+                enemy->y = g_current_level->platforms[platform_id].y;  // Snap to platform
+                enemy->state = go_right ? ENEMY_STATE_WALKING_RIGHT : ENEMY_STATE_WALKING_LEFT;
+                enemy->target_platform_id = platform_id;
+                enemy->velocity_y = 0;
+                enemy->velocity_x = go_right ? RED_CROCODILE_WALK_SPEED : -RED_CROCODILE_WALK_SPEED;
+                enemy->attached_vine_id = -1;  // No longer attached to vine
+                enemy->walked_distance = 0;  // Reset walked distance
+                enemy->platform_timer = 0;   // Start timer to ignore vines briefly
+                printf("  Red croc found platform %d while climbing up, walking %s\n", 
+                       platform_id, go_right ? "right" : "left");
             }
             break;
         }
@@ -164,105 +165,193 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
             // Move down the vine
             enemy->y += enemy->velocity_y * deltaTime;
             
+            // Check for platforms on the way down (not just at extremes)
+            int platform_id = -1;
+            bool found_platform = find_platform_at_height(enemy->x, enemy->y, &platform_id);
+            
             // Check if reached bottom of vine
-            if (enemy->y >= enemy->patrol_start_y) {
-                // Reached bottom - check for platform at bottom
-                int platform_id = -1;
-                if (find_platform_at_height(enemy->x, enemy->patrol_start_y, &platform_id)) {
-                    // Found platform at bottom! Switch to walking
+            if (enemy->y >= enemy->patrol_end_y) {
+                // Reached bottom - decide what to do
+                if (found_platform && !enemy->ignore_platforms) {
+                    // Found platform and willing to use it! Choose random direction
+                    bool go_right = (GetRandomValue(0, 100) < 50);
                     enemy->y = g_current_level->platforms[platform_id].y;  // Snap to platform
-                    enemy->state = ENEMY_STATE_WALKING_LEFT;
+                    enemy->state = go_right ? ENEMY_STATE_WALKING_RIGHT : ENEMY_STATE_WALKING_LEFT;
                     enemy->target_platform_id = platform_id;
                     enemy->velocity_y = 0;
-                    enemy->velocity_x = -RED_CROCODILE_WALK_SPEED;
+                    enemy->velocity_x = go_right ? RED_CROCODILE_WALK_SPEED : -RED_CROCODILE_WALK_SPEED;
                     enemy->attached_vine_id = -1;
-                    printf("  Red croc reached platform %d at bottom, walking left\n", platform_id);
+                    enemy->walked_distance = 0;  // Reset walked distance
+                    enemy->platform_timer = 0;   // Start timer to ignore vines briefly
+                    printf("  Red croc taking platform %d, walking %s\n", platform_id, go_right ? "right" : "left");
                 } else {
-                    // No platform at bottom, reverse direction
-                    enemy->y = enemy->patrol_start_y;  // Clamp to bottom
+                    // No platform or ignoring it, reverse direction
+                    enemy->y = enemy->patrol_end_y;  // Clamp to bottom
                     enemy->moving_up = true;
                     enemy->state = ENEMY_STATE_CLIMBING_UP;
                     enemy->velocity_y = -RED_CROCODILE_CLIMB_SPEED;
-                    printf("  Red croc reached bottom, reversing\n");
+                    enemy->ignore_platforms = (GetRandomValue(0, 100) < 50);  // New random decision
+                    printf("  Red croc reached bottom, reversing (ignore_platforms=%d)\n", enemy->ignore_platforms);
                 }
+            } else if (found_platform && !enemy->ignore_platforms) {
+                // Found platform while climbing and willing to use it - choose random direction
+                bool go_right = (GetRandomValue(0, 100) < 50);
+                enemy->y = g_current_level->platforms[platform_id].y;  // Snap to platform
+                enemy->state = go_right ? ENEMY_STATE_WALKING_RIGHT : ENEMY_STATE_WALKING_LEFT;
+                enemy->target_platform_id = platform_id;
+                enemy->velocity_y = 0;
+                enemy->velocity_x = go_right ? RED_CROCODILE_WALK_SPEED : -RED_CROCODILE_WALK_SPEED;
+                enemy->attached_vine_id = -1;
+                enemy->walked_distance = 0;  // Reset walked distance
+                enemy->platform_timer = 0;   // Start timer to ignore vines briefly
+                printf("  Red croc found platform %d while climbing down, walking %s\n", platform_id, go_right ? "right" : "left");
             }
             break;
         }
         
         case ENEMY_STATE_WALKING_RIGHT: {
             // Move right on platform
-            enemy->x += enemy->velocity_x * deltaTime;
+            float distance = enemy->velocity_x * deltaTime;
+            enemy->x += distance;
+            enemy->walked_distance += fabs(distance);
+            enemy->platform_timer += deltaTime;  // Update timer
             
             Platform* plat = &g_current_level->platforms[enemy->target_platform_id];
             float plat_right = plat->x + (plat->width_blocks * PLATFORM_BLOCK_SIZE);
             
-            // Look for vine on platform
-            int new_vine_id = -1;
-            if (find_vine_on_platform(enemy->target_platform_id, enemy->attached_vine_id, &new_vine_id)) {
-                Vine* new_vine = &g_current_level->vines[new_vine_id];
-                
-                // Check if reached the vine
-                if (fabs(enemy->x - new_vine->x) < VINE_DETECT_RANGE) {
-                    // Climb the new vine
+            // SAFETY: Check if we're outside screen bounds
+            if (enemy->x < 0 || enemy->x > LEVEL_WIDTH) {
+                printf("  ERROR: Red croc went out of bounds at x=%.0f! Forcing return to vine %d\n", 
+                       enemy->x, enemy->original_vine_id);
+                if (enemy->original_vine_id >= 0) {
+                    Vine* orig_vine = &g_current_level->vines[enemy->original_vine_id];
                     enemy->state = ENEMY_STATE_CLIMBING_UP;
-                    enemy->attached_vine_id = new_vine_id;
+                    enemy->attached_vine_id = enemy->original_vine_id;
                     enemy->target_platform_id = -1;
-                    enemy->x = new_vine->x;
+                    enemy->x = orig_vine->x;
                     enemy->velocity_x = 0;
                     enemy->velocity_y = -RED_CROCODILE_CLIMB_SPEED;
-                    enemy->patrol_start_y = new_vine->y_bottom;
-                    enemy->patrol_end_y = new_vine->y_top;
+                    enemy->patrol_start_y = orig_vine->y_bottom;
+                    enemy->patrol_end_y = orig_vine->y_top;
                     enemy->moving_up = true;
-                    printf("  Red croc found vine %d, climbing up\n", new_vine_id);
-                    return;
+                }
+                return;
+            }
+            
+            // Look for ANY vine on platform that we're near
+            // Only detect vines after 0.75 seconds on platform (smooth transition)
+            if (enemy->platform_timer >= 0.75f) {
+                for (int i = 0; i < g_current_level->vine_count; i++) {
+                    Vine* vine = &g_current_level->vines[i];
+                    
+                    // IMPORTANT: Only consider VISIBLE vines (skip invisible center vines)
+                    if (!vine->visible) continue;
+                    
+                    // Check if we're near this vine AND it's on our platform
+                    float plat_top = plat->y;
+                    bool vine_on_platform = (vine->y_top <= plat_top && vine->y_bottom >= plat_top &&
+                                            vine->x >= plat->x && vine->x <= plat_right);
+                    
+                    if (vine_on_platform && fabs(enemy->x - vine->x) < VINE_DETECT_RANGE) {
+                        // Climb this vine - random direction
+                        bool go_up = (GetRandomValue(0, 100) < 50);
+                        enemy->state = go_up ? ENEMY_STATE_CLIMBING_UP : ENEMY_STATE_CLIMBING_DOWN;
+                        enemy->attached_vine_id = i;
+                        enemy->target_platform_id = -1;
+                        enemy->x = vine->x;
+                        enemy->velocity_x = 0;
+                        enemy->velocity_y = go_up ? -RED_CROCODILE_CLIMB_SPEED : RED_CROCODILE_CLIMB_SPEED;
+                        enemy->patrol_start_y = vine->y_top;      // Top (smaller Y)
+                        enemy->patrol_end_y = vine->y_bottom;     // Bottom (larger Y)
+                        enemy->moving_up = go_up;
+                        enemy->ignore_platforms = (GetRandomValue(0, 100) < 50);
+                        printf("  Red croc found VISIBLE vine %d at x=%.0f while walking RIGHT (walked %.0fpx), going %s\n", 
+                               i, vine->x, enemy->walked_distance, go_up ? "up" : "down");
+                        return;
+                    }
                 }
             }
             
             // Check if reached edge of platform
-            if (enemy->x >= plat_right - ENEMY_WIDTH) {
-                // Reverse direction
+            if (enemy->x >= plat_right - ENEMY_WIDTH/2) {
+                // Reverse direction to go back
                 enemy->state = ENEMY_STATE_WALKING_LEFT;
                 enemy->velocity_x = -RED_CROCODILE_WALK_SPEED;
-                printf("  Red croc reached platform edge, reversing\n");
+                printf("  Red croc reached RIGHT edge at x=%.0f (plat_right=%.0f), reversing\n", enemy->x, plat_right);
             }
             break;
         }
         
         case ENEMY_STATE_WALKING_LEFT: {
             // Move left on platform
-            enemy->x += enemy->velocity_x * deltaTime;
+            float distance = enemy->velocity_x * deltaTime;
+            enemy->x += distance;
+            enemy->walked_distance += fabs(distance);
+            enemy->platform_timer += deltaTime;  // Update timer
             
             Platform* plat = &g_current_level->platforms[enemy->target_platform_id];
             float plat_left = plat->x;
             
-            // Look for vine on platform
-            int new_vine_id = -1;
-            if (find_vine_on_platform(enemy->target_platform_id, enemy->attached_vine_id, &new_vine_id)) {
-                Vine* new_vine = &g_current_level->vines[new_vine_id];
-                
-                // Check if reached the vine
-                if (fabs(enemy->x - new_vine->x) < VINE_DETECT_RANGE) {
-                    // Climb the new vine
+            // SAFETY: Check if we're outside screen bounds
+            if (enemy->x < 0 || enemy->x > LEVEL_WIDTH) {
+                printf("  ERROR: Red croc went out of bounds at x=%.0f! Forcing return to vine %d\n", 
+                       enemy->x, enemy->original_vine_id);
+                if (enemy->original_vine_id >= 0) {
+                    Vine* orig_vine = &g_current_level->vines[enemy->original_vine_id];
                     enemy->state = ENEMY_STATE_CLIMBING_DOWN;
-                    enemy->attached_vine_id = new_vine_id;
+                    enemy->attached_vine_id = enemy->original_vine_id;
                     enemy->target_platform_id = -1;
-                    enemy->x = new_vine->x;
+                    enemy->x = orig_vine->x;
                     enemy->velocity_x = 0;
                     enemy->velocity_y = RED_CROCODILE_CLIMB_SPEED;
-                    enemy->patrol_start_y = new_vine->y_bottom;
-                    enemy->patrol_end_y = new_vine->y_top;
+                    enemy->patrol_start_y = orig_vine->y_top;     // Top (smaller Y)
+                    enemy->patrol_end_y = orig_vine->y_bottom;    // Bottom (larger Y)
                     enemy->moving_up = false;
-                    printf("  Red croc found vine %d, climbing down\n", new_vine_id);
-                    return;
+                }
+                return;
+            }
+            
+            // Look for ANY vine on platform that we're near
+            // Only detect vines after 0.75 seconds on platform (smooth transition)
+            if (enemy->platform_timer >= 0.75f) {
+                for (int i = 0; i < g_current_level->vine_count; i++) {
+                    Vine* vine = &g_current_level->vines[i];
+                    
+                    // IMPORTANT: Only consider VISIBLE vines (skip invisible center vines)
+                    if (!vine->visible) continue;
+                    
+                    // Check if we're near this vine AND it's on our platform
+                    float plat_top = plat->y;
+                    float plat_right = plat->x + (plat->width_blocks * PLATFORM_BLOCK_SIZE);
+                    bool vine_on_platform = (vine->y_top <= plat_top && vine->y_bottom >= plat_top &&
+                                            vine->x >= plat->x && vine->x <= plat_right);
+                    
+                    if (vine_on_platform && fabs(enemy->x - vine->x) < VINE_DETECT_RANGE) {
+                        // Climb this vine - random direction
+                        bool go_up = (GetRandomValue(0, 100) < 50);
+                        enemy->state = go_up ? ENEMY_STATE_CLIMBING_UP : ENEMY_STATE_CLIMBING_DOWN;
+                        enemy->attached_vine_id = i;
+                        enemy->target_platform_id = -1;
+                        enemy->x = vine->x;
+                        enemy->velocity_x = 0;
+                        enemy->velocity_y = go_up ? -RED_CROCODILE_CLIMB_SPEED : RED_CROCODILE_CLIMB_SPEED;
+                        enemy->patrol_start_y = vine->y_top;      // Top (smaller Y)
+                        enemy->patrol_end_y = vine->y_bottom;     // Bottom (larger Y)
+                        enemy->moving_up = go_up;
+                        enemy->ignore_platforms = (GetRandomValue(0, 100) < 50);
+                        printf("  Red croc found VISIBLE vine %d at x=%.0f while walking LEFT (walked %.0fpx), going %s\n", 
+                               i, vine->x, enemy->walked_distance, go_up ? "up" : "down");
+                        return;
+                    }
                 }
             }
             
             // Check if reached edge of platform
-            if (enemy->x <= plat_left) {
-                // Reverse direction
+            if (enemy->x <= plat_left + ENEMY_WIDTH/2) {
+                // Reverse direction to go back
                 enemy->state = ENEMY_STATE_WALKING_RIGHT;
                 enemy->velocity_x = RED_CROCODILE_WALK_SPEED;
-                printf("  Red croc reached platform edge, reversing\n");
+                printf("  Red croc reached LEFT edge at x=%.0f (plat_left=%.0f), reversing\n", enemy->x, plat_left);
             }
             break;
         }
@@ -321,50 +410,73 @@ void enemy_update(Enemy* enemy, float deltaTime) {
 // ============================================================
 
 void enemy_render(Enemy* enemy) {
-    if (!enemy || !enemy->active) return;
+    if (!enemy || !enemy->active) {
+        // Debug: Log why enemy is not rendering
+        if (enemy) {
+            static int debug_counter = 0;
+            if (debug_counter++ % 60 == 0) {  // Print once per second (at 60fps)
+                printf("  Enemy not rendering: active=%d\n", enemy->active);
+            }
+        }
+        return;
+    }
     
-    // TODO: Add enemy sprites - for now render as colored rectangles for testing
-    Color enemy_color;
+    SpriteType sprite_type;
     
     if (enemy->type == ENEMY_RED_CROCODILE) {
-        enemy_color = RED;
+        // Choose sprite based on state
+        switch (enemy->state) {
+            case ENEMY_STATE_CLIMBING_UP:
+                sprite_type = SPRITE_SNAPJAW_RED_UP;
+                break;
+            case ENEMY_STATE_CLIMBING_DOWN:
+                sprite_type = SPRITE_SNAPJAW_RED_DOWN;
+                break;
+            case ENEMY_STATE_WALKING_LEFT:
+                sprite_type = SPRITE_SNAPJAW_RED_LEFT;
+                break;
+            case ENEMY_STATE_WALKING_RIGHT:
+                sprite_type = SPRITE_SNAPJAW_RED_RIGHT;
+                break;
+            default:
+                sprite_type = SPRITE_SNAPJAW_RED_DOWN;
+        }
     } else {
-        enemy_color = BLUE;
+        // Blue crocodile
+        sprite_type = SPRITE_SNAPJAW_BLUE_DOWN;
     }
     
-    // Draw enemy as rectangle (24x24 like player hitbox)
-    DrawRectangle((int)enemy->x - 12, (int)enemy->y - 12, 24, 24, enemy_color);
-    
-    // Draw direction indicator
-    if (enemy->state == ENEMY_STATE_CLIMBING_UP) {
-        DrawTriangle(
-            (Vector2){enemy->x, enemy->y - 15},
-            (Vector2){enemy->x - 5, enemy->y - 10},
-            (Vector2){enemy->x + 5, enemy->y - 10},
-            WHITE
-        );
-    } else if (enemy->state == ENEMY_STATE_CLIMBING_DOWN) {
-        DrawTriangle(
-            (Vector2){enemy->x, enemy->y + 15},
-            (Vector2){enemy->x - 5, enemy->y + 10},
-            (Vector2){enemy->x + 5, enemy->y + 10},
-            WHITE
-        );
-    } else if (enemy->state == ENEMY_STATE_WALKING_LEFT) {
-        DrawTriangle(
-            (Vector2){enemy->x - 15, enemy->y},
-            (Vector2){enemy->x - 10, enemy->y - 5},
-            (Vector2){enemy->x - 10, enemy->y + 5},
-            WHITE
-        );
-    } else if (enemy->state == ENEMY_STATE_WALKING_RIGHT) {
-        DrawTriangle(
-            (Vector2){enemy->x + 15, enemy->y},
-            (Vector2){enemy->x + 10, enemy->y - 5},
-            (Vector2){enemy->x + 10, enemy->y + 5},
-            WHITE
-        );
+    SpriteSheet* sprite = sprite_manager_get(sprite_type);
+    if (!sprite || !sprite->loaded) {
+        // Fallback to rectangle if sprite not loaded
+        DrawRectangle((int)enemy->x - 12, (int)enemy->y - 12, 24, 24, RED);
+        return;
     }
+    
+    // Calculate source rectangle (animation frame)
+    Rectangle source = {
+        enemy->current_frame * sprite->frame_width,
+        0,
+        sprite->frame_width,
+        sprite->frame_height
+    };
+    
+    // Calculate destination (scaled 3x, centered on enemy position)
+    // Sprite is 34x16, scaled 3x = 102x48
+    // Adjust Y offset so hitbox is centered on enemy body
+    float scaled_width = sprite->frame_width * 3.0f;
+    float scaled_height = sprite->frame_height * 3.0f;
+    Rectangle dest = {
+        enemy->x - scaled_width / 2.0f,
+        enemy->y - scaled_height / 2.0f - 6.0f,  // Offset up 6px so hitbox centers better
+        scaled_width,
+        scaled_height
+    };
+    
+    DrawTexturePro(sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
+    
+    // DEBUG: Draw hitbox (24x24 centered on enemy position)
+    DrawRectangleLines((int)enemy->x - 12, (int)enemy->y - 12, 24, 24, YELLOW);
 }
 
 // ============================================================
@@ -374,11 +486,24 @@ void enemy_render(Enemy* enemy) {
 bool enemy_collides_with_player(Enemy* enemy, float player_x, float player_y) {
     if (!enemy || !enemy->active) return false;
     
-    // Simple AABB collision
-    bool x_overlap = enemy->x < player_x + PLAYER_WIDTH && 
-                     enemy->x + ENEMY_WIDTH > player_x;
-    bool y_overlap = enemy->y < player_y + PLAYER_HEIGHT && 
-                     enemy->y + ENEMY_HEIGHT > player_y;
+    // Enemy position is CENTER coordinates
+    // Enemy hitbox: 24x24 centered on (enemy->x, enemy->y)
+    float enemy_left = enemy->x - 12;
+    float enemy_right = enemy->x + 12;
+    float enemy_top = enemy->y - 12;
+    float enemy_bottom = enemy->y + 12;
+    
+    // Player position is TOP-LEFT corner of sprite (96x48)
+    // Player collision box is offset: 16px from sides, 8px from top
+    // Player hitbox: 64x40 starting at (player_x + 16, player_y + 8)
+    float player_left = player_x + 16;
+    float player_right = player_x + 16 + 64;
+    float player_top = player_y + 8;
+    float player_bottom = player_y + 8 + 40;
+    
+    // AABB collision
+    bool x_overlap = enemy_left < player_right && enemy_right > player_left;
+    bool y_overlap = enemy_top < player_bottom && enemy_bottom > player_top;
     
     return x_overlap && y_overlap;
 }

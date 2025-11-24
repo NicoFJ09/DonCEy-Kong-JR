@@ -41,8 +41,12 @@ typedef struct {
     
     // Movement tracking for red crocodile
     int attached_vine_id;       // Current vine (-1 if not on vine)
+    int original_vine_id;       // Vine where enemy started (for returning)
     int target_platform_id;     // Platform walking on (-1 if not on platform)
     bool moving_up;             // Direction of vertical patrol
+    bool ignore_platforms;      // If true, skip platform detection this cycle
+    float walked_distance;      // Distance walked on platform (to avoid immediate return)
+    float platform_timer;       // Time since taking platform (ignore vines briefly)
     float patrol_start_y;       // Where patrol started
     float patrol_end_y;         // Where patrol ends (top of vine or platform)
     
