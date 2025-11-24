@@ -2,6 +2,7 @@
 #define LEVEL_H
 
 #include <stdbool.h>
+#include "enemy.h"
 
 // ============================================================
 // LEVEL CONSTANTS
@@ -66,6 +67,10 @@ typedef struct {
     
     Vine* vines;
     int vine_count;
+    
+    // Enemies
+    Enemy* enemies;
+    int enemy_count;
     
     // Goal positions
     float cage_x, cage_y;

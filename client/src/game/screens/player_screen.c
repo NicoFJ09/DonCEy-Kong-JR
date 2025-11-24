@@ -3,6 +3,7 @@
 #include "../../utils/font_manager.h"
 #include "../level.h"
 #include "../player.h"
+#include "../enemy.h"
 #include "raylib.h"
 #include <stdio.h>
 
@@ -64,6 +65,19 @@ void show_player_screen(int client_id, Connection* conn) {
 
             // Update physics and animation
             player_update(&player, deltaTime);
+            
+            // Update all enemies
+            for (int i = 0; i < g_current_level->enemy_count; i++) {
+                enemy_update(&g_current_level->enemies[i], deltaTime);
+                
+                // Check collision with player
+                if (enemy_collides_with_player(&g_current_level->enemies[i], player.x, player.y)) {
+                    // TODO: Handle player death/respawn
+#if DEBUG_MODE
+                    printf("Player hit by enemy!\n");
+#endif
+                }
+            }
         }
         // If window NOT focused: do nothing - game is PAUSED
 
@@ -73,6 +87,11 @@ void show_player_screen(int client_id, Connection* conn) {
 
             // Render level (background)
             level_render(g_current_level);
+
+            // Render enemies
+            for (int i = 0; i < g_current_level->enemy_count; i++) {
+                enemy_render(&g_current_level->enemies[i]);
+            }
 
             // Render player (foreground)
             player_render(&player);

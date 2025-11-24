@@ -217,11 +217,44 @@ Level* level_create_from_json(const char* json_data) {
     level->mario_x = 0.0f;
     level->mario_y = 0.0f;
 
+    // Initialize enemies - Place red crocodiles on specific vines
+    // We'll place 3 enemies for testing: on vine indices 0, 3, and 6 (if they exist)
+    int max_enemies = 3;
+    level->enemy_count = 0;
+    level->enemies = (Enemy*)malloc(sizeof(Enemy) * max_enemies);
+    
+    // Enemy 1: First visible vine (index 0)
+    if (level->vine_count > 0 && level->vines[0].visible) {
+        enemy_init_red_crocodile(&level->enemies[level->enemy_count], 
+                                 level,
+                                 0,  // vine index, not ID
+                                 level->vines[0].y_top);
+        level->enemy_count++;
+    }
+    
+    // Enemy 2: Vine at index 3 (if exists and visible)
+    if (level->vine_count > 3 && level->vines[3].visible) {
+        enemy_init_red_crocodile(&level->enemies[level->enemy_count], 
+                                 level,
+                                 3,  // vine index, not ID
+                                 level->vines[3].y_top);
+        level->enemy_count++;
+    }
+    
+    // Enemy 3: Vine at index 6 (if exists and visible)
+    if (level->vine_count > 6 && level->vines[6].visible) {
+        enemy_init_red_crocodile(&level->enemies[level->enemy_count], 
+                                 level,
+                                 6,  // vine index, not ID
+                                 level->vines[6].y_top);
+        level->enemy_count++;
+    }
+
     cJSON_Delete(root);
 
 #if DEBUG_MODE
-    printf("✓ Level created from JSON: %d platforms, %d columns, %d vines (%d groups)\n",
-           level->platform_count, level->column_count, level->vine_count, vine_group_count);
+    printf("✓ Level created from JSON: %d platforms, %d columns, %d vines (%d groups), %d enemies\n",
+           level->platform_count, level->column_count, level->vine_count, vine_group_count, level->enemy_count);
 #endif
 
     return level;
@@ -362,6 +395,7 @@ void level_destroy(Level* level) {
         free(level->platforms);
         free(level->columns);
         free(level->vines);
+        free(level->enemies);
         free(level);
 #if DEBUG_MODE
         printf("✓ Level destroyed\n");

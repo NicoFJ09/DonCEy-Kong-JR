@@ -37,6 +37,7 @@ UTILS_SOURCES = src/utils/font_manager.c \
 GAME_SOURCES = src/game/game_flow.c \
                src/game/level.c \
                src/game/player.c \
+               src/game/enemy.c \
                src/game/screens/ip_input_screen.c \
                src/game/screens/title_screen.c \
                src/game/screens/player_screen.c \
@@ -62,6 +63,7 @@ UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o \
 GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
                $(OBJ_DIR)/level.o \
                $(OBJ_DIR)/player.o \
+               $(OBJ_DIR)/enemy.o \
                $(OBJ_DIR)/ip_input_screen.o \
                $(OBJ_DIR)/title_screen.o \
                $(OBJ_DIR)/player_screen.o \
@@ -130,6 +132,9 @@ $(OBJ_DIR)/level.o: src/game/level.c src/game/level.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/player.o: src/game/player.c src/game/player.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/enemy.o: src/game/enemy.c src/game/enemy.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
