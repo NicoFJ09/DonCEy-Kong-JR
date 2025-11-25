@@ -57,6 +57,9 @@ typedef struct {
     // Active flag
     bool active;
     
+    // Speed multiplier (increases with each level completion)
+    float speed_multiplier;
+    
 } Enemy;
 
 // ============================================================
@@ -75,10 +78,11 @@ void enemy_init_red_crocodile(Enemy* enemy, void* level, int vine_index, float s
 /**
  * Initialize blue crocodile (falling)
  * @param enemy Enemy to initialize
+ * @param level Level pointer
  * @param start_x Starting X position
  * @param start_y Starting Y position
  */
-void enemy_init_blue_crocodile(Enemy* enemy, float start_x, float start_y);
+void enemy_init_blue_crocodile(Enemy* enemy, void* level, float start_x, float start_y);
 
 /**
  * Update enemy physics and AI

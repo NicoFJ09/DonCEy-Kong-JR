@@ -52,6 +52,7 @@ void enemy_init_red_crocodile(Enemy* enemy, void* level_ptr, int vine_index, flo
     enemy->animation_time = 0;
     enemy->current_frame = 0;
     enemy->active = true;
+    enemy->speed_multiplier = 1.0f;  // Default speed, will be updated by level
     
     printf("✓ Red crocodile spawned on vine index %d (ID=%d) at (%.0f, %.0f) patrol_range=(%.0f to %.0f) ACTIVE=%d\n", 
            vine_index, vine->id, enemy->x, enemy->y, enemy->patrol_start_y, enemy->patrol_end_y, enemy->active);
@@ -61,21 +62,190 @@ void enemy_init_red_crocodile(Enemy* enemy, void* level_ptr, int vine_index, flo
 // BLUE CROCODILE INITIALIZATION
 // ============================================================
 
-void enemy_init_blue_crocodile(Enemy* enemy, float start_x, float start_y) {
+void enemy_init_blue_crocodile(Enemy* enemy, void* level_ptr, float start_x, float start_y) {
+    Level* level = (Level*)level_ptr;
+    
     enemy->type = ENEMY_BLUE_CROCODILE;
-    enemy->state = ENEMY_STATE_FALLING;
+    
+    // Find the TWO highest platforms
+    float platform_y_values[2] = {LEVEL_HEIGHT, LEVEL_HEIGHT};
+    
+    // Sort all platforms by Y position to find the 2 highest
+    for (int i = 0; i < level->platform_count; i++) {
+        Platform* plat = &level->platforms[i];
+        if (plat->y < platform_y_values[0]) {
+            platform_y_values[1] = platform_y_values[0];
+            platform_y_values[0] = plat->y;
+        } else if (plat->y < platform_y_values[1]) {
+            platform_y_values[1] = plat->y;
+        }
+    }
+    
+    printf("Searching vines from top 2 platforms: y=%.0f and y=%.0f\n", 
+           platform_y_values[0], platform_y_values[1]);
+    
+    // Find all visible vines that hang from EITHER of the top 2 platforms
+    int valid_vines[50];
+    int valid_count = 0;
+    
+    for (int i = 0; i < level->vine_count && valid_count < 50; i++) {
+        Vine* vine = &level->vines[i];
+        
+        if (!vine->visible) continue;
+        
+        // Check if vine hangs from either top platform or second platform
+        for (int p = 0; p < 2; p++) {
+            float platform_y = platform_y_values[p];
+            
+            // Vine should start near the platform level (within 50px below)
+            if (vine->y_top >= platform_y && 
+                vine->y_top <= platform_y + 50.0f) {
+                
+                valid_vines[valid_count++] = i;
+                printf("  Found valid vine %d at x=%.0f, y_top=%.0f (platform %d at y=%.0f)\n", 
+                       i, vine->x, vine->y_top, p+1, platform_y);
+                break;  // Don't count same vine twice
+            }
+        }
+    }
+    
+    // Manually add vine 16 if visible and not already included
+    if (level->vine_count > 16 && level->vines[16].visible) {
+        bool already_included = false;
+        for (int i = 0; i < valid_count; i++) {
+            if (valid_vines[i] == 16) {
+                already_included = true;
+                break;
+            }
+        }
+        if (!already_included && valid_count < 50) {
+            valid_vines[valid_count++] = 16;
+            printf("  Added vine 16 manually at x=%.0f, y_top=%.0f (edge vine)\n",
+                   level->vines[16].x, level->vines[16].y_top);
+        }
+    }
+    
+    if (valid_count == 0) {
+        printf("ERROR: No valid vines found on top 2 platforms!\n");
+        enemy->active = false;
+        return;
+    }
+    
+    // Choose random vine from valid ones
+    int chosen_index = GetRandomValue(0, valid_count - 1);
+    int vine_index = valid_vines[chosen_index];
+    Vine* target_vine = &level->vines[vine_index];
+    
+    printf("✓ Blue croc will walk to vine %d at x=%.0f\n", vine_index, target_vine->x);
+    
+    // Start at Mario's position, ON the top platform surface
     enemy->x = start_x;
-    enemy->y = start_y;
-    enemy->velocity_x = 0;
-    enemy->velocity_y = BLUE_CROCODILE_FALL_SPEED;
+    enemy->y = platform_y_values[0] - 24.0f;  // Start on highest platform
+    
+    // Remember which vine to go to
+    enemy->target_platform_id = vine_index;
     enemy->attached_vine_id = -1;
-    enemy->target_platform_id = -1;
+    
+    // Start walking right
+    enemy->state = ENEMY_STATE_WALKING_RIGHT;
+    enemy->velocity_x = 80.0f;
+    enemy->velocity_y = 0;
+    
+    enemy->original_vine_id = -1;
     enemy->moving_up = false;
+    
+    // Animation
     enemy->animation_time = 0;
     enemy->current_frame = 0;
     enemy->active = true;
+    enemy->speed_multiplier = 1.0f;
     
-    printf("✓ Blue crocodile spawned at (%.0f, %.0f)\n", enemy->x, enemy->y);
+    enemy->ignore_platforms = false;
+    enemy->walked_distance = 0;
+    enemy->platform_timer = 0;
+    
+    enemy->patrol_start_y = platform_y_values[0];
+    enemy->patrol_end_y = level->water_level;
+}
+
+// ============================================================
+// BLUE CROCODILE UPDATE
+// ============================================================
+
+static void update_blue_crocodile(Enemy* enemy, float deltaTime) {
+    // Update animation
+    enemy->animation_time += deltaTime;
+    if (enemy->animation_time >= 0.2f) {
+        enemy->animation_time = 0;
+        enemy->current_frame = (enemy->current_frame + 1) % 2;
+    }
+    
+    switch (enemy->state) {
+        case ENEMY_STATE_WALKING_RIGHT: {
+            // Walk right on the top platform
+            enemy->x += enemy->velocity_x * enemy->speed_multiplier * deltaTime;
+            
+            // Apply gravity to fall to lower platforms
+            enemy->velocity_y = 200.0f;  // Gravity
+            enemy->y += enemy->velocity_y * deltaTime;
+            
+            // Check collision with platforms to stop falling
+            for (int i = 0; i < g_current_level->platform_count; i++) {
+                Platform* plat = &g_current_level->platforms[i];
+                float plat_left = plat->x;
+                float plat_right = plat->x + (plat->width_blocks * PLATFORM_BLOCK_SIZE);
+                float plat_top = plat->y;
+                float plat_bottom = plat->y + PLATFORM_BLOCK_SIZE;
+                
+                // Check if enemy is on this platform
+                if (enemy->x >= plat_left && enemy->x <= plat_right &&
+                    enemy->y >= plat_top - 30.0f && enemy->y <= plat_bottom) {
+                    enemy->y = plat_top - 24.0f;  // Stand on platform
+                    enemy->velocity_y = 0;
+                    break;
+                }
+            }
+            
+            // Check if we've reached the target vine
+            if (enemy->target_platform_id >= 0 && enemy->target_platform_id < g_current_level->vine_count) {
+                Vine* target_vine = &g_current_level->vines[enemy->target_platform_id];
+                
+                // If we're at or past the target vine X position
+                if (enemy->x >= target_vine->x - 5.0f) {
+                    // Snap to vine and start descending
+                    enemy->state = ENEMY_STATE_CLIMBING_DOWN;
+                    enemy->x = target_vine->x;
+                    enemy->y = target_vine->y_top;
+                    enemy->attached_vine_id = enemy->target_platform_id;
+                    enemy->velocity_x = 0;
+                    enemy->velocity_y = 120.0f;  // Descend speed
+                    return;
+                }
+            }
+            
+            // Safety: if walked too far, despawn
+            if (enemy->x > LEVEL_WIDTH) {
+                enemy->active = false;
+                enemy->state = ENEMY_STATE_DEAD;
+            }
+            break;
+        }
+        
+        case ENEMY_STATE_CLIMBING_DOWN: {
+            // Descend the vine
+            enemy->y += enemy->velocity_y * enemy->speed_multiplier * deltaTime;
+            
+            // Check if reached water - die and become inactive
+            if (enemy->y >= g_current_level->water_level) {
+                enemy->active = false;
+                enemy->state = ENEMY_STATE_DEAD;
+            }
+            break;
+        }
+        
+        default:
+            break;
+    }
 }
 
 // ============================================================
@@ -111,8 +281,8 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
     
     switch (enemy->state) {
         case ENEMY_STATE_CLIMBING_UP: {
-            // Move up the vine
-            enemy->y += enemy->velocity_y * deltaTime;
+            // Move up the vine (apply speed multiplier)
+            enemy->y += enemy->velocity_y * enemy->speed_multiplier * deltaTime;
             
             // Check for platforms on the way up (not just at extremes)
             int platform_id = -1;
@@ -162,8 +332,8 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
         }
         
         case ENEMY_STATE_CLIMBING_DOWN: {
-            // Move down the vine
-            enemy->y += enemy->velocity_y * deltaTime;
+            // Move down the vine (apply speed multiplier)
+            enemy->y += enemy->velocity_y * enemy->speed_multiplier * deltaTime;
             
             // Check for platforms on the way down (not just at extremes)
             int platform_id = -1;
@@ -210,8 +380,8 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
         }
         
         case ENEMY_STATE_WALKING_RIGHT: {
-            // Move right on platform
-            float distance = enemy->velocity_x * deltaTime;
+            // Move right on platform (apply speed multiplier)
+            float distance = enemy->velocity_x * enemy->speed_multiplier * deltaTime;
             enemy->x += distance;
             enemy->walked_distance += fabs(distance);
             enemy->platform_timer += deltaTime;  // Update timer
@@ -283,8 +453,8 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
         }
         
         case ENEMY_STATE_WALKING_LEFT: {
-            // Move left on platform
-            float distance = enemy->velocity_x * deltaTime;
+            // Move left on platform (apply speed multiplier)
+            float distance = enemy->velocity_x * enemy->speed_multiplier * deltaTime;
             enemy->x += distance;
             enemy->walked_distance += fabs(distance);
             enemy->platform_timer += deltaTime;  // Update timer
@@ -369,29 +539,6 @@ static void update_red_crocodile(Enemy* enemy, float deltaTime) {
 }
 
 // ============================================================
-// BLUE CROCODILE UPDATE
-// ============================================================
-
-static void update_blue_crocodile(Enemy* enemy, float deltaTime) {
-    // Simple falling behavior
-    enemy->y += enemy->velocity_y * deltaTime;
-    
-    // Check if hit water
-    if (enemy->y >= WATER_LEVEL) {
-        enemy->active = false;
-        enemy->state = ENEMY_STATE_DEAD;
-        printf("  Blue croc fell into water\n");
-    }
-    
-    // Update animation
-    enemy->animation_time += deltaTime;
-    if (enemy->animation_time >= 0.15f) {
-        enemy->current_frame = (enemy->current_frame + 1) % 2;
-        enemy->animation_time = 0;
-    }
-}
-
-// ============================================================
 // MAIN UPDATE
 // ============================================================
 
@@ -441,9 +588,16 @@ void enemy_render(Enemy* enemy) {
             default:
                 sprite_type = SPRITE_SNAPJAW_RED_DOWN;
         }
+    } else if (enemy->type == ENEMY_BLUE_CROCODILE) {
+        // Blue crocodile sprites based on state
+        if (enemy->state == ENEMY_STATE_WALKING_RIGHT) {
+            sprite_type = SPRITE_SNAPJAW_BLUE_RIGHT;
+        } else {
+            // Climbing down or falling
+            sprite_type = SPRITE_SNAPJAW_BLUE_DOWN;
+        }
     } else {
-        // Blue crocodile
-        sprite_type = SPRITE_SNAPJAW_BLUE_DOWN;
+        return;  // Unknown enemy type
     }
     
     SpriteSheet* sprite = sprite_manager_get(sprite_type);

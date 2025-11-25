@@ -770,24 +770,7 @@ void player_update(Player* player, float deltaTime) {
         }
     }
 
-    // Check water collision - dies on contact (bottom of collision box touches water)
-    float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
-    if (collision_bottom >= WATER_LEVEL) {
-#if DEBUG_MODE
-        printf("Player touched water! Playing death animation...\n");
-#endif
-        // Freeze in place and start death animation
-        player->velocity_x = 0;
-        player->velocity_y = 0;
-        player->climbing = false;
-        player->attached_vine_id = -1;
-        player->lateral_position = 0;
-        player->on_ground = false;
-        player->state = STATE_DYING;
-        player->death_timer = 0;
-        player->current_frame = 0;
-        player->animation_time = 0;
-    }
+    // Water collision is now handled in player_screen.c (loses a life)
 
     // Keep player on screen (use collision box edges)
     float collision_left = player->x + COLLISION_OFFSET_X;

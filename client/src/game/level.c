@@ -212,14 +212,30 @@ Level* level_create_from_json(const char* json_data) {
     }
 
     level->water_level = WATER_LEVEL;
-    level->cage_x = 0.0f;
-    level->cage_y = 0.0f;
-    level->mario_x = 0.0f;
-    level->mario_y = 0.0f;
+    
+    // Find the highest platform (smallest Y value) for Mario and DK cage
+    float highest_platform_y = LEVEL_HEIGHT;  // Start with bottom
+    float highest_platform_x = 0;
+    
+    for (int i = 0; i < level->platform_count; i++) {
+        if (level->platforms[i].y < highest_platform_y) {
+            highest_platform_y = level->platforms[i].y;
+            highest_platform_x = level->platforms[i].x;
+        }
+    }
+    
+    // Position DK cage and Mario on left side of highest platform
+    // DK cage: 48x34 sprite scaled 3x = 144x102
+    // Mario: 16x16 sprite scaled 3x = 48x48
+    level->cage_x = highest_platform_x + 5;   // Almost at the left edge
+    level->cage_y = highest_platform_y - 102; // Sit on platform (cage height = 102)
+    level->mario_x = level->cage_x + 144;     // Right next to cage (cage width = 144)
+    level->mario_y = highest_platform_y - 48; // On top of platform (mario height = 48)
 
     // Initialize enemies - Place red crocodiles on specific vines
     // Testing different visible vines
-    int max_enemies = 3;
+    int max_enemies = 20;  // Increased to support blue crocodiles
+    level->max_enemies = max_enemies;
     level->enemy_count = 0;
     level->enemies = (Enemy*)calloc(max_enemies, sizeof(Enemy));  // Use calloc to zero-initialize
     
@@ -228,7 +244,7 @@ Level* level_create_from_json(const char* json_data) {
         return level;
     }
     
-    // Spawn enemies on first 3 visible vines
+    // Spawn red crocodiles on ALL visible vines
     int enemies_spawned = 0;
     for (int i = 0; i < level->vine_count && enemies_spawned < max_enemies; i++) {
         if (level->vines[i].visible) {
@@ -241,6 +257,9 @@ Level* level_create_from_json(const char* json_data) {
     }
     
     level->enemy_count = enemies_spawned;
+    level->blue_spawn_timer = 0.0f;  // Initialize blue crocodile spawn timer
+    
+    printf("✓ Spawned %d red crocodiles on visible vines\n", enemies_spawned);
 
     cJSON_Delete(root);
 
