@@ -607,16 +607,16 @@ void enemy_render(Enemy* enemy) {
         return;
     }
     
-    // Calculate source rectangle (animation frame)
-    Rectangle source = {
-        enemy->current_frame * sprite->frame_width,
+    // Source: native sprite dimensions from texture (with spacing between frames)
+    Rectangle src = {
+        enemy->current_frame * (sprite->frame_width + sprite->spacing),
         0,
-        sprite->frame_width,
-        sprite->frame_height
+        sprite->frame_width,   // Should be 16 for snapjaws
+        sprite->frame_height   // Should be 16 for snapjaws
     };
     
-    // Calculate destination (scaled 3x, centered on enemy position)
-    // Sprite is 34x16, scaled 3x = 102x48
+    // Destination: scaled 3x, centered on enemy position
+    // Sprite is 16x16, scaled 3x = 48x48
     // Adjust Y offset so hitbox is centered on enemy body
     float scaled_width = sprite->frame_width * 3.0f;
     float scaled_height = sprite->frame_height * 3.0f;
@@ -627,7 +627,8 @@ void enemy_render(Enemy* enemy) {
         scaled_height
     };
     
-    DrawTexturePro(sprite->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
+    Vector2 origin = {0, 0};
+    DrawTexturePro(sprite->texture, src, dest, origin, 0.0f, WHITE);
     
     // DEBUG: Draw hitbox (24x24 centered on enemy position)
     DrawRectangleLines((int)enemy->x - 12, (int)enemy->y - 12, 24, 24, YELLOW);

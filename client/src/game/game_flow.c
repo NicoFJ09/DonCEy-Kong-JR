@@ -31,7 +31,7 @@ bool game_flow_run(void) {
         return false;
     }
     
-    if (strcmp(server_ip, "test") == 0) {
+    if (strcmp(server_ip, "7357") == 0) {
         printf("Entering sprite test mode...\n");
         sprite_test_run();
         return true;
@@ -51,7 +51,7 @@ bool game_flow_run(void) {
                 return false;
             }
             
-            if (strcmp(server_ip, "test") == 0) {
+            if (strcmp(server_ip, "7357") == 0) {
                 printf("Entering sprite test mode...\n");
                 sprite_test_run();
                 return true;
