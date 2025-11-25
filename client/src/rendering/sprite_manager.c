@@ -31,7 +31,7 @@ static const struct {
     
     // Characters - DK and Mario
     [SPRITE_DK_CAGED]      = {"characters/donkey_kong/caged.png", 48, 34, 7, 2},
-    [SPRITE_MARIO_STARE]   = {"characters/mario/stare.png", 16, 16, 2, 2},
+    [SPRITE_MARIO_STARE]   = {"characters/mario/mario.png", 16, 16, 2, 2},
     
     // Enemies - Red Snapjaw (16x16 with 2px spacing)
     [SPRITE_SNAPJAW_RED_UP]    = {"enemies/red_snapjaw/r_up.png", 16, 16, 2, 2},
