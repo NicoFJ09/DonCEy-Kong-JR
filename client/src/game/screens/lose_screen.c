@@ -53,6 +53,12 @@ LoseOption show_lose_screen(int client_id) {
     printf("Use arrow keys to navigate\n");
     printf("Press ENTER to select\n\n");
     
+    // IMPORTANT: Clear all pending key presses to avoid double-input bug
+    // This prevents the ENTER key from the previous screen from being detected
+    while (GetKeyPressed() != 0) {
+        // Consume all queued key presses
+    }
+    
     LoseOption selected = LOSE_PLAY_AGAIN;
     bool done = false;
     

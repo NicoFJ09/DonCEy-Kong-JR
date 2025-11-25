@@ -63,6 +63,7 @@ void enemy_init_red_crocodile(Enemy* enemy, void* level_ptr, int vine_index, flo
 // ============================================================
 
 void enemy_init_blue_crocodile(Enemy* enemy, void* level_ptr, float start_x, float start_y) {
+    (void)start_y;  // Unused - blue croc spawns on top platform regardless
     Level* level = (Level*)level_ptr;
     
     enemy->type = ENEMY_BLUE_CROCODILE;

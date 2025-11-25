@@ -1,5 +1,4 @@
 #include "player_screen.h"
-#include "lose_screen.h"
 #include "../../utils/constants.h"
 #include "../../utils/font_manager.h"
 #include "../../rendering/sprite_manager.h"
@@ -20,12 +19,30 @@ Level* g_current_level = NULL;
 // HELPER FUNCTIONS
 // ============================================================
 
-static void render_goal_objects(Level* level) {
+// Animation state for goal objects
+static float dk_animation_time = 0.0f;
+static int dk_current_frame = 0;
+static float mario_animation_time = 0.0f;
+static int mario_current_frame = 0;
+
+static void render_goal_objects(Level* level, float deltaTime) {
+    // Update Donkey Kong animation (7 frames, slower animation)
+    dk_animation_time += deltaTime;
+    if (dk_animation_time >= 0.15f) {  // 6.67 fps animation
+        dk_animation_time = 0.0f;
+        dk_current_frame = (dk_current_frame + 1) % 7;
+    }
+    
     // Render Donkey Kong in cage
     SpriteSheet* dk_cage = sprite_manager_get(SPRITE_DK_CAGED);
     if (dk_cage && dk_cage->loaded) {
-        // DK cage sprite: 48x34, scale 3x = 144x102
-        Rectangle source = {0, 0, dk_cage->frame_width, dk_cage->frame_height};
+        // DK cage sprite: 48x34, scale 3x = 144x102, 7 frames with 2px spacing
+        Rectangle source = {
+            dk_current_frame * (dk_cage->frame_width + dk_cage->spacing),
+            0,
+            dk_cage->frame_width,
+            dk_cage->frame_height
+        };
         Rectangle dest = {
             level->cage_x,
             level->cage_y,
@@ -35,11 +52,23 @@ static void render_goal_objects(Level* level) {
         DrawTexturePro(dk_cage->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
     }
     
+    // Update Mario animation (2 frames)
+    mario_animation_time += deltaTime;
+    if (mario_animation_time >= 0.3f) {  // 3.33 fps animation (slower blink)
+        mario_animation_time = 0.0f;
+        mario_current_frame = (mario_current_frame + 1) % 2;
+    }
+    
     // Render Mario
     SpriteSheet* mario = sprite_manager_get(SPRITE_MARIO_STARE);
     if (mario && mario->loaded) {
-        // Mario sprite: 16x16, scale 3x = 48x48
-        Rectangle source = {0, 0, mario->frame_width, mario->frame_height};
+        // Mario sprite: 16x16, scale 3x = 48x48, 2 frames with 2px spacing
+        Rectangle source = {
+            mario_current_frame * (mario->frame_width + mario->spacing),
+            0,
+            mario->frame_width,
+            mario->frame_height
+        };
         Rectangle dest = {
             level->mario_x,
             level->mario_y,
@@ -100,19 +129,21 @@ void show_player_screen(int client_id, Connection* conn) {
                     PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
 
         bool level_active = true;
-        bool level_won = false;
+        __attribute__((unused)) bool level_won = false;  // Track if level completed successfully
         
         // Level loop - runs until level complete, death, or quit
         while (level_active && !WindowShouldClose()) {
+            // Always get deltaTime for animations (even when paused)
+            float deltaTime = GetFrameTime();
+            
+            // Clamp deltaTime to prevent physics explosion
+            if (deltaTime > MAX_DELTA_TIME) {
+                deltaTime = MAX_DELTA_TIME;
+            }
+            
             // PAUSE GAME when window loses focus
             if (IsWindowFocused()) {
                 // Window has focus - update game normally
-                float deltaTime = GetFrameTime();
-                
-                // Clamp deltaTime to prevent physics explosion
-                if (deltaTime > MAX_DELTA_TIME) {
-                    deltaTime = MAX_DELTA_TIME;
-                }
 
                 // Handle input (only if not dying)
                 if (player.state != STATE_DYING) {
@@ -228,8 +259,8 @@ void show_player_screen(int client_id, Connection* conn) {
                 // Render level (background)
                 level_render(g_current_level);
 
-                // Render DK cage and Mario (goal)
-                render_goal_objects(g_current_level);
+                // Render DK cage and Mario (goal) - pass deltaTime for animation
+                render_goal_objects(g_current_level, deltaTime);
 
                 // Render enemies
                 for (int i = 0; i < g_current_level->enemy_count; i++) {
@@ -263,16 +294,13 @@ void show_player_screen(int client_id, Connection* conn) {
         level_destroy(g_current_level);
         g_current_level = NULL;
         
-        // If player died and has no lives left, show game over screen
+        // If player died and has no lives left, exit to game flow
         if (lives <= 0) {
             game_over = true;
         }
     }
     
-    // Game over - show lose screen if out of lives
-    if (lives <= 0) {
-        show_lose_screen(client_id);
-    }
+    // Game over - game_flow.c will handle showing lose screen
     g_current_level = NULL;
 
 #if DEBUG_MODE
