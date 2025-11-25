@@ -172,11 +172,11 @@ void show_player_screen(int client_id, Connection* conn) {
                     }
                 }
                 
-                // Update blue crocodile spawn timer (temporary - will be admin controlled)
-                g_current_level->blue_spawn_timer += deltaTime;
-                if (g_current_level->blue_spawn_timer >= 2.0f) {  // Spawn every 2 seconds
-                    g_current_level->blue_spawn_timer = 0.0f;
-                    
+                // Update red crocodile spawn timer (temporary - will be admin controlled)
+                g_current_level->red_spawn_timer += deltaTime;
+                if (g_current_level->red_spawn_timer >= 3.0f) {  // Spawn every 3 seconds
+                    g_current_level->red_spawn_timer = 0.0f;
+
                     // Find first inactive enemy slot or add new one
                     int spawn_index = -1;
                     for (int i = 0; i < g_current_level->enemy_count; i++) {
@@ -185,13 +185,47 @@ void show_player_screen(int client_id, Connection* conn) {
                             break;
                         }
                     }
-                    
+
                     // If no inactive slot found, add new enemy if space available
                     if (spawn_index == -1 && g_current_level->enemy_count < g_current_level->max_enemies) {
                         spawn_index = g_current_level->enemy_count;
                         g_current_level->enemy_count++;
                     }
-                    
+
+                    // Spawn red crocodile at Mario's position
+                    if (spawn_index != -1) {
+                        printf("DEBUG: Spawning red croc at index %d (mario: %.0f, %.0f)\n",
+                               spawn_index, g_current_level->mario_x, g_current_level->mario_y);
+                        enemy_init_red_crocodile(&g_current_level->enemies[spawn_index],
+                                                 g_current_level,
+                                                 g_current_level->mario_x,
+                                                 g_current_level->mario_y);
+                    } else {
+                        printf("DEBUG: No spawn slot for red croc (count: %d, max: %d)\n",
+                               g_current_level->enemy_count, g_current_level->max_enemies);
+                    }
+                }
+
+                // Update blue crocodile spawn timer (temporary - will be admin controlled)
+                g_current_level->blue_spawn_timer += deltaTime;
+                if (g_current_level->blue_spawn_timer >= 5.0f) {  // Spawn every 5 seconds (less frequent)
+                    g_current_level->blue_spawn_timer = 0.0f;
+
+                    // Find first inactive enemy slot or add new one
+                    int spawn_index = -1;
+                    for (int i = 0; i < g_current_level->enemy_count; i++) {
+                        if (!g_current_level->enemies[i].active) {
+                            spawn_index = i;
+                            break;
+                        }
+                    }
+
+                    // If no inactive slot found, add new enemy if space available
+                    if (spawn_index == -1 && g_current_level->enemy_count < g_current_level->max_enemies) {
+                        spawn_index = g_current_level->enemy_count;
+                        g_current_level->enemy_count++;
+                    }
+
                     // Spawn blue crocodile at Mario's position
                     if (spawn_index != -1) {
                         enemy_init_blue_crocodile(&g_current_level->enemies[spawn_index],

@@ -648,7 +648,7 @@ void player_update(Player* player, float deltaTime) {
                         }
                     }
                     // If climbing, just stop movement but stay on vine
-                    break;  // Stop checking once we hit a platform
+                    continue;  // Check other platforms too (don't break)
                 }
 
                 // BOTTOM collision - player hits bottom of platform (blocks upward movement)
@@ -661,12 +661,12 @@ void player_update(Player* player, float deltaTime) {
                     player->y = platform_bottom - COLLISION_OFFSET_Y;
                     player->velocity_y = 0;
                     // Stay on vine, just blocked by platform
-                    break;  // Stop checking once we hit a platform
+                    continue;  // Check other platforms too (don't break)
                 }
             }
 
-            if (vertically_aligned) {
-                // LEFT side collision - player hits left edge of platform
+            if (vertically_aligned && !player->climbing) {
+                // LEFT side collision - player hits left edge of platform (only when NOT climbing)
                 if (collision_right >= platform->x - PLATFORM_COLLISION_TOLERANCE &&
                     collision_right <= platform->x + PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_x > 0) {
@@ -674,10 +674,11 @@ void player_update(Player* player, float deltaTime) {
                     // Push player back to left of platform
                     player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH;
                     player->velocity_x = 0;
-                    break;
+                    // Continue checking platforms - we might still be standing on another platform
+                    continue;
                 }
 
-                // RIGHT side collision - player hits right edge of platform
+                // RIGHT side collision - player hits right edge of platform (only when NOT climbing)
                 if (collision_left <= platform->x + platform_width_px + PLATFORM_COLLISION_TOLERANCE &&
                     collision_left >= platform->x + platform_width_px - PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_x < 0) {
@@ -685,7 +686,8 @@ void player_update(Player* player, float deltaTime) {
                     // Push player back to right of platform
                     player->x = platform->x + platform_width_px - COLLISION_OFFSET_X;
                     player->velocity_x = 0;
-                    break;
+                    // Continue checking platforms - we might still be standing on another platform
+                    continue;
                 }
             }
         }

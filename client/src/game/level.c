@@ -232,34 +232,22 @@ Level* level_create_from_json(const char* json_data) {
     level->mario_x = level->cage_x + 144;     // Right next to cage (cage width = 144)
     level->mario_y = highest_platform_y - 48; // On top of platform (mario height = 48)
 
-    // Initialize enemies - Place red crocodiles on specific vines
-    // Testing different visible vines
-    int max_enemies = 20;  // Increased to support blue crocodiles
+    // Initialize enemies - enemies will be spawned dynamically during gameplay
+    int max_enemies = 30;  // Increased to support both red and blue crocodiles spawning
     level->max_enemies = max_enemies;
     level->enemy_count = 0;
     level->enemies = (Enemy*)calloc(max_enemies, sizeof(Enemy));  // Use calloc to zero-initialize
-    
+
     if (!level->enemies) {
         printf("ERROR: Failed to allocate memory for enemies\n");
         return level;
     }
-    
-    // Spawn red crocodiles on ALL visible vines
-    int enemies_spawned = 0;
-    for (int i = 0; i < level->vine_count && enemies_spawned < max_enemies; i++) {
-        if (level->vines[i].visible) {
-            enemy_init_red_crocodile(&level->enemies[enemies_spawned], 
-                                     level,
-                                     i,  // vine index
-                                     level->vines[i].y_top);
-            enemies_spawned++;
-        }
-    }
-    
-    level->enemy_count = enemies_spawned;
+
+    // No enemies spawned at level start - they spawn during gameplay
     level->blue_spawn_timer = 0.0f;  // Initialize blue crocodile spawn timer
-    
-    printf("✓ Spawned %d red crocodiles on visible vines\n", enemies_spawned);
+    level->red_spawn_timer = 0.0f;   // Initialize red crocodile spawn timer
+
+    printf("✓ Level initialized with dynamic enemy spawning (max: %d)\n", max_enemies);
 
     cJSON_Delete(root);
 

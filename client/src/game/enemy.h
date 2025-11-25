@@ -34,32 +34,25 @@ typedef struct {
     // Position
     float x, y;
     float velocity_x, velocity_y;
-    
+
     // Type and state
     EnemyType type;
     EnemyState state;
-    
-    // Movement tracking for red crocodile
-    int attached_vine_id;       // Current vine (-1 if not on vine)
-    int original_vine_id;       // Vine where enemy started (for returning)
-    int target_platform_id;     // Platform walking on (-1 if not on platform)
-    bool moving_up;             // Direction of vertical patrol
-    bool ignore_platforms;      // If true, skip platform detection this cycle
-    float walked_distance;      // Distance walked on platform (to avoid immediate return)
-    float platform_timer;       // Time since taking platform (ignore vines briefly)
-    float patrol_start_y;       // Where patrol started
-    float patrol_end_y;         // Where patrol ends (top of vine or platform)
-    
+
+    // Vine tracking
+    int attached_vine_id;       // Current vine (-1 if not attached)
+    int target_platform_id;     // Target vine index during walk phase
+
     // Animation
     float animation_time;
     int current_frame;
-    
+
     // Active flag
     bool active;
-    
+
     // Speed multiplier (increases with each level completion)
     float speed_multiplier;
-    
+
 } Enemy;
 
 // ============================================================
@@ -67,13 +60,13 @@ typedef struct {
 // ============================================================
 
 /**
- * Initialize red crocodile on a vine
+ * Initialize red crocodile (spawns at Mario's position, walks to a vine)
  * @param enemy Enemy to initialize
- * @param level Level containing the vines
- * @param vine_index Index in level->vines array (not vine ID)
+ * @param level Level pointer
+ * @param start_x Starting X position
  * @param start_y Starting Y position
  */
-void enemy_init_red_crocodile(Enemy* enemy, void* level, int vine_index, float start_y);
+void enemy_init_red_crocodile(Enemy* enemy, void* level, float start_x, float start_y);
 
 /**
  * Initialize blue crocodile (falling)

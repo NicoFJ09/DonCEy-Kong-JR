@@ -72,10 +72,11 @@ typedef struct {
     Enemy* enemies;
     int enemy_count;
     int max_enemies;  // Maximum capacity of enemies array
-    
-    // Blue crocodile spawning (temporary - will be admin controlled)
+
+    // Enemy spawning timers (temporary - will be admin controlled)
     float blue_spawn_timer;
-    
+    float red_spawn_timer;
+
     // Goal positions
     float cage_x, cage_y;
     float mario_x, mario_y;

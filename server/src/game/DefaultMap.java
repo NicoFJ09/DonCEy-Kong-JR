@@ -66,9 +66,9 @@ public class DefaultMap {
 
         // Group 3B - GROUP3B_HEIGHTS
         List<VineHeight> group3bHeights = new ArrayList<>();
-        group3bHeights.add(new VineHeight(11, 13));
-        group3bHeights.add(new VineHeight(21, 5));
-        group3bHeights.add(new VineHeight(21, 9));
+        group3bHeights.add(new VineHeight(11, 12));
+        group3bHeights.add(new VineHeight(21, 6));
+        group3bHeights.add(new VineHeight(11, 18));
         group3bHeights.add(new VineHeight(6, 21));
         group3bHeights.add(new VineHeight(6, 24));
         map.addVineGroup(35, group3bHeights);
