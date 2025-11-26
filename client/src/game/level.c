@@ -247,6 +247,9 @@ Level* level_create_from_json(const char* json_data) {
     // No enemies spawned at level start - they spawn during gameplay
     level->blue_spawn_timer = 0.0f;  // Initialize blue crocodile spawn timer
     level->red_spawn_timer = 0.0f;   // Initialize red crocodile spawn timer
+    
+    // Initialize game state
+    level->level_number = 1;
 
     printf("✓ Level initialized with dynamic enemy spawning (max: %d)\n", max_enemies);
 

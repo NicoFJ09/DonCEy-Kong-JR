@@ -49,6 +49,10 @@ typedef struct {
     // Death
     float death_timer;
     
+    // Game state
+    int lives;
+    int score;
+    
 } Player;
 
 // ============================================================

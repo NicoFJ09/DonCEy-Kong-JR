@@ -14,8 +14,8 @@
 #define FRUIT_HEIGHT 48.0f    // Fruit sprite height (16px scaled 3x)
 #define FRUIT_COLLISION_RADIUS 24.0f  // Collision radius for fruit pickup
 
-#define POPUP_DURATION 1.5f   // Popup displays for 1.5 seconds
-#define POPUP_RISE_SPEED 30.0f  // Popup floats upward slowly
+#define POPUP_DURATION 1.0f   // Popup displays for 1.0 seconds
+#define POPUP_RISE_SPEED 0.0f  // Popup stays in place (no floating)
 
 // Points values
 #define FRUIT_POINTS_APPLE 200
@@ -258,7 +258,7 @@ void fruit_render_popups(Level* level) {
             Rectangle dest = {popup->x, popup->y, 24, 24};
             Vector2 origin = {0, 0};
             
-            // Fade out as lifetime decreases
+            // Fade out as lifetime decreases (1.0 second total)
             float alpha = popup->lifetime / POPUP_DURATION;
             if (alpha > 1.0f) alpha = 1.0f;
             if (alpha < 0.0f) alpha = 0.0f;
@@ -266,8 +266,12 @@ void fruit_render_popups(Level* level) {
             Color tint = {255, 255, 255, (unsigned char)(alpha * 255)};
             DrawTexturePro(sprite->texture, src, dest, origin, 0.0f, tint);
         } else {
-            // Fallback: draw text
-            DrawText(TextFormat("%d", popup->points), popup->x, popup->y, 20, YELLOW);
+            // Fallback: draw text with fade
+            float alpha = popup->lifetime / POPUP_DURATION;
+            if (alpha > 1.0f) alpha = 1.0f;
+            if (alpha < 0.0f) alpha = 0.0f;
+            Color color = {255, 255, 0, (unsigned char)(alpha * 255)};
+            DrawText(TextFormat("+%d", popup->points), popup->x, popup->y, 20, color);
         }
     }
 }
@@ -277,7 +281,7 @@ void fruit_render_popups(Level* level) {
 // ============================================================
 
 /**
- * Update points popups (decrease lifetime, move upward)
+ * Update points popups (decrease lifetime, NO floating)
  */
 void fruit_update_popups(Level* level, float deltaTime) {
     if (!level || !level->popups) return;
@@ -287,11 +291,10 @@ void fruit_update_popups(Level* level, float deltaTime) {
         
         if (!popup->active) continue;
         
-        // Decrease lifetime
+        // Decrease lifetime (1 second total)
         popup->lifetime -= deltaTime;
         
-        // Move upward
-        popup->y -= POPUP_RISE_SPEED * deltaTime;
+        // NO floating - popup stays in place
         
         // Deactivate if lifetime expired
         if (popup->lifetime <= 0) {
@@ -337,7 +340,7 @@ void fruit_check_collision(Player* player, Level* level) {
         
         if (collision) {
             // Collect fruit
-            int points = fruit_collect(level, i);
+            int points = fruit_collect(level, i, player);
             
 #if DEBUG_MODE
             printf("✓ Player hitbox collided with fruit %d, earned %d points!\n", fruit->id, points);
@@ -351,10 +354,10 @@ void fruit_check_collision(Player* player, Level* level) {
 }
 
 /**
- * Collect a fruit and award points
+ * Collect a fruit and award points to player
  * Also creates a points popup at the fruit location
  */
-int fruit_collect(Level* level, int fruit_index) {
+int fruit_collect(Level* level, int fruit_index, Player* player) {
     if (!level || !level->fruits || fruit_index < 0 || fruit_index >= level->fruit_count) {
         return 0;
     }
@@ -368,6 +371,13 @@ int fruit_collect(Level* level, int fruit_index) {
     // Mark as collected
     fruit->collected = true;
     int points = fruit->points;
+    
+    // Update player score
+    if (player) {
+        player->score += points;
+        printf("✨ [FRUIT] Collected! Points: %d (Total score: %d)\n", 
+               points, player->score);
+    }
     
     // Create popup at fruit location
     if (level->popups) {

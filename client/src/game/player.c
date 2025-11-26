@@ -101,6 +101,10 @@ void player_init(Player* player, float x, float y) {
     player->animation_time = 0;
     player->current_frame = 0;
     player->death_timer = 0;
+    
+    // Game state
+    player->lives = 3;
+    player->score = 0;
 
 #if DEBUG_MODE
     printf("✓ Player initialized at (%.0f, %.0f)\n", x, y);
@@ -865,27 +869,6 @@ void player_render(Player* player) {
         GREEN
     );
 
-    // Debug: draw state info
-    const char* state_name = "UNKNOWN";
-    switch (player->state) {
-        case STATE_IDLE: state_name = "IDLE"; break;
-        case STATE_RUNNING: state_name = "RUNNING"; break;
-        case STATE_JUMPING: state_name = "JUMPING"; break;
-        case STATE_FALLING: state_name = "FALLING"; break;
-        case STATE_CLIMBING: state_name = "CLIMBING"; break;
-        case STATE_DYING: state_name = "DYING"; break;
-    }
-
-    const char* lateral = player->lateral_position == -1 ? "LEFT" :
-                         (player->lateral_position == 1 ? "RIGHT" : "CENTER");
-
-    font_manager_draw_text(TextFormat("%s | Pos:(%.0f,%.0f) | Ground:%s",
-             state_name, player->x, player->y, player->on_ground ? "Y" : "N"), 10, 40, 18, WHITE);
-
-    if (player->climbing) {
-        font_manager_draw_text(TextFormat("Vine:%d | Side:%s",
-                 player->attached_vine_id, lateral), 10, 60, 18, YELLOW);
-    }
 #endif
 }
 

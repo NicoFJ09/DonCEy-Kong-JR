@@ -17,6 +17,122 @@
 Level* g_current_level = NULL;
 
 // ============================================================
+// HUD RESOURCES
+// ============================================================
+
+static Font g_hud_font;
+static Texture2D g_life_texture;
+static bool g_hud_initialized = false;
+
+// ============================================================
+// HUD FUNCTIONS
+// ============================================================
+
+static void hud_initialize(void) {
+    if (g_hud_initialized) return;
+    
+    // Load PressStart2P font
+    g_hud_font = LoadFont("assets/ui/fonts/PressStart2P.ttf");
+    
+    // Load life icon (24x24)
+    g_life_texture = LoadTexture("assets/ui/lives/life.png");
+    
+    // Keep pixel-perfect rendering
+    SetTextureFilter(g_hud_font.texture, TEXTURE_FILTER_POINT);
+    SetTextureFilter(g_life_texture, TEXTURE_FILTER_POINT);
+    
+    g_hud_initialized = true;
+    printf("HUD initialized\n");
+}
+
+static void hud_cleanup(void) {
+    if (!g_hud_initialized) return;
+    
+    UnloadFont(g_hud_font);
+    UnloadTexture(g_life_texture);
+    
+    g_hud_initialized = false;
+}
+
+static void render_lives(Player* player) {
+    // Render life icons (36x36px scaled, 6px spacing = 42px total per icon)
+    for (int i = 0; i < player->lives; i++) {
+        DrawTextureEx(
+            g_life_texture,
+            (Vector2){ 10 + i * 42, 10 },  // 10px margin, 42px per icon
+            0,
+            1.5f,  // Scale 1.5x (24px -> 36px)
+            WHITE
+        );
+    }
+}
+
+static void render_score(Player* player) {
+    // Format score with zero-padding (arcade style)
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%06d", player->score);
+    
+    float fontSize = 24;  // Larger font size
+    float spacing = 1;
+    Vector2 size = MeasureTextEx(g_hud_font, buf, fontSize, spacing);
+    
+    // Draw at top-right (10px margin)
+    DrawTextEx(
+        g_hud_font,
+        buf,
+        (Vector2){ UI_WINDOW_WIDTH - size.x - 10, 10 },
+        fontSize,
+        spacing,
+        WHITE
+    );
+}
+
+static void render_level_number(Level* level) {
+    // Format level number
+    char buf[16];
+    snprintf(buf, sizeof(buf), "Lv %d", level->level_number);
+    
+    float fontSize = 20;  // Larger font size
+    float spacing = 1;
+    Vector2 size = MeasureTextEx(g_hud_font, buf, fontSize, spacing);
+    
+    // Draw below score (right-aligned)
+    DrawTextEx(
+        g_hud_font,
+        buf,
+        (Vector2){ UI_WINDOW_WIDTH - size.x - 10, 40 },  // Adjusted position
+        fontSize,
+        spacing,
+        WHITE
+    );
+}
+
+static void render_client_id(int client_id) {
+    // Draw client ID at top-left below lives
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Player #%d", client_id);
+    
+    float fontSize = 18;
+    float spacing = 1;
+    
+    DrawTextEx(
+        g_hud_font,
+        buf,
+        (Vector2){ 10, 56 },  // Below the life icons
+        fontSize,
+        spacing,
+        WHITE
+    );
+}
+
+static void render_hud(Player* player, Level* level, int client_id) {
+    render_lives(player);
+    render_score(player);
+    render_level_number(level);
+    render_client_id(client_id);
+}
+
+// ============================================================
 // HELPER FUNCTIONS
 // ============================================================
 
@@ -85,43 +201,37 @@ static void render_goal_objects(Level* level, float deltaTime) {
 // ============================================================
 
 void show_player_screen(int client_id, Connection* conn) {
-#if DEBUG_MODE
-    printf("\n========================================\n");
-    printf("Player Screen Active - TESTING MODE\n");
-    printf("========================================\n");
-    printf("Controls:\n");
-    printf("  LEFT/RIGHT: Move\n");
-    printf("  UP/DOWN: Climb (when on vine)\n");
-    printf("  SPACE: Jump/Grab Vine\n");
-    printf("  ESC: Exit\n\n");
-#endif
-
     // Create level from server JSON (REQUIRED)
     if (!conn || !conn->map_loaded || !conn->map_json) {
         printf("FATAL ERROR: No map data from server\n");
         return;
     }
 
+    // Initialize HUD
+    hud_initialize();
+    
     // Game state variables
-    int lives = 3;
     int level_number = 1;
     float enemy_speed_multiplier = 1.0f;
     bool game_over = false;
     
     // Main game loop - continues until out of lives or quit
-    while (lives > 0 && !game_over && !WindowShouldClose()) {
+    while (!game_over && !WindowShouldClose()) {
         // Create/recreate level for each attempt
         g_current_level = level_create_from_json(conn->map_json);
         if (!g_current_level) {
             printf("FATAL ERROR: Failed to parse server map JSON\n");
+            hud_cleanup();
             return;
         }
+        
+        // Set level number
+        g_current_level->level_number = level_number;
 
         // Apply speed multiplier to enemies (increases each level completion)
         for (int i = 0; i < g_current_level->enemy_count; i++) {
             g_current_level->enemies[i].speed_multiplier = enemy_speed_multiplier;
         }
-        printf("Level %d started - Speed multiplier: %.1fx\n", level_number, enemy_speed_multiplier);
 
         // Create player - start on platform center
         Player player;
@@ -162,22 +272,12 @@ void show_player_screen(int client_id, Connection* conn) {
                     fruit_check_collision(&player, g_current_level);
                 }
                 
-                // Debug: Print player Y position periodically
-                static float debug_timer = 0.0f;
-                debug_timer += deltaTime;
-                if (debug_timer >= 1.0f) {
-                    printf("DEBUG: player.y=%.0f, water_level=%.0f, threshold=%.0f, state=%d\n", 
-                           player.y, g_current_level->water_level, g_current_level->water_level - 20.0f, player.state);
-                    debug_timer = 0.0f;
-                }
-                
                 // If player is dying, count down timer
                 if (player.state == STATE_DYING) {
                     player.death_timer += deltaTime;
                     if (player.death_timer >= 1.0f) {
                         // Death animation complete, exit level
                         level_active = false;
-                        printf("Death animation complete, resetting level\n");
                     }
                 }
                 
@@ -203,15 +303,10 @@ void show_player_screen(int client_id, Connection* conn) {
 
                     // Spawn red crocodile at Mario's position
                     if (spawn_index != -1) {
-                        printf("DEBUG: Spawning red croc at index %d (mario: %.0f, %.0f)\n",
-                               spawn_index, g_current_level->mario_x, g_current_level->mario_y);
                         enemy_init_red_crocodile(&g_current_level->enemies[spawn_index],
                                                  g_current_level,
                                                  g_current_level->mario_x,
                                                  g_current_level->mario_y);
-                    } else {
-                        printf("DEBUG: No spawn slot for red croc (count: %d, max: %d)\n",
-                               g_current_level->enemy_count, g_current_level->max_enemies);
                     }
                 }
 
@@ -256,13 +351,11 @@ void show_player_screen(int client_id, Connection* conn) {
                 
                 if (distance < 80.0f) {
                     // Level complete! Add life and increase difficulty
-                    lives++;
+                    player.lives++;
                     level_won = true;
                     level_active = false;
                     level_number++;
                     enemy_speed_multiplier += 0.2f;  // 20% speed increase each level
-                    printf("✓ Level %d complete! Lives: %d, Speed multiplier: %.1fx\n", 
-                           level_number - 1, lives, enemy_speed_multiplier);
                 }
                 
                 // Update all enemies
@@ -274,8 +367,7 @@ void show_player_screen(int client_id, Connection* conn) {
                         // Player death by enemy
                         player.state = STATE_DYING;
                         player.death_timer = 0.0f;
-                        lives--;
-                        printf("✗ Player died by enemy! Lives remaining: %d\n", lives);
+                        player.lives--;
                         break;
                     }
                 }
@@ -288,9 +380,7 @@ void show_player_screen(int client_id, Connection* conn) {
                     // Player death by drowning (only when falling down, not when on ground)
                     player.state = STATE_DYING;
                     player.death_timer = 0.0f;
-                    lives--;
-                    printf("✗ Player drowned! Lives remaining: %d (player.y=%.0f, velocity_y=%.0f)\n", 
-                           lives, player.y, player.velocity_y);
+                    player.lives--;
                 }
             }
             // If window NOT focused: game is PAUSED
@@ -318,20 +408,8 @@ void show_player_screen(int client_id, Connection* conn) {
                 // Render fruit popups (on top of player)
                 fruit_render_popups(g_current_level);
 
-                // UI overlay - show lives and level
-                font_manager_draw_client_id(client_id, "Player");
-                
-                char lives_text[64];
-                snprintf(lives_text, sizeof(lives_text), "Lives: %d    Level: %d", lives, level_number);
-                font_manager_draw_text(lives_text, 10, 70, 20, WHITE);
-                
-                // Show pause overlay when window is unfocused
-                if (!IsWindowFocused()) {
-                    DrawRectangle(0, 0, UI_WINDOW_WIDTH, UI_WINDOW_HEIGHT, (Color){0, 0, 0, 128});
-                    const char* pause_text = "PAUSED";
-                    int text_width = font_manager_measure_text(pause_text, 60);
-                    font_manager_draw_text(pause_text, (UI_WINDOW_WIDTH - text_width) / 2, UI_WINDOW_HEIGHT / 2 - 30, 60, WHITE);
-                }
+                // Render HUD on top of everything
+                render_hud(&player, g_current_level, client_id);
 
             EndDrawing();
         }
@@ -341,15 +419,14 @@ void show_player_screen(int client_id, Connection* conn) {
         g_current_level = NULL;
         
         // If player died and has no lives left, exit to game flow
-        if (lives <= 0) {
+        if (player.lives <= 0) {
             game_over = true;
         }
     }
     
+    // Cleanup HUD
+    hud_cleanup();
+    
     // Game over - game_flow.c will handle showing lose screen
     g_current_level = NULL;
-
-#if DEBUG_MODE
-    printf("Test session ended\n");
-#endif
 }

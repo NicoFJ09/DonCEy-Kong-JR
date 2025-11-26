@@ -51,12 +51,13 @@ void fruit_update_popups(Level* level, float deltaTime);
 void fruit_check_collision(Player* player, Level* level);
 
 /**
- * Collect a fruit and award points
+ * Collect a fruit and award points to player
  * @param level Level containing the fruit
  * @param fruit_index Index of fruit to collect
+ * @param player Player who collected the fruit (to update score)
  * @return Points awarded
  */
-int fruit_collect(Level* level, int fruit_index);
+int fruit_collect(Level* level, int fruit_index, Player* player);
 
 /**
  * Cleanup fruit resources

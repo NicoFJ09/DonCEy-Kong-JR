@@ -119,6 +119,9 @@ typedef struct {
     float cage_x, cage_y;
     float mario_x, mario_y;
     
+    // Game state
+    int level_number;
+    
 } Level;
 
 // ============================================================
