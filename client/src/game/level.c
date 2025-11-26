@@ -1,4 +1,5 @@
 #include "level.h"
+#include "fruit.h"
 #include "../rendering/sprite_manager.h"
 #include "../utils/constants.h"
 #include "../external/cJSON.h"
@@ -249,6 +250,10 @@ Level* level_create_from_json(const char* json_data) {
 
     printf("✓ Level initialized with dynamic enemy spawning (max: %d)\n", max_enemies);
 
+    // Initialize fruit system
+    fruit_initialize(level);
+    fruit_initialize_popups(level);
+
     cJSON_Delete(root);
 
 #if DEBUG_MODE
@@ -383,6 +388,7 @@ void level_render(Level* level) {
     render_columns(level);
     render_vines(level);
     render_platforms(level);
+    fruit_render(level);  // Render fruits after platforms but before popups
 }
 
 // ============================================================
@@ -395,6 +401,7 @@ void level_destroy(Level* level) {
         free(level->columns);
         free(level->vines);
         free(level->enemies);
+        fruit_destroy(level);  // Cleanup fruit system
         free(level);
 #if DEBUG_MODE
         printf("✓ Level destroyed\n");

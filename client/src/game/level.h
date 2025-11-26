@@ -3,6 +3,34 @@
 
 #include <stdbool.h>
 #include "enemy.h"
+#include "../rendering/sprite_manager.h"
+
+// ============================================================
+// FRUIT SYSTEM STRUCTURES (defined here to avoid circular dependency)
+// ============================================================
+
+/**
+ * Fruit - Collectible objects that award points
+ */
+typedef struct {
+    int id;           // Unique identifier
+    float x, y;       // Position in pixels
+    int vine_id;      // ID of vine this fruit is attached to
+    float height_ratio; // Height position on vine (0.0-1.0)
+    int points;       // Points awarded when collected (200/400/800)
+    bool collected;   // Whether fruit has been collected
+    SpriteType sprite; // Sprite to render (SPRITE_APPLE, SPRITE_BANANA, SPRITE_MANGO)
+} Fruit;
+
+/**
+ * PointsPopup - Temporary text showing points awarded
+ */
+typedef struct {
+    float x, y;       // Position in pixels
+    int points;       // Points value to display
+    float lifetime;   // Time remaining (starts at 1.5s)
+    bool active;      // Whether popup is active
+} PointsPopup;
 
 // ============================================================
 // LEVEL CONSTANTS
@@ -76,6 +104,16 @@ typedef struct {
     // Enemy spawning timers (temporary - will be admin controlled)
     float blue_spawn_timer;
     float red_spawn_timer;
+
+    // Fruits
+    Fruit* fruits;
+    int fruit_count;
+    int max_fruits;  // Maximum capacity of fruits array
+    
+    // Points popups
+    PointsPopup* popups;
+    int popup_count;
+    int max_popups;  // Maximum capacity of popups array
 
     // Goal positions
     float cage_x, cage_y;

@@ -5,6 +5,7 @@
 #include "../level.h"
 #include "../player.h"
 #include "../enemy.h"
+#include "../fruit.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
@@ -152,6 +153,14 @@ void show_player_screen(int client_id, Connection* conn) {
 
                 // Update physics and animation
                 player_update(&player, deltaTime);
+                
+                // Update fruit popups
+                fruit_update_popups(g_current_level, deltaTime);
+                
+                // Check fruit collision (only if player is alive)
+                if (player.state != STATE_DYING) {
+                    fruit_check_collision(&player, g_current_level);
+                }
                 
                 // Debug: Print player Y position periodically
                 static float debug_timer = 0.0f;
@@ -305,6 +314,9 @@ void show_player_screen(int client_id, Connection* conn) {
 
                 // Render player (foreground)
                 player_render(&player);
+                
+                // Render fruit popups (on top of player)
+                fruit_render_popups(g_current_level);
 
                 // UI overlay - show lives and level
                 font_manager_draw_client_id(client_id, "Player");
