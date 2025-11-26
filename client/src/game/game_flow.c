@@ -173,14 +173,14 @@ bool game_flow_run(void) {
                     pthread_t listener_thread = message_listener_start(conn);
                     
                     // Player screen
-                    show_player_screen(conn->client_id, conn);
+                    int final_score = show_player_screen(conn->client_id, conn);
                     
                     // Stop listener
                     message_listener_stop(listener_thread);
                     printf("DEBUG: Message listener stopped\n");
                     
-                    // Show lose screen (only option is return to title)
-                    show_lose_screen(conn->client_id);
+                    // Show lose screen with final score
+                    show_lose_screen(final_score);
                     
                     // Send DISCONNECT and return to title
                     printf("DEBUG: Returning to title - sending DISCONNECT\n");

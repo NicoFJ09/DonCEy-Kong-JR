@@ -66,4 +66,19 @@ int fruit_collect(Level* level, int fruit_index);
  */
 void fruit_destroy(Level* level);
 
+// ============================================================
+// ADMIN PANEL SPAWN FUNCTIONS (FASE 3)
+// ============================================================
+
+/**
+ * Spawn fruit at specific vine and position (admin controlled)
+ * @param level Level to spawn fruit in
+ * @param fruit_id Unique fruit ID from server
+ * @param vine_id Vine ID (1-11)
+ * @param position_y Vertical position on vine (0-24 depending on vine)
+ * @param type_str Fruit type string ("Mango- 200 pts", etc.)
+ * @return true if spawn successful, false if failed
+ */
+bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, const char* type_str);
+
 #endif

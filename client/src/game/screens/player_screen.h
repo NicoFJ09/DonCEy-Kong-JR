@@ -10,7 +10,8 @@
  * No user input - just waits for timer
  * @param client_id Client ID to display
  * @param conn Connection pointer (for map JSON access)
+ * @return Final score when game ends
  */
-void show_player_screen(int client_id, Connection* conn);
+int show_player_screen(int client_id, Connection* conn);
 
 #endif

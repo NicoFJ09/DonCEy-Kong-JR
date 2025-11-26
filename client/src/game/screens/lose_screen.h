@@ -10,11 +10,11 @@ typedef enum {
 
 /**
  * Display lose screen after player loses
- * Shows "YOU LOST" title and 2 options
- * Arrow keys to navigate, ENTER to select
- * @param client_id Client ID to display
+ * Shows "YOU LOST" title with final score
+ * Press ENTER to return to title
+ * @param final_score Final score achieved
  * @return Selected LoseOption (always LOSE_RETURN_TITLE)
  */
-LoseOption show_lose_screen(int client_id);
+LoseOption show_lose_screen(int final_score);
 
 #endif

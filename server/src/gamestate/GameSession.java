@@ -1,11 +1,16 @@
 package server.src.gamestate;
 
+import java.util.Map;
+import java.util.HashMap;
+
 /**
  * GameSession - Server-authoritative game state for a single player
  * 
  * This class maintains the authoritative state of a player's game session.
  * The client is responsible for all game logic, physics, and collision detection.
  * The server ONLY maintains score, lives, level, and speed multiplier.
+ * 
+ * FASE 3: Added admin-spawned fruit tracking
  * 
  * Flow:
  * 1. Client detects event (fruit collected, death, level complete)
@@ -28,6 +33,33 @@ public class GameSession {
     // Session state
     private SessionState state;
     
+    // FASE 3: Admin-spawned fruit tracking
+    // Maps fruit ID -> SpawnedFruit
+    private Map<Integer, SpawnedFruit> adminFruits;
+    private int nextFruitId;
+    
+    /**
+     * Represents a fruit spawned by admin panel
+     */
+    public static class SpawnedFruit {
+        public int id;
+        public int vineId;
+        public int positionY;
+        public String type;  // "Mango- 200 pts", etc.
+        
+        public SpawnedFruit(int id, int vineId, int positionY, String type) {
+            this.id = id;
+            this.vineId = vineId;
+            this.positionY = positionY;
+            this.type = type;
+        }
+        
+        @Override
+        public String toString() {
+            return type + " (Liana: " + vineId + ", PosY: " + positionY + ")";
+        }
+    }
+    
     public enum SessionState {
         PLAYING,
         DEAD,          // Player died, waiting for respawn
@@ -45,6 +77,10 @@ public class GameSession {
         this.level = 1;
         this.speedMultiplier = 1.0f;
         this.state = SessionState.PLAYING;
+        
+        // FASE 3: Initialize fruit tracking
+        this.adminFruits = new HashMap<>();
+        this.nextFruitId = 1000;  // Start at 1000 to avoid conflicts with level fruits (0-999)
         
         System.out.println("[SESSION] Created for Player #" + playerId + 
                           " - Lives: 3, Score: 0, Level: 1");
@@ -154,6 +190,45 @@ public class GameSession {
         
         System.out.println("[SESSION] Player #" + playerId + 
                           " session reset - Lives: 3, Score: 0, Level: 1");
+    }
+    
+    // ========== FASE 3: ADMIN FRUIT MANAGEMENT ==========
+    
+    /**
+     * Spawn fruit via admin panel
+     * @return Fruit ID assigned
+     */
+    public synchronized int spawnAdminFruit(int vineId, int positionY, String type) {
+        int fruitId = nextFruitId++;
+        SpawnedFruit fruit = new SpawnedFruit(fruitId, vineId, positionY, type);
+        adminFruits.put(fruitId, fruit);
+        
+        System.out.println("[SESSION] Player #" + playerId + 
+                          " admin fruit spawned: ID=" + fruitId + 
+                          ", vine=" + vineId + ", posY=" + positionY + 
+                          ", type=" + type);
+        
+        return fruitId;
+    }
+    
+    /**
+     * Remove fruit by ID
+     */
+    public synchronized boolean removeAdminFruit(int fruitId) {
+        SpawnedFruit removed = adminFruits.remove(fruitId);
+        if (removed != null) {
+            System.out.println("[SESSION] Player #" + playerId + 
+                              " admin fruit removed: ID=" + fruitId);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Get all spawned fruits for UI display
+     */
+    public synchronized Map<Integer, SpawnedFruit> getAdminFruits() {
+        return new HashMap<>(adminFruits);
     }
     
     // ========== GETTERS ==========

@@ -145,7 +145,20 @@ public class ServerUI extends JFrame {
         vineLabel.setBounds(25, 310, 200, 25);
         mainPanel.add(vineLabel);
 
-        JComboBox<String> vineCountCombo = new JComboBox<>(new String[]{"1", "2", "4", "5", "6", "7", "9"});
+        // Map DefaultMap vine numbers to actual client IDs
+        // DefaultMap shows vines 1-11, but client creates invisible laterals between them
+        // Snapjaws can only spawn on 7 specific vines (from DefaultMap numbering)
+        Map<String, Integer> snapjawVineMapping = new HashMap<>();
+        snapjawVineMapping.put("Liana 1", 1);    // DefaultMap Vine 1 → Client ID 1
+        snapjawVineMapping.put("Liana 2", 3);    // DefaultMap Vine 2 → Client ID 3
+        snapjawVineMapping.put("Liana 4", 6);    // DefaultMap Vine 4 → Client ID 6
+        snapjawVineMapping.put("Liana 5", 7);    // DefaultMap Vine 5 → Client ID 7
+        snapjawVineMapping.put("Liana 6", 9);    // DefaultMap Vine 6 → Client ID 9
+        snapjawVineMapping.put("Liana 7", 10);   // DefaultMap Vine 7 → Client ID 10
+        snapjawVineMapping.put("Liana 9", 14);   // DefaultMap Vine 9 → Client ID 14
+
+        // Dropdown shows DefaultMap vine numbers (what admin sees visually)
+        JComboBox<String> vineCountCombo = new JComboBox<>(new String[]{"Liana 1", "Liana 2", "Liana 4", "Liana 5", "Liana 6", "Liana 7", "Liana 9"});
         vineCountCombo.setFont(new Font("Arial", Font.PLAIN, 16));
         vineCountCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         vineCountCombo.setBackground(Color.WHITE);
@@ -157,6 +170,27 @@ public class ServerUI extends JFrame {
         addButton.setBackground(new Color(211, 182, 131));
         addButton.setFont(new Font("Arial", Font.BOLD, 15));
         addButton.setBounds(120, 360, 180, 40);
+        addButton.setOpaque(true);
+        addButton.setBorderPainted(true);
+        addButton.setContentAreaFilled(true);
+        addButton.setFocusPainted(false);
+        
+        // Add button press visual feedback with hover effect
+        addButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                addButton.setBackground(new Color(190, 161, 110)); // Hover shade
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                addButton.setBackground(new Color(211, 182, 131)); // Original color
+            }
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                addButton.setBackground(new Color(150, 121, 70)); // Pressed shade (darker)
+            }
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                addButton.setBackground(new Color(190, 161, 110)); // Back to hover
+            }
+        });
+        
         addButton.addActionListener(e -> {
             if (selectedPlayerId != -1) {
                 try {
@@ -165,19 +199,29 @@ public class ServerUI extends JFrame {
                     if (player != null) {
                         // Get crocodile data
                         String crocodileType = (String) crocodileTypeCombo.getSelectedItem();
-                        int vineCount = Integer.parseInt((String) vineCountCombo.getSelectedItem());
+                        String selectedVine = (String) vineCountCombo.getSelectedItem();
+                        
+                        // Map DefaultMap vine number to actual client ID
+                        int clientVineId = snapjawVineMapping.get(selectedVine);
                         
                         // Add crocodile to player
-                        player.addCrocodile(crocodileType, vineCount);
-                                                
-                        // Send message to the player
-                        String message = crocodileType + ", " + vineCount;
-                        server.sendMessageToClient(selectedPlayerId, "Agregar:" + message);
-                        System.out.println("Message sent to Player #" + selectedPlayerId);
+                        player.addCrocodile(crocodileType, clientVineId);
+                        
+                        // Determine enemy type (RED or BLUE)
+                        String enemyType = crocodileType.contains("Rojo") ? "RED" : "BLUE";
+                        
+                        // Send SPAWN_ENEMY command with client vine ID
+                        String command = "SPAWN_ENEMY:" + enemyType + ":" + clientVineId;
+                        server.sendMessageToClient(selectedPlayerId, command);
+                        
+                        System.out.println("✓ Sent to Player #" + selectedPlayerId + ": " + command);
                     }
                 } catch (Exception ex) {
-                    System.err.println("Error: " + ex.getMessage());
+                    System.err.println("Error spawning enemy: " + ex.getMessage());
+                    ex.printStackTrace();
                 }
+            } else {
+                System.out.println("✗ No player selected");
             }
         });
         mainPanel.add(addButton);
@@ -210,7 +254,22 @@ public class ServerUI extends JFrame {
         fruitPointsCombo.setBounds(230, 475, 165, 30);
         mainPanel.add(fruitPointsCombo);
     
-        JComboBox<String> vineCountCombo2 = new JComboBox<>(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"});
+        // Map ALL DefaultMap vine numbers (1-11) to actual client IDs
+        Map<String, Integer> fruitVineMapping = new HashMap<>();
+        fruitVineMapping.put("Liana 1", 1);     // DefaultMap Vine 1 → Client ID 1
+        fruitVineMapping.put("Liana 2", 3);     // DefaultMap Vine 2 → Client ID 3
+        fruitVineMapping.put("Liana 3", 5);     // DefaultMap Vine 3 → Client ID 5
+        fruitVineMapping.put("Liana 4", 6);     // DefaultMap Vine 4 → Client ID 6
+        fruitVineMapping.put("Liana 5", 7);     // DefaultMap Vine 5 → Client ID 7
+        fruitVineMapping.put("Liana 6", 9);     // DefaultMap Vine 6 → Client ID 9
+        fruitVineMapping.put("Liana 7", 10);    // DefaultMap Vine 7 → Client ID 10
+        fruitVineMapping.put("Liana 8", 12);    // DefaultMap Vine 8 → Client ID 12
+        fruitVineMapping.put("Liana 9", 14);    // DefaultMap Vine 9 → Client ID 14
+        fruitVineMapping.put("Liana 10", 16);   // DefaultMap Vine 10 → Client ID 16
+        fruitVineMapping.put("Liana 11", 18);   // DefaultMap Vine 11 → Client ID 18
+
+        // Fruits: ALL visible vines (11 vines total - no physics restrictions)
+        JComboBox<String> vineCountCombo2 = new JComboBox<>(new String[]{"Liana 1", "Liana 2", "Liana 3", "Liana 4", "Liana 5", "Liana 6", "Liana 7", "Liana 8", "Liana 9", "Liana 10", "Liana 11"});
         vineCountCombo2.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         vineCountCombo2.setFont(new Font("Arial", Font.PLAIN, 15));
         vineCountCombo2.setBackground(Color.WHITE);
@@ -228,18 +287,21 @@ public class ServerUI extends JFrame {
         positionYLabel.setBounds(25, 565, 200, 25);
         mainPanel.add(positionYLabel);
 
-        // Map to store position ranges for each vine
+        // Map to store position ranges for ALL DefaultMap vines (used for fruits)
+        // Based on heightBlocks from DefaultMap.java vine groups
+        // Key = DefaultMap vine label, Value = height in blocks
         Map<String, Integer> vinePositionRanges = new HashMap<>();
-        vinePositionRanges.put("1", 24);
-        vinePositionRanges.put("2", 21);
-        vinePositionRanges.put("3", 15);
-        vinePositionRanges.put("4", 18);
-        vinePositionRanges.put("5", 9);
-        vinePositionRanges.put("7", 9); 
-        vinePositionRanges.put("8", 6);
-        vinePositionRanges.put("9", 18);
-        vinePositionRanges.put("10", 21);
-        vinePositionRanges.put("11", 24);
+        vinePositionRanges.put("Liana 1", 24);    // DefaultMap Vine 1 (height=24)
+        vinePositionRanges.put("Liana 2", 21);    // DefaultMap Vine 2 (height=21)
+        vinePositionRanges.put("Liana 3", 15);    // DefaultMap Vine 3 (height=15)
+        vinePositionRanges.put("Liana 4", 18);    // DefaultMap Vine 4 (height=18)
+        vinePositionRanges.put("Liana 5", 9);     // DefaultMap Vine 5 (height=9)
+        vinePositionRanges.put("Liana 6", 9);     // DefaultMap Vine 6 (height=9)
+        vinePositionRanges.put("Liana 7", 12);    // DefaultMap Vine 7 (height=12)
+        vinePositionRanges.put("Liana 8", 6);     // DefaultMap Vine 8 (height=6)
+        vinePositionRanges.put("Liana 9", 18);    // DefaultMap Vine 9 (height=18)
+        vinePositionRanges.put("Liana 10", 21);   // DefaultMap Vine 10 (height=21)
+        vinePositionRanges.put("Liana 11", 24);   // DefaultMap Vine 11 (height=24)
 
 
         JComboBox<String> positionYCombo = new JComboBox<>();
@@ -276,32 +338,64 @@ public class ServerUI extends JFrame {
         addFruitButton.setBackground(new Color(211, 182, 131));
         addFruitButton.setFont(new Font("Arial", Font.BOLD, 15));
         addFruitButton.setBounds(120, 610, 180, 40);
+        addFruitButton.setOpaque(true);
+        addFruitButton.setBorderPainted(true);
+        addFruitButton.setContentAreaFilled(true);
+        addFruitButton.setFocusPainted(false);
+        
+        // Add button press visual feedback with hover effect
+        addFruitButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                addFruitButton.setBackground(new Color(190, 161, 110)); // Hover shade
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                addFruitButton.setBackground(new Color(211, 182, 131)); // Original color
+            }
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                addFruitButton.setBackground(new Color(150, 121, 70)); // Pressed shade (darker)
+            }
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                addFruitButton.setBackground(new Color(190, 161, 110)); // Back to hover
+            }
+        });
 
         addFruitButton.addActionListener(e -> {
             if (selectedPlayerId != -1) {
                 try {
-                    // Get player object (already created in updatePlayerList)
-                    Player player = players.get(selectedPlayerId);
-                    if (player != null) {
+                    // Get game session for fruit tracking
+                    server.src.gamestate.GameSession session = server.getGameSession(selectedPlayerId);
+                    if (session != null) {
                         // Get fruit data
                         String fruitType = (String) fruitPointsCombo.getSelectedItem();
-                        String vineCount = (String) vineCountCombo2.getSelectedItem();
+                        String selectedVine = (String) vineCountCombo2.getSelectedItem();
                         String positionY = (String) positionYCombo.getSelectedItem();
                         
                         if (positionY != null && !positionY.isEmpty()) {
-                            // Add fruit to player
-                            player.addFruit(fruitType, vineCount, positionY);
-                            fruitListModel.addElement(fruitType + " (Liana: " + vineCount + ", PosY: " + positionY + ")");
+                            // Map DefaultMap vine number to actual client ID
+                            int clientVineId = fruitVineMapping.get(selectedVine);
+                            int posY = Integer.parseInt(positionY);
                             
-                            // Send message to the player
-                            String message = fruitType + ", " + vineCount + ", " + positionY;
-                            server.sendMessageToClient(selectedPlayerId, "Agregar: " + message);
-                            System.out.println("Message sent to Player #" + selectedPlayerId);
+                            // Register fruit in server session (FASE 3)
+                            int fruitId = session.spawnAdminFruit(clientVineId, posY, fruitType);
+                            
+                            // Add to UI list with fruit ID (show DefaultMap vine label)
+                            String listEntry = fruitType + " (" + selectedVine + ", PosY: " + positionY + ", ID: " + fruitId + ")";
+                            fruitListModel.addElement(listEntry);
+                            
+                            // FASE 3: Send SPAWN_FRUIT command with client vine ID
+                            // Format: "SPAWN_FRUIT:vineId:positionY:type:fruitId"
+                            String command = "SPAWN_FRUIT:" + clientVineId + ":" + posY + ":" + fruitType + ":" + fruitId;
+                            server.sendMessageToClient(selectedPlayerId, command);
+                            
+                            System.out.println("✓ Sent to Player #" + selectedPlayerId + ": " + command);
                         }
                     }
                 } catch (Exception ex) {
-                    System.err.println("Error: " + ex.getMessage());
+                    System.err.println("Error spawning fruit: " + ex.getMessage());
+                    ex.printStackTrace();
                 }
+            } else {
+                System.out.println("✗ No player selected");
             }
         });
         mainPanel.add(addFruitButton);
@@ -338,6 +432,27 @@ public class ServerUI extends JFrame {
         removeButton.setBackground(new Color(211, 182, 131));
         removeButton.setFont(new Font("Arial", Font.BOLD, 15));
         removeButton.setBounds(315, 790, 98, 40);
+        removeButton.setOpaque(true);
+        removeButton.setBorderPainted(true);
+        removeButton.setContentAreaFilled(true);
+        removeButton.setFocusPainted(false);
+        
+        // Add button press visual feedback with hover effect
+        removeButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                removeButton.setBackground(new Color(190, 161, 110)); // Hover shade
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                removeButton.setBackground(new Color(211, 182, 131)); // Original color
+            }
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                removeButton.setBackground(new Color(150, 121, 70)); // Pressed shade (darker)
+            }
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                removeButton.setBackground(new Color(190, 161, 110)); // Back to hover
+            }
+        });
+        
         removeButton.addActionListener(e -> {
             int selectedIndex = fruitList.getSelectedIndex();
             if (selectedIndex != -1 && selectedPlayerId != -1) {

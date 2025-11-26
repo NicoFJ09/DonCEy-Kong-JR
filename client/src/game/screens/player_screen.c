@@ -316,11 +316,11 @@ static void handle_server_message(const char* message, void* user_data) {
 // PLAYER SCREEN
 // ============================================================
 
-void show_player_screen(int client_id, Connection* conn) {
+int show_player_screen(int client_id, Connection* conn) {
     // Create level from server JSON (REQUIRED)
     if (!conn || !conn->map_loaded || !conn->map_json) {
         printf("FATAL ERROR: No map data from server\n");
-        return;
+        return 0;
     }
 
     // Initialize HUD
@@ -359,7 +359,7 @@ void show_player_screen(int client_id, Connection* conn) {
         if (!g_current_level) {
             printf("FATAL ERROR: Failed to parse server map JSON\n");
             hud_cleanup();
-            return;
+            return 0;
         }
         
         // Set level state
@@ -466,67 +466,31 @@ void show_player_screen(int client_id, Connection* conn) {
                     }
                 }
                 
+                // ============================================================
+                // ADMIN COMMAND PROCESSING (PHASE 1)
+                // Process any pending admin commands from server
+                // Commands are queued by message_listener thread, processed here in main thread
+                // ============================================================
+                message_listener_process_admin_commands((struct Level*)g_current_level, conn);
+                
+                // ============================================================
+                // AUTOMATIC ENEMY SPAWNING (COMMENTED OUT - NOW ADMIN CONTROLLED)
+                // Enemies will spawn via admin panel commands in Phase 2
+                // ============================================================
+                
                 // Update red crocodile spawn timer (temporary - will be admin controlled)
-                g_current_level->red_spawn_timer += deltaTime;
-                if (g_current_level->red_spawn_timer >= 3.0f) {  // Spawn every 3 seconds
-                    g_current_level->red_spawn_timer = 0.0f;
-
-                    // Find first inactive enemy slot or add new one
-                    int spawn_index = -1;
-                    for (int i = 0; i < g_current_level->enemy_count; i++) {
-                        if (!g_current_level->enemies[i].active) {
-                            spawn_index = i;
-                            break;
-                        }
-                    }
-
-                    // If no inactive slot found, add new enemy if space available
-                    if (spawn_index == -1 && g_current_level->enemy_count < g_current_level->max_enemies) {
-                        spawn_index = g_current_level->enemy_count;
-                        g_current_level->enemy_count++;
-                    }
-
-                    // Spawn red crocodile at Mario's position
-                    if (spawn_index != -1) {
-                        enemy_init_red_crocodile(&g_current_level->enemies[spawn_index],
-                                                 g_current_level,
-                                                 g_current_level->mario_x,
-                                                 g_current_level->mario_y);
-                        // Apply level speed multiplier
-                        g_current_level->enemies[spawn_index].speed_multiplier = g_current_level->speed_multiplier;
-                    }
-                }
+                // g_current_level->red_spawn_timer += deltaTime;
+                // if (g_current_level->red_spawn_timer >= 3.0f) {  // Spawn every 3 seconds
+                //     g_current_level->red_spawn_timer = 0.0f;
+                //     ... spawn logic ...
+                // }
 
                 // Update blue crocodile spawn timer (temporary - will be admin controlled)
-                g_current_level->blue_spawn_timer += deltaTime;
-                if (g_current_level->blue_spawn_timer >= 5.0f) {  // Spawn every 5 seconds (less frequent)
-                    g_current_level->blue_spawn_timer = 0.0f;
-
-                    // Find first inactive enemy slot or add new one
-                    int spawn_index = -1;
-                    for (int i = 0; i < g_current_level->enemy_count; i++) {
-                        if (!g_current_level->enemies[i].active) {
-                            spawn_index = i;
-                            break;
-                        }
-                    }
-
-                    // If no inactive slot found, add new enemy if space available
-                    if (spawn_index == -1 && g_current_level->enemy_count < g_current_level->max_enemies) {
-                        spawn_index = g_current_level->enemy_count;
-                        g_current_level->enemy_count++;
-                    }
-
-                    // Spawn blue crocodile at Mario's position
-                    if (spawn_index != -1) {
-                        enemy_init_blue_crocodile(&g_current_level->enemies[spawn_index],
-                                                 g_current_level,
-                                                 g_current_level->mario_x,
-                                                 g_current_level->mario_y);
-                        // Apply level speed multiplier
-                        g_current_level->enemies[spawn_index].speed_multiplier = g_current_level->speed_multiplier;
-                    }
-                }
+                // g_current_level->blue_spawn_timer += deltaTime;
+                // if (g_current_level->blue_spawn_timer >= 5.0f) {  // Spawn every 5 seconds (less frequent)
+                //     g_current_level->blue_spawn_timer = 0.0f;
+                //     ... spawn logic ...
+                // }
                 
                 // Check if player reached DK cage (victory condition)
                 float player_center_x = player.x + 48;
@@ -594,7 +558,9 @@ void show_player_screen(int client_id, Connection* conn) {
                 }
                 
                 // Update all enemies
-                for (int i = 0; i < g_current_level->enemy_count; i++) {
+                for (int i = 0; i < g_current_level->max_enemies; i++) {
+                    if (!g_current_level->enemies[i].active) continue;
+                    
                     enemy_update(&g_current_level->enemies[i], deltaTime);
                     
                     // Check collision with player only if still alive
@@ -643,7 +609,7 @@ void show_player_screen(int client_id, Connection* conn) {
                 render_goal_objects(g_current_level, deltaTime);
 
                 // Render enemies
-                for (int i = 0; i < g_current_level->enemy_count; i++) {
+                for (int i = 0; i < g_current_level->max_enemies; i++) {
                     if (g_current_level->enemies[i].active) {
                         enemy_render(&g_current_level->enemies[i]);
                     }
@@ -657,6 +623,30 @@ void show_player_screen(int client_id, Connection* conn) {
 
                 // Render HUD on top of everything
                 render_hud(&player, g_current_level, client_id);
+
+                // Show pause overlay if window lost focus
+                if (!IsWindowFocused()) {
+                    // Gray filter overlay
+                    DrawRectangle(0, 0, UI_WINDOW_WIDTH, UI_WINDOW_HEIGHT, (Color){0, 0, 0, 180});
+                    
+                    // "PAUSED" text centered
+                    const char* pause_text = "PAUSED";
+                    float fontSize = 48;
+                    float spacing = 2;
+                    Vector2 textSize = MeasureTextEx(g_hud_font, pause_text, fontSize, spacing);
+                    
+                    DrawTextEx(
+                        g_hud_font,
+                        pause_text,
+                        (Vector2){
+                            (UI_WINDOW_WIDTH - textSize.x) / 2,
+                            (UI_WINDOW_HEIGHT - textSize.y) / 2
+                        },
+                        fontSize,
+                        spacing,
+                        WHITE
+                    );
+                }
 
             EndDrawing();
         }
@@ -679,4 +669,7 @@ void show_player_screen(int client_id, Connection* conn) {
     
     // Game over - game_flow.c will handle showing lose screen
     g_current_level = NULL;
+    
+    printf("[PLAYER] Returning final score: %d\n", player_score);
+    return player_score;
 }

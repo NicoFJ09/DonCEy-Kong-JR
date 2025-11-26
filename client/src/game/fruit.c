@@ -5,6 +5,7 @@
 #include "../utils/constants.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 // ============================================================
@@ -130,6 +131,94 @@ void fruit_initialize(Level* level) {
     }
     
     printf("✓ Initialized %d fruits on %d visible vines\n", level->fruit_count, visible_vine_count);
+}
+
+// ============================================================
+// ADMIN PANEL SPAWN (FASE 3)
+// ============================================================
+
+bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, const char* type_str) {
+    if (!level || !type_str) {
+        printf("[ADMIN] Error: Invalid level or type_str\n");
+        return false;
+    }
+    
+    // Check if we have space
+    if (level->fruit_count >= level->max_fruits) {
+        printf("[ADMIN] Error: Max fruits reached (%d)\n", level->max_fruits);
+        return false;
+    }
+    
+    // Find vine by ID
+    Vine* target_vine = NULL;
+    for (int i = 0; i < level->vine_count; i++) {
+        if (level->vines[i].id == vine_id && level->vines[i].visible) {
+            target_vine = &level->vines[i];
+            break;
+        }
+    }
+    
+    if (!target_vine) {
+        printf("[ADMIN] Error: Vine ID %d not found or not visible\n", vine_id);
+        return false;
+    }
+    
+    // Parse fruit type and points from type_str ("Mango- 200 pts")
+    SpriteType sprite;
+    int points;
+    
+    if (strstr(type_str, "Mango")) {
+        sprite = SPRITE_FRUIT_MANGO;
+        points = FRUIT_POINTS_MANGO;
+    } else if (strstr(type_str, "Banana")) {
+        sprite = SPRITE_FRUIT_BANANA;
+        points = FRUIT_POINTS_BANANA;
+    } else if (strstr(type_str, "Manzana") || strstr(type_str, "Apple")) {
+        sprite = SPRITE_FRUIT_APPLE;
+        points = FRUIT_POINTS_APPLE;
+    } else {
+        printf("[ADMIN] Error: Unknown fruit type: %s\n", type_str);
+        return false;
+    }
+    
+    // Calculate position on vine
+    // position_y is 0-24 scale, convert to height_ratio (0.0-1.0)
+    float vine_height = target_vine->y_bottom - target_vine->y_top;
+    
+    // Map position_y to height (0 = top, max = bottom)
+    // Get max position for this vine
+    float max_positions = 24.0f;  // Default max
+    
+    // Calculate height ratio (0.0 = top, 1.0 = bottom)
+    float height_ratio = (float)position_y / max_positions;
+    
+    // Clamp to safe range
+    if (height_ratio < 0.1f) height_ratio = 0.1f;
+    if (height_ratio > 0.9f) height_ratio = 0.9f;
+    
+    // Calculate actual Y position
+    float fruit_y = target_vine->y_top + (vine_height * height_ratio);
+    
+    // Center fruit on vine
+    float fruit_x = target_vine->x - (FRUIT_WIDTH / 2.0f);
+    
+    // Create fruit
+    Fruit* fruit = &level->fruits[level->fruit_count];
+    fruit->id = fruit_id;  // Use server-provided ID
+    fruit->x = fruit_x;
+    fruit->y = fruit_y;
+    fruit->vine_id = target_vine->id;
+    fruit->height_ratio = height_ratio;
+    fruit->points = points;
+    fruit->collected = false;
+    fruit->sprite = sprite;
+    
+    level->fruit_count++;
+    
+    printf("[ADMIN] ✓ Spawned fruit ID=%d (%s, %d pts) at vine %d, position (%.0f, %.0f)\n",
+           fruit_id, type_str, points, vine_id, fruit_x, fruit_y);
+    
+    return true;
 }
 
 /**

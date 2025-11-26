@@ -497,3 +497,127 @@ bool enemy_collides_with_player(Enemy* enemy, float player_x, float player_y) {
 
     return x_overlap && y_overlap;
 }
+
+// ============================================================
+// ADMIN PANEL SPAWN FUNCTIONS (FASE 2)
+// ============================================================
+
+bool enemy_spawn_red_at_vine_id(Enemy* enemy, struct Level* level_ptr, int vine_id) {
+    if (!enemy || !level_ptr) {
+        printf("[ADMIN] Error: Invalid enemy or level pointer\n");
+        return false;
+    }
+    
+    Level* level = (Level*)level_ptr;
+    
+    // Find vine with matching id (server validates accessible vines)
+    Vine* target_vine = NULL;
+    int vine_index = -1;
+    
+    for (int i = 0; i < level->vine_count; i++) {
+        if (level->vines[i].id == vine_id && level->vines[i].visible) {
+            target_vine = &level->vines[i];
+            vine_index = i;
+            break;
+        }
+    }
+    
+    if (!target_vine) {
+        printf("[ADMIN] Error: Vine ID %d not found or not visible\n", vine_id);
+        return false;
+    }
+    
+    // Initialize red crocodile with modified logic
+    enemy->type = ENEMY_RED_CROCODILE;
+    
+    // Find the highest platform
+    float platform_y = LEVEL_HEIGHT;
+    for (int i = 0; i < level->platform_count; i++) {
+        Platform* plat = &level->platforms[i];
+        if (plat->y < platform_y) {
+            platform_y = plat->y;
+        }
+    }
+    
+    // Start at Mario's position (top-left)
+    enemy->x = level->mario_x;
+    enemy->y = platform_y - 24.0f;
+    
+    // Set target vine
+    enemy->target_platform_id = vine_index;
+    enemy->attached_vine_id = -1;
+    
+    // Start walking right
+    enemy->state = ENEMY_STATE_WALKING_RIGHT;
+    enemy->velocity_x = 80.0f;
+    enemy->velocity_y = 0;
+    
+    // Animation
+    enemy->animation_time = 0;
+    enemy->current_frame = 0;
+    enemy->active = true;
+    enemy->speed_multiplier = level->speed_multiplier;
+    
+    printf("[ADMIN] ✓ Red croc spawned, walking to vine %d at x=%.0f\n", vine_id, target_vine->x);
+    return true;
+}
+
+bool enemy_spawn_blue_at_vine_id(Enemy* enemy, struct Level* level_ptr, int vine_id) {
+    if (!enemy || !level_ptr) {
+        printf("[ADMIN] Error: Invalid enemy or level pointer\n");
+        return false;
+    }
+    
+    Level* level = (Level*)level_ptr;
+    
+    // Find vine with matching id (server validates accessible vines)
+    Vine* target_vine = NULL;
+    int vine_index = -1;
+    
+    for (int i = 0; i < level->vine_count; i++) {
+        if (level->vines[i].id == vine_id && level->vines[i].visible) {
+            target_vine = &level->vines[i];
+            vine_index = i;
+            break;
+        }
+    }
+    
+    if (!target_vine) {
+        printf("[ADMIN] Error: Vine ID %d not found or not visible\n", vine_id);
+        return false;
+    }
+    
+    // Initialize blue crocodile
+    enemy->type = ENEMY_BLUE_CROCODILE;
+    
+    // Find the highest platform
+    float platform_y = LEVEL_HEIGHT;
+    for (int i = 0; i < level->platform_count; i++) {
+        Platform* plat = &level->platforms[i];
+        if (plat->y < platform_y) {
+            platform_y = plat->y;
+        }
+    }
+    
+    // Start at Mario's position (top-left)
+    enemy->x = level->mario_x;
+    enemy->y = platform_y - 24.0f;
+    
+    // Set target vine
+    enemy->target_platform_id = vine_index;
+    enemy->attached_vine_id = -1;
+    
+    // Start walking right
+    enemy->state = ENEMY_STATE_WALKING_RIGHT;
+    enemy->velocity_x = 80.0f;
+    enemy->velocity_y = 0;
+    
+    // Animation
+    enemy->animation_time = 0;
+    enemy->current_frame = 0;
+    enemy->active = true;
+    enemy->speed_multiplier = level->speed_multiplier;
+    
+    printf("[ADMIN] ✓ Blue croc spawned, walking to vine %d\n", vine_id);
+    return true;
+}

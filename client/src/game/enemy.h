@@ -99,4 +99,26 @@ void enemy_render(Enemy* enemy);
  */
 bool enemy_collides_with_player(Enemy* enemy, float player_x, float player_y);
 
+// ============================================================
+// ADMIN PANEL SPAWN FUNCTIONS (FASE 2)
+// ============================================================
+
+/**
+ * Spawn red crocodile at specific vine ID (admin controlled)
+ * @param enemy Enemy to initialize
+ * @param level Level pointer
+ * @param vine_id Target vine ID (1-11 from admin panel)
+ * @return true if spawn successful, false if vine invalid
+ */
+bool enemy_spawn_red_at_vine_id(Enemy* enemy, struct Level* level, int vine_id);
+
+/**
+ * Spawn blue crocodile at specific vine ID (admin controlled)
+ * @param enemy Enemy to initialize
+ * @param level Level pointer
+ * @param vine_id Target vine ID (1-11 from admin panel)
+ * @return true if spawn successful, false if vine invalid
+ */
+bool enemy_spawn_blue_at_vine_id(Enemy* enemy, struct Level* level, int vine_id);
+
 #endif // ENEMY_H

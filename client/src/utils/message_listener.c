@@ -1,10 +1,88 @@
 #include "message_listener.h"
 #include "../utils/constants.h"
+#include "../game/level.h"
+#include "../game/enemy.h"
+#include "../game/fruit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+
+// ============================================================
+// ADMIN COMMAND QUEUE (Thread-Safe)
+// Stores commands from server to be processed in main thread
+// ============================================================
+
+#define ADMIN_QUEUE_SIZE 32
+
+typedef struct {
+    char command[512];
+    bool valid;
+} AdminCommand;
+
+typedef struct {
+    AdminCommand commands[ADMIN_QUEUE_SIZE];
+    int head;
+    int tail;
+    pthread_mutex_t mutex;
+} AdminCommandQueue;
+
+static AdminCommandQueue g_admin_queue = {
+    .head = 0,
+    .tail = 0,
+    .mutex = PTHREAD_MUTEX_INITIALIZER
+};
+
+// ============================================================
+// ADMIN COMMAND QUEUE FUNCTIONS
+// ============================================================
+
+static void admin_queue_enqueue(const char* command) {
+    pthread_mutex_lock(&g_admin_queue.mutex);
+    
+    int next_tail = (g_admin_queue.tail + 1) % ADMIN_QUEUE_SIZE;
+    
+    // Check if queue is full
+    if (next_tail == g_admin_queue.head) {
+        printf("[ADMIN] WARNING: Command queue full, dropping: %s\n", command);
+        pthread_mutex_unlock(&g_admin_queue.mutex);
+        return;
+    }
+    
+    // Add command to queue
+    strncpy(g_admin_queue.commands[g_admin_queue.tail].command, command, 511);
+    g_admin_queue.commands[g_admin_queue.tail].command[511] = '\0';
+    g_admin_queue.commands[g_admin_queue.tail].valid = true;
+    g_admin_queue.tail = next_tail;
+    
+    printf("[ADMIN] Command queued: %s\n", command);
+    
+    pthread_mutex_unlock(&g_admin_queue.mutex);
+}
+
+static bool admin_queue_dequeue(char* out_command, size_t max_len) {
+    pthread_mutex_lock(&g_admin_queue.mutex);
+    
+    // Check if queue is empty
+    if (g_admin_queue.head == g_admin_queue.tail) {
+        pthread_mutex_unlock(&g_admin_queue.mutex);
+        return false;
+    }
+    
+    // Get command from queue
+    AdminCommand* cmd = &g_admin_queue.commands[g_admin_queue.head];
+    if (cmd->valid) {
+        strncpy(out_command, cmd->command, max_len - 1);
+        out_command[max_len - 1] = '\0';
+        cmd->valid = false;
+    }
+    
+    g_admin_queue.head = (g_admin_queue.head + 1) % ADMIN_QUEUE_SIZE;
+    
+    pthread_mutex_unlock(&g_admin_queue.mutex);
+    return true;
+}
 
 // Structure to hold context for the listener thread
 typedef struct {
@@ -28,13 +106,20 @@ static void* listener_thread_func(void* arg) {
             if (connection_receive(ctx->conn, buffer, BUFFER_SIZE)) {
                 printf("[LISTENER] Received message: '%s'\n", buffer);
                 
-                // Call callback if set
-                if (ctx->callback) {
-                    printf("[LISTENER] Calling callback for message\n");
-                    ctx->callback(buffer, ctx->user_data);
-                    printf("[LISTENER] Callback completed\n");
+                // Check if this is an admin command
+                if (strncmp(buffer, "SPAWN_", 6) == 0 || 
+                    strncmp(buffer, "REMOVE_", 7) == 0) {
+                    // Admin command → queue it for processing in main thread
+                    admin_queue_enqueue(buffer);
                 } else {
-                    printf("[LISTENER] WARNING: No callback set!\n");
+                    // Regular message → call callback
+                    if (ctx->callback) {
+                        printf("[LISTENER] Calling callback for message\n");
+                        ctx->callback(buffer, ctx->user_data);
+                        printf("[LISTENER] Callback completed\n");
+                    } else {
+                        printf("[LISTENER] WARNING: No callback set!\n");
+                    }
                 }
             } else {
                 printf("[LISTENER] connection_receive returned false\n");
@@ -95,4 +180,110 @@ void message_listener_stop(pthread_t thread_id) {
         free(g_listener_context);
         g_listener_context = NULL;
     }
+}
+
+// ============================================================
+// PUBLIC API FOR ADMIN COMMAND PROCESSING
+// To be called from main thread (player_screen.c)
+// ============================================================
+
+void message_listener_process_admin_commands(struct Level* level, Connection* conn) {
+    if (!level) {
+        return;  // Can't process commands without a level
+    }
+    
+    // Need to cast to Level* to access fields
+    Level* lvl = (Level*)level;
+    
+    char command[512];
+    
+    // Process all queued commands (max 10 per frame to avoid lag)
+    int processed = 0;
+    while (processed < 10 && admin_queue_dequeue(command, sizeof(command))) {
+        printf("[ADMIN] Processing command: %s\n", command);
+        
+        // ============================================================
+        // FASE 2: SPAWN_ENEMY HANDLER
+        // Format: "SPAWN_ENEMY:RED:5" or "SPAWN_ENEMY:BLUE:3"
+        // ============================================================
+        if (strncmp(command, ADMIN_SPAWN_ENEMY, strlen(ADMIN_SPAWN_ENEMY)) == 0) {
+            // Parse command: "SPAWN_ENEMY:RED:5"
+            const char* params = command + strlen(ADMIN_SPAWN_ENEMY);
+            char type[32];
+            int vine_id;
+            
+            if (sscanf(params, "%31[^:]:%d", type, &vine_id) == 2) {
+                // Find empty enemy slot
+                Enemy* empty_slot = NULL;
+                for (int i = 0; i < lvl->max_enemies; i++) {
+                    if (!lvl->enemies[i].active) {
+                        empty_slot = &lvl->enemies[i];
+                        break;
+                    }
+                }
+                
+                if (empty_slot) {
+                    bool success = false;
+                    
+                    if (strcmp(type, ENEMY_TYPE_RED) == 0) {
+                        success = enemy_spawn_red_at_vine_id(empty_slot, level, vine_id);
+                    }
+                    else if (strcmp(type, ENEMY_TYPE_BLUE) == 0) {
+                        success = enemy_spawn_blue_at_vine_id(empty_slot, level, vine_id);
+                    }
+                    else {
+                        printf("[ADMIN] Error: Unknown enemy type '%s'\n", type);
+                    }
+                    
+                    if (success) {
+                        printf("[ADMIN] ✓ Spawned %s enemy at vine %d\n", type, vine_id);
+                    }
+                } else {
+                    printf("[ADMIN] Error: No empty enemy slots (max=%d)\n", lvl->max_enemies);
+                }
+            } else {
+                printf("[ADMIN] Error: Invalid SPAWN_ENEMY format: %s\n", command);
+            }
+        }
+        // ============================================================
+        // FASE 3: SPAWN_FRUIT HANDLER
+        // Format: "SPAWN_FRUIT:vineId:positionY:type:fruitId"
+        // Example: "SPAWN_FRUIT:2:10:Mango- 200 pts:1001"
+        // ============================================================
+        else if (strncmp(command, ADMIN_SPAWN_FRUIT, strlen(ADMIN_SPAWN_FRUIT)) == 0) {
+            // Parse command
+            const char* params = command + strlen(ADMIN_SPAWN_FRUIT);
+            int vine_id, position_y, fruit_id;
+            char type_str[64];
+            
+            // Parse: vineId:positionY:type:fruitId
+            int parsed = sscanf(params, "%d:%d:%63[^:]:%d", &vine_id, &position_y, type_str, &fruit_id);
+            
+            if (parsed == 4) {
+                // Spawn fruit using admin function
+                bool success = fruit_spawn_admin(lvl, fruit_id, vine_id, position_y, type_str);
+                
+                if (success) {
+                    printf("[ADMIN] ✓ Spawned fruit ID=%d at vine %d, pos %d\\n", fruit_id, vine_id, position_y);
+                } else {
+                    printf("[ADMIN] Error: Failed to spawn fruit\\n");
+                }
+            } else {
+                printf("[ADMIN] Error: Invalid SPAWN_FRUIT format: %s\\n", command);
+            }
+        }
+        // ============================================================
+        // FASE 4: REMOVE_FRUIT HANDLER (STUB)
+        // ============================================================
+        else if (strncmp(command, ADMIN_REMOVE_FRUIT, strlen(ADMIN_REMOVE_FRUIT)) == 0) {
+            printf("[ADMIN] → Fruit remove command received (FASE 4 - not implemented yet)\n");
+        }
+        else {
+            printf("[ADMIN] → Unknown command: %s\n", command);
+        }
+        
+        processed++;
+    }
+    
+    (void)conn;  // Will be used in Phase 2/3 for confirmations
 }
