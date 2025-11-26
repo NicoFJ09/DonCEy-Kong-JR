@@ -56,18 +56,17 @@ static const struct {
     [SPRITE_STEM_WIDE]  = {"environment/grass/wide_stem.png", 48, 24, 1, 0},
     
     // Fruit (16x16 single frames)
-    [SPRITE_FRUIT_APPLE]  = {"fruit/apple.png", 16, 16, 1, 0},
-    [SPRITE_FRUIT_BANANA] = {"fruit/banana.png", 16, 16, 1, 0},
-    [SPRITE_FRUIT_MANGO]  = {"fruit/mango.png", 16, 16, 1, 0},
+    [SPRITE_FRUIT_APPLE]  = {"fruit/apple.png", 24, 24, 1, 0},
+    [SPRITE_FRUIT_BANANA] = {"fruit/banana.png", 24, 24, 1, 0},
+    [SPRITE_FRUIT_MANGO]  = {"fruit/mango.png", 24, 24, 1, 0},
     
     // Effects
-    [SPRITE_SPLASH]       = {"effects/splash/splash.png", 16, 16, 2, 2},
-    [SPRITE_POINTS_200]   = {"effects/points/200.png", 16, 16, 1, 0},
-    [SPRITE_POINTS_400]   = {"effects/points/400.png", 16, 16, 1, 0},
-    [SPRITE_POINTS_800]   = {"effects/points/800.png", 16, 16, 1, 0},
+    [SPRITE_POINTS_200]   = {"effects/points/200.png", 24, 24, 1, 0},
+    [SPRITE_POINTS_400]   = {"effects/points/400.png", 24, 24, 1, 0},
+    [SPRITE_POINTS_800]   = {"effects/points/800.png", 24, 24, 1, 0},
     
     // UI
-    [SPRITE_LIFE] = {"ui/lives/life.png", 16, 16, 1, 0},
+    [SPRITE_LIFE] = {"ui/lives/life.png", 24, 24, 1, 0},
     [SPRITE_LOGO] = {"ui/logo/logo.png", 310, 84, 1, 0},
 };
 
@@ -229,7 +228,6 @@ const char* sprite_manager_get_name(SpriteType type) {
         case SPRITE_FRUIT_MANGO:  return "Mango";
         
         // Effects
-        case SPRITE_SPLASH:     return "Splash";
         case SPRITE_POINTS_200: return "200pts";
         case SPRITE_POINTS_400: return "400pts";
         case SPRITE_POINTS_800: return "800pts";
