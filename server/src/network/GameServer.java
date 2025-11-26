@@ -83,6 +83,26 @@ public class GameServer {
     
     public void stop() {
         running = false;
+        
+        // Notify all connected clients that server is shutting down
+        System.out.println("Broadcasting SERVER_SHUTDOWN to all clients...");
+        synchronized(clientHandlers) {
+            for (ClientHandler handler : clientHandlers.values()) {
+                try {
+                    handler.sendMessageToPlayer("SERVER_SHUTDOWN");
+                } catch (Exception e) {
+                    // Ignore - client may already be disconnected
+                }
+            }
+        }
+        
+        // Give clients time to receive shutdown message
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
         try {
             if (serverSocket != null) serverSocket.close();
         } catch (IOException e) {
@@ -193,6 +213,11 @@ public class GameServer {
         NetworkPlayer player = players.remove(id);
         if (player != null) {
             System.out.println("Player #" + id + " disconnected");
+            
+            // Deselect in admin UI if this player was selected
+            if (ui != null) {
+                ui.onPlayerDisconnected(id);
+            }
             
             List<Integer> orphanedSpectators = new ArrayList<>();
             for (Map.Entry<Integer, Integer> entry : spectators.entrySet()) {

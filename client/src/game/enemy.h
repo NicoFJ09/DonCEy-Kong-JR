@@ -100,7 +100,7 @@ void enemy_render(Enemy* enemy);
 bool enemy_collides_with_player(Enemy* enemy, float player_x, float player_y);
 
 // ============================================================
-// ADMIN PANEL SPAWN FUNCTIONS (FASE 2)
+// ADMIN PANEL SPAWN FUNCTIONS
 // ============================================================
 
 /**

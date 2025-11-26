@@ -443,7 +443,9 @@ void enemy_render(Enemy* enemy) {
 
     SpriteSheet* sprite = sprite_manager_get(sprite_type);
     if (!sprite || !sprite->loaded) {
+#if DEBUG_MODE
         DrawRectangle((int)enemy->x - 12, (int)enemy->y - 12, 24, 24, RED);
+#endif
         return;
     }
 
@@ -468,8 +470,10 @@ void enemy_render(Enemy* enemy) {
     Vector2 origin = {0, 0};
     DrawTexturePro(sprite->texture, src, dest, origin, 0.0f, WHITE);
 
+#if DEBUG_MODE
     // DEBUG: Draw hitbox (24x24 centered on enemy position)
     DrawRectangleLines((int)enemy->x - 12, (int)enemy->y - 12, 24, 24, YELLOW);
+#endif
 }
 
 // ============================================================
@@ -499,7 +503,7 @@ bool enemy_collides_with_player(Enemy* enemy, float player_x, float player_y) {
 }
 
 // ============================================================
-// ADMIN PANEL SPAWN FUNCTIONS (FASE 2)
+// ADMIN PANEL SPAWN FUNCTIONS
 // ============================================================
 
 bool enemy_spawn_red_at_vine_id(Enemy* enemy, struct Level* level_ptr, int vine_id) {

@@ -29,9 +29,10 @@ typedef struct {
     bool* game_over_ptr;
     bool* level_complete_ptr;
     Player* player_ptr;  // For instant HUD updates
+    Connection** conn_ptr;  // For server shutdown detection
 } PlayerUpdateData;
 
-static PlayerUpdateData g_player_update_data = {NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static PlayerUpdateData g_player_update_data = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 // ============================================================
 // HUD RESOURCES
@@ -310,6 +311,21 @@ static void handle_server_message(const char* message, void* user_data) {
         printf("[SERVER] ☠️ GAME OVER! Final Score: %d (game_over flag set)\n", final_score);
         return;
     }
+    
+    // SERVER_SHUTDOWN - Server closed cleanly, disconnect and return to IP input
+    if (strcmp(message, PROTO_SERVER_SHUTDOWN) == 0) {
+        printf("[SERVER] ⚠ Server shutdown detected - disconnecting\n");
+        
+        if (g_player_update_data.conn_ptr) {
+            (*g_player_update_data.conn_ptr)->connected = false;
+        }
+        
+        if (g_player_update_data.game_over_ptr) {
+            *g_player_update_data.game_over_ptr = true;
+        }
+        
+        return;
+    }
 }
 
 // ============================================================
@@ -346,6 +362,7 @@ int show_player_screen(int client_id, Connection* conn) {
     g_player_update_data.game_over_ptr = &game_over;
     g_player_update_data.level_complete_ptr = &level_complete;
     g_player_update_data.player_ptr = &player;  // For instant HUD updates
+    g_player_update_data.conn_ptr = &conn;  // For server shutdown detection
     message_listener_set_callback(handle_server_message, NULL);
     
     printf("[PLAYER] Server message handler active (SERVER AUTHORITATIVE MODE)\n");
@@ -660,6 +677,7 @@ int show_player_screen(int client_id, Connection* conn) {
     g_player_update_data.score_ptr = NULL;
     g_player_update_data.lives_ptr = NULL;
     g_player_update_data.game_over_ptr = NULL;
+    g_player_update_data.conn_ptr = NULL;
     message_listener_set_callback(NULL, NULL);
     
     printf("[PLAYER] Server message handler cleared\n");

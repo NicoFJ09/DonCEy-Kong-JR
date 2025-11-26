@@ -75,7 +75,7 @@ int fruit_collect(Level* level, int fruit_index);
 void fruit_destroy(Level* level);
 
 // ============================================================
-// ADMIN PANEL SPAWN FUNCTIONS (FASE 3)
+// ADMIN PANEL SPAWN FUNCTIONS
 // ============================================================
 
 /**

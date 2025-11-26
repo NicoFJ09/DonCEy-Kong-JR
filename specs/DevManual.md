@@ -24,8 +24,8 @@ cd server
 # Limpiar
 rm -rf bin/*
 
-# Compilar (incluye gamestate y entities)
-javac -d bin src/Main.java src/network/*.java src/utils/*.java src/ui/*.java src/game/*.java src/gamestate/GameSession.java src/entities/*.java
+# Compilar
+javac -d bin src/Main.java src/network/*.java src/utils/*.java src/ui/*.java src/game/*.java src/gamestate/GameSession.java
 
 # Ejecutar
 java -cp bin server.src.Main
@@ -42,8 +42,8 @@ cd server
 # Limpiar
 Remove-Item -Recurse -Force bin\* -ErrorAction SilentlyContinue
 
-# Compilar (incluye gamestate y entities)
-javac -d bin src\Main.java src\network\*.java src\utils\*.java src\ui\*.java src\game\*.java src\gamestate\GameSession.java src\entities\*.java
+# Compilar
+javac -d bin src\Main.java src\network\*.java src\utils\*.java src\ui\*.java src\game\*.java src\gamestate\GameSession.java
 
 # Ejecutar
 java -cp bin server.src.Main

@@ -109,8 +109,20 @@ static void* listener_thread_func(void* arg) {
             if (connection_receive(ctx->conn, buffer, BUFFER_SIZE)) {
                 printf("[LISTENER] Received message: '%s'\n", buffer);
                 
+                // Check for critical SERVER_SHUTDOWN message first
+                if (strcmp(buffer, PROTO_SERVER_SHUTDOWN) == 0) {
+                    printf("[LISTENER] ⚠ SERVER_SHUTDOWN received - marking connection as closed\n");
+                    ctx->conn->connected = false;
+                    ctx->running = false;
+                    
+                    // Call callback to notify upper layers
+                    if (ctx->callback) {
+                        ctx->callback(buffer, ctx->user_data);
+                    }
+                    break;  // Exit listener loop immediately
+                }
                 // Check if this is an admin command
-                if (strncmp(buffer, "SPAWN_", 6) == 0 || 
+                else if (strncmp(buffer, "SPAWN_", 6) == 0 || 
                     strncmp(buffer, "REMOVE_", 7) == 0) {
                     // Admin command → queue it for processing in main thread
                     admin_queue_enqueue(buffer);
@@ -206,7 +218,7 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
         printf("[ADMIN] Processing command: %s\n", command);
         
         // ============================================================
-        // FASE 2: SPAWN_ENEMY HANDLER
+        // SPAWN_ENEMY HANDLER
         // Format: "SPAWN_ENEMY:RED:5" or "SPAWN_ENEMY:BLUE:3"
         // ============================================================
         if (strncmp(command, ADMIN_SPAWN_ENEMY, strlen(ADMIN_SPAWN_ENEMY)) == 0) {
@@ -249,7 +261,7 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
             }
         }
         // ============================================================
-        // FASE 3: SPAWN_FRUIT HANDLER
+        // SPAWN_FRUIT HANDLER
         // Format: "SPAWN_FRUIT:vineId:positionY:type:fruitId"
         // Example: "SPAWN_FRUIT:2:10:Mango- 800 pts:1001"
         // ============================================================
@@ -276,10 +288,10 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
             }
         }
         // ============================================================
-        // FASE 4: REMOVE_FRUIT HANDLER
-        // ============================================================
+        // REMOVE_FRUIT HANDLER
         // Format: "REMOVE_FRUIT:fruitId"
         // Example: "REMOVE_FRUIT:1001"
+        // ============================================================
         else if (strncmp(command, ADMIN_REMOVE_FRUIT, strlen(ADMIN_REMOVE_FRUIT)) == 0) {
             const char* params = command + strlen(ADMIN_REMOVE_FRUIT);
             

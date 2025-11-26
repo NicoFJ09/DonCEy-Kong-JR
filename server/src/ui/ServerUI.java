@@ -21,6 +21,7 @@ public class ServerUI extends JFrame {
     private String selectedPlayer = "Ninguno";
     private Integer selectedPlayerId = -1;
     private Map<Integer, Player> players;
+    private JLabel playerSelectedLabel;
     
     public ServerUI(GameServer server) {
         this.server = server;
@@ -58,7 +59,7 @@ public class ServerUI extends JFrame {
         titleLabel.setBounds(25, 10, 400, 25); // Posicionar en x=200
         mainPanel.add(titleLabel);
 
-        JLabel playerSelectedLabel = new JLabel("Jugador Seleccionado:");
+        playerSelectedLabel = new JLabel("Jugador Seleccionado: Ninguno");
         playerSelectedLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
         playerSelectedLabel.setBounds(25, 160, 400, 25);
         mainPanel.add(playerSelectedLabel);
@@ -375,14 +376,14 @@ public class ServerUI extends JFrame {
                             int clientVineId = fruitVineMapping.get(selectedVine);
                             int posY = Integer.parseInt(positionY);
                             
-                            // Register fruit in server session (FASE 3)
+                            // Register fruit in server session
                             int fruitId = session.spawnAdminFruit(clientVineId, posY, fruitType);
                             
                             // Add to UI list with fruit ID (show DefaultMap vine label)
                             String listEntry = fruitType + " (" + selectedVine + ", PosY: " + positionY + ", ID: " + fruitId + ")";
                             fruitListModel.addElement(listEntry);
                             
-                            // FASE 3: Send SPAWN_FRUIT command with client vine ID
+                            // Send SPAWN_FRUIT command to client
                             // Format: "SPAWN_FRUIT:vineId:positionY:type:fruitId"
                             String command = "SPAWN_FRUIT:" + clientVineId + ":" + posY + ":" + fruitType + ":" + fruitId;
                             server.sendMessageToClient(selectedPlayerId, command);
@@ -877,6 +878,22 @@ public class ServerUI extends JFrame {
                         break;
                     }
                 }
+            });
+        }
+    }
+    
+    /**
+     * Deselect player if they disconnect (clear selection)
+     * @param playerId ID of disconnected player
+     */
+    public void onPlayerDisconnected(Integer playerId) {
+        if (playerId.equals(selectedPlayerId)) {
+            SwingUtilities.invokeLater(() -> {
+                selectedPlayerId = -1;
+                selectedPlayer = "Ninguno";
+                playerSelectedLabel.setText("Jugador Seleccionado: Ninguno");
+                fruitListModel.clear();
+                System.out.println("[UI] Deselected player #" + playerId + " (disconnected)");
             });
         }
     }

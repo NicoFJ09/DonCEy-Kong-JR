@@ -30,7 +30,7 @@
 
 /**
  * Initialize fruits for the level
- * FASE 3: Only allocates memory, no random spawning
+ * Only allocates memory, no random spawning
  * All fruits are spawned via admin panel (SPAWN_FRUIT command)
  */
 void fruit_initialize(Level* level) {
@@ -50,7 +50,7 @@ void fruit_initialize(Level* level) {
 }
 
 // ============================================================
-// ADMIN PANEL SPAWN (FASE 3)
+// ADMIN PANEL SPAWN
 // ============================================================
 
 bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, const char* type_str) {
@@ -143,7 +143,7 @@ bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, 
 }
 
 // ============================================================
-// FASE 4: FRUIT REMOVAL
+// FRUIT REMOVAL
 // ============================================================
 
 bool fruit_remove_by_id(Level* level, int fruit_id) {

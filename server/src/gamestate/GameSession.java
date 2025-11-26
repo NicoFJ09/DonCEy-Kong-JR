@@ -10,8 +10,6 @@ import java.util.HashMap;
  * The client is responsible for all game logic, physics, and collision detection.
  * The server ONLY maintains score, lives, level, and speed multiplier.
  * 
- * FASE 3: Added admin-spawned fruit tracking
- * 
  * Flow:
  * 1. Client detects event (fruit collected, death, level complete)
  * 2. Client shows immediate feedback (popup, animation)
@@ -33,7 +31,7 @@ public class GameSession {
     // Session state
     private SessionState state;
     
-    // FASE 3: Admin-spawned fruit tracking
+    // Admin-spawned fruit tracking
     // Maps fruit ID -> SpawnedFruit
     private Map<Integer, SpawnedFruit> adminFruits;
     private int nextFruitId;
@@ -81,7 +79,7 @@ public class GameSession {
         this.speedMultiplier = 1.0f;
         this.state = SessionState.PLAYING;
         
-        // FASE 3: Initialize fruit tracking
+        // Initialize fruit tracking
         this.adminFruits = new HashMap<>();
         this.initialFruits = new HashMap<>();
         this.nextFruitId = 1000;  // Start at 1000 to avoid conflicts with level fruits (0-999)
@@ -209,7 +207,7 @@ public class GameSession {
                           " level reset - Restored " + adminFruits.size() + " admin fruits");
     }
     
-    // ========== FASE 3: ADMIN FRUIT MANAGEMENT ==========
+    // ========== ADMIN FRUIT MANAGEMENT ==========
     
     /**
      * Spawn fruit via admin panel

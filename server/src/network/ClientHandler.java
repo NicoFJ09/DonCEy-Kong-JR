@@ -209,6 +209,12 @@ public class ClientHandler extends Thread {
                 System.out.println("Client #" + id + " returning to lobby - cleaning up session");
                 // Clean up player session to free slot for new players
                 server.unregisterPlayerFromSession(id);
+                
+                // Update admin UI to clear selection if this player was selected
+                if (server.getUI() != null) {
+                    server.getUI().onPlayerDisconnected(id);
+                }
+                
                 return true;
             }
             
