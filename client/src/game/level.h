@@ -121,6 +121,7 @@ typedef struct {
     
     // Game state
     int level_number;
+    float speed_multiplier;  // Enemy speed scaling (increases each level)
     
 } Level;
 
@@ -147,5 +148,11 @@ void level_render(Level* level);
  * @param level Level to cleanup
  */
 void level_destroy(Level* level);
+
+/**
+ * Reset level state for next attempt (fruits, enemies, popups)
+ * @param level Level to reset
+ */
+void level_reset(Level* level);
 
 #endif

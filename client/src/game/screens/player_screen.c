@@ -210,10 +210,12 @@ void show_player_screen(int client_id, Connection* conn) {
     // Initialize HUD
     hud_initialize();
     
-    // Game state variables
+    // Game state variables (persist across levels)
     int level_number = 1;
     float enemy_speed_multiplier = 1.0f;
     bool game_over = false;
+    int player_lives = 3;      // Start with 3 lives
+    int player_score = 0;      // Start with 0 points
     
     // Main game loop - continues until out of lives or quit
     while (!game_over && !WindowShouldClose()) {
@@ -225,22 +227,21 @@ void show_player_screen(int client_id, Connection* conn) {
             return;
         }
         
-        // Set level number
+        // Set level state
         g_current_level->level_number = level_number;
-
-        // Apply speed multiplier to enemies (increases each level completion)
-        for (int i = 0; i < g_current_level->enemy_count; i++) {
-            g_current_level->enemies[i].speed_multiplier = enemy_speed_multiplier;
-        }
+        g_current_level->speed_multiplier = enemy_speed_multiplier;
 
         // Create player - start on platform center
         Player player;
         player_init(&player, 
                     PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE, 
                     PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
+        
+        // Restore persistent game state
+        player.lives = player_lives;
+        player.score = player_score;
 
         bool level_active = true;
-        __attribute__((unused)) bool level_won = false;  // Track if level completed successfully
         
         // Level loop - runs until level complete, death, or quit
         while (level_active && !WindowShouldClose()) {
@@ -276,8 +277,25 @@ void show_player_screen(int client_id, Connection* conn) {
                 if (player.state == STATE_DYING) {
                     player.death_timer += deltaTime;
                     if (player.death_timer >= 1.0f) {
-                        // Death animation complete, exit level
-                        level_active = false;
+                        // Death animation complete
+                        if (player.lives <= 0) {
+                            // Game Over - exit to lose screen
+                            printf("[GAME] Game Over - Lives: %d, Final Score: %d\n", 
+                                   player.lives, player.score);
+                            level_active = false;
+                            game_over = true;
+                        } else {
+                            // Save persistent state
+                            player_lives = player.lives;
+                            player_score = player.score;
+                            
+                            // Respawn player
+                            printf("[PLAYER] Respawning - Lives remaining: %d\n", player.lives);
+                            player_reset(&player, 
+                                        PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE,
+                                        PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
+                            level_reset(g_current_level);
+                        }
                     }
                 }
                 
@@ -307,6 +325,8 @@ void show_player_screen(int client_id, Connection* conn) {
                                                  g_current_level,
                                                  g_current_level->mario_x,
                                                  g_current_level->mario_y);
+                        // Apply level speed multiplier
+                        g_current_level->enemies[spawn_index].speed_multiplier = g_current_level->speed_multiplier;
                     }
                 }
 
@@ -336,6 +356,8 @@ void show_player_screen(int client_id, Connection* conn) {
                                                  g_current_level,
                                                  g_current_level->mario_x,
                                                  g_current_level->mario_y);
+                        // Apply level speed multiplier
+                        g_current_level->enemies[spawn_index].speed_multiplier = g_current_level->speed_multiplier;
                     }
                 }
                 
@@ -352,10 +374,45 @@ void show_player_screen(int client_id, Connection* conn) {
                 if (distance < 80.0f) {
                     // Level complete! Add life and increase difficulty
                     player.lives++;
-                    level_won = true;
                     level_active = false;
                     level_number++;
                     enemy_speed_multiplier += 0.2f;  // 20% speed increase each level
+                    
+                    // Save persistent state for next level
+                    player_lives = player.lives;
+                    player_score = player.score;
+                    
+                    printf("[LEVEL] Completed level %d! Lives: %d, Score: %d, Next speed: %.1fx\n",
+                           level_number - 1, player.lives, player.score, enemy_speed_multiplier);
+                }
+                
+                // Check collision with Mario (static enemy at spawn point)
+                if (player.state != STATE_DYING) {
+                    // Mario hitbox: 48x48 sprite (16x16 scaled 3x)
+                    float mario_left = g_current_level->mario_x;
+                    float mario_right = g_current_level->mario_x + 48.0f;
+                    float mario_top = g_current_level->mario_y;
+                    float mario_bottom = g_current_level->mario_y + 48.0f;
+                    
+                    // Player hitbox (using collision constants)
+                    float player_left = player.x + COLLISION_OFFSET_X;
+                    float player_right = player_left + COLLISION_WIDTH;
+                    float player_top = player.y + COLLISION_OFFSET_Y;
+                    float player_bottom = player_top + COLLISION_HEIGHT;
+                    
+                    // AABB collision check
+                    bool mario_collision = (player_left < mario_right &&
+                                          player_right > mario_left &&
+                                          player_top < mario_bottom &&
+                                          player_bottom > mario_top);
+                    
+                    if (mario_collision) {
+                        // Player death by Mario
+                        player.state = STATE_DYING;
+                        player.death_timer = 0.0f;
+                        player.lives--;
+                        printf("[PLAYER] Killed by Mario! Lives remaining: %d\n", player.lives);
+                    }
                 }
                 
                 // Update all enemies
@@ -368,6 +425,7 @@ void show_player_screen(int client_id, Connection* conn) {
                         player.state = STATE_DYING;
                         player.death_timer = 0.0f;
                         player.lives--;
+                        printf("[PLAYER] Killed by enemy! Lives remaining: %d\n", player.lives);
                         break;
                     }
                 }
@@ -381,6 +439,7 @@ void show_player_screen(int client_id, Connection* conn) {
                     player.state = STATE_DYING;
                     player.death_timer = 0.0f;
                     player.lives--;
+                    printf("[PLAYER] Drowned! Lives remaining: %d\n", player.lives);
                 }
             }
             // If window NOT focused: game is PAUSED
@@ -417,11 +476,6 @@ void show_player_screen(int client_id, Connection* conn) {
         // Cleanup level
         level_destroy(g_current_level);
         g_current_level = NULL;
-        
-        // If player died and has no lives left, exit to game flow
-        if (player.lives <= 0) {
-            game_over = true;
-        }
     }
     
     // Cleanup HUD

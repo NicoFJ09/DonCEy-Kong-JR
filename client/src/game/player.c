@@ -111,6 +111,29 @@ void player_init(Player* player, float x, float y) {
 #endif
 }
 
+/**
+ * Reset player to spawn position after death
+ * Keeps lives and score intact (arcade accurate)
+ */
+void player_reset(Player* player, float spawn_x, float spawn_y) {
+    player->x = spawn_x;
+    player->y = spawn_y;
+    player->velocity_x = 0;
+    player->velocity_y = 0;
+    player->on_ground = false;
+    player->climbing = false;
+    player->attached_vine_id = -1;
+    player->lateral_position = 0;
+    player->state = STATE_IDLE;
+    player->direction = DIR_RIGHT;
+    player->animation_time = 0;
+    player->current_frame = 0;
+    player->death_timer = 0;
+    
+    printf("[PLAYER] Reset to spawn position (%.0f, %.0f) - Lives: %d, Score: %d\n",
+           spawn_x, spawn_y, player->lives, player->score);
+}
+
 // ============================================================
 // COLLISION HELPER
 // ============================================================

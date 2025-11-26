@@ -250,6 +250,7 @@ Level* level_create_from_json(const char* json_data) {
     
     // Initialize game state
     level->level_number = 1;
+    level->speed_multiplier = 1.0f;  // Default speed
 
     printf("✓ Level initialized with dynamic enemy spawning (max: %d)\n", max_enemies);
 
@@ -406,8 +407,34 @@ void level_destroy(Level* level) {
         free(level->enemies);
         fruit_destroy(level);  // Cleanup fruit system
         free(level);
-#if DEBUG_MODE
-        printf("✓ Level destroyed\n");
-#endif
+        printf("[LEVEL] Level destroyed\n");
     }
+}
+
+/**
+ * Reset level state for next attempt
+ * Respawns fruits, clears enemies, resets timers and popups
+ */
+void level_reset(Level* level) {
+    if (!level) return;
+    
+    printf("[LEVEL] Resetting level %d (speed multiplier: %.1fx)\n", 
+           level->level_number, level->speed_multiplier);
+    
+    // Destroy and respawn fruits
+    fruit_destroy(level);
+    fruit_initialize(level);
+    fruit_initialize_popups(level);
+    
+    // Clear all enemies (will respawn via timers)
+    for (int i = 0; i < level->enemy_count; i++) {
+        level->enemies[i].active = false;
+    }
+    level->enemy_count = 0;
+    
+    // Reset spawn timers
+    level->blue_spawn_timer = 0.0f;
+    level->red_spawn_timer = 0.0f;
+    
+    printf("[LEVEL] Level reset complete\n");
 }

@@ -79,4 +79,9 @@ void player_render(Player* player);
  */
 void player_handle_input(Player* player);
 
+/**
+ * Reset player to spawn position after death
+ */
+void player_reset(Player* player, float spawn_x, float spawn_y);
+
 #endif
