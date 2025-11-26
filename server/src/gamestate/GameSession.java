@@ -38,6 +38,9 @@ public class GameSession {
     private Map<Integer, SpawnedFruit> adminFruits;
     private int nextFruitId;
     
+    // Initial fruits spawned at session start (persist across level resets)
+    private Map<Integer, SpawnedFruit> initialFruits;
+    
     /**
      * Represents a fruit spawned by admin panel
      */
@@ -80,6 +83,7 @@ public class GameSession {
         
         // FASE 3: Initialize fruit tracking
         this.adminFruits = new HashMap<>();
+        this.initialFruits = new HashMap<>();
         this.nextFruitId = 1000;  // Start at 1000 to avoid conflicts with level fruits (0-999)
         
         System.out.println("[SESSION] Created for Player #" + playerId + 
@@ -192,23 +196,51 @@ public class GameSession {
                           " session reset - Lives: 3, Score: 0, Level: 1");
     }
     
+    /**
+     * Reset level (called when player dies but has lives remaining)
+     * Re-spawns all admin fruits that were spawned during session
+     */
+    public synchronized void resetLevel() {
+        // Restore all admin fruits (both initial + runtime spawned)
+        adminFruits.clear();
+        adminFruits.putAll(initialFruits);
+        
+        System.out.println("[SESSION] Player #" + playerId + 
+                          " level reset - Restored " + adminFruits.size() + " admin fruits");
+    }
+    
     // ========== FASE 3: ADMIN FRUIT MANAGEMENT ==========
     
     /**
      * Spawn fruit via admin panel
+     * @param isInitial If true, fruit is saved to initialFruits for respawning on level reset
      * @return Fruit ID assigned
      */
-    public synchronized int spawnAdminFruit(int vineId, int positionY, String type) {
+    public synchronized int spawnAdminFruit(int vineId, int positionY, String type, boolean isInitial) {
         int fruitId = nextFruitId++;
         SpawnedFruit fruit = new SpawnedFruit(fruitId, vineId, positionY, type);
         adminFruits.put(fruitId, fruit);
         
+        // If initial fruit, save to initialFruits for respawning
+        if (isInitial) {
+            initialFruits.put(fruitId, fruit);
+        }
+        
         System.out.println("[SESSION] Player #" + playerId + 
                           " admin fruit spawned: ID=" + fruitId + 
                           ", vine=" + vineId + ", posY=" + positionY + 
-                          ", type=" + type);
+                          ", type=" + type + 
+                          (isInitial ? " [INITIAL]" : " [RUNTIME]"));
         
         return fruitId;
+    }
+    
+    /**
+     * Spawn fruit via admin panel (default: runtime spawned, not persistent)
+     * @return Fruit ID assigned
+     */
+    public synchronized int spawnAdminFruit(int vineId, int positionY, String type) {
+        return spawnAdminFruit(vineId, positionY, type, false);
     }
     
     /**

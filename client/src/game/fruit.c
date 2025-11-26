@@ -30,13 +30,14 @@
 
 /**
  * Initialize fruits for the level
- * Places 3-5 fruits randomly on vines
+ * FASE 3: Only allocates memory, no random spawning
+ * All fruits are spawned via admin panel (SPAWN_FRUIT command)
  */
 void fruit_initialize(Level* level) {
     if (!level) return;
     
-    // Allocate space for up to 10 fruits (generous for future expansion)
-    level->max_fruits = 10;
+    // Allocate space for up to 20 fruits (admin can spawn many)
+    level->max_fruits = 20;
     level->fruit_count = 0;
     level->fruits = (Fruit*)calloc(level->max_fruits, sizeof(Fruit));
     
@@ -45,92 +46,7 @@ void fruit_initialize(Level* level) {
         return;
     }
     
-    // Decide how many fruits to spawn (3-5)
-    int num_fruits = 3 + (rand() % 3);  // Random between 3 and 5
-    
-    // Only spawn fruits on visible vines
-    int visible_vine_count = 0;
-    for (int i = 0; i < level->vine_count; i++) {
-        if (level->vines[i].visible) {
-            visible_vine_count++;
-        }
-    }
-    
-    if (visible_vine_count == 0) {
-        printf("WARNING: No visible vines found, cannot spawn fruits\n");
-        return;
-    }
-    
-    // Spawn fruits on random vines
-    for (int i = 0; i < num_fruits && level->fruit_count < level->max_fruits; i++) {
-        // Pick a random visible vine
-        int vine_index = -1;
-        int attempts = 0;
-        while (vine_index == -1 && attempts < 100) {
-            int candidate = rand() % level->vine_count;
-            if (level->vines[candidate].visible) {
-                vine_index = candidate;
-            }
-            attempts++;
-        }
-        
-        if (vine_index == -1) continue;
-        
-        Vine* vine = &level->vines[vine_index];
-        
-        // Random height ratio (0.2 to 0.8 to avoid top and bottom edges)
-        float height_ratio = 0.2f + ((rand() % 60) / 100.0f);
-        
-        // Calculate Y position based on vine height and ratio
-        float vine_height = vine->y_bottom - vine->y_top;
-        float fruit_y = vine->y_top + (vine_height * height_ratio);
-        
-        // Center fruit on vine (fruit is 48px wide, vine is 24px wide)
-        float fruit_x = vine->x - (FRUIT_WIDTH / 2.0f);
-        
-        // Random fruit type and points
-        int fruit_type = rand() % 3;
-        SpriteType sprite;
-        int points;
-        
-        switch (fruit_type) {
-            case 0:
-                sprite = SPRITE_FRUIT_APPLE;
-                points = FRUIT_POINTS_APPLE;
-                break;
-            case 1:
-                sprite = SPRITE_FRUIT_BANANA;
-                points = FRUIT_POINTS_BANANA;
-                break;
-            case 2:
-                sprite = SPRITE_FRUIT_MANGO;
-                points = FRUIT_POINTS_MANGO;
-                break;
-            default:
-                sprite = SPRITE_FRUIT_APPLE;
-                points = FRUIT_POINTS_APPLE;
-        }
-        
-        // Create fruit
-        Fruit* fruit = &level->fruits[level->fruit_count];
-        fruit->id = level->fruit_count;
-        fruit->x = fruit_x;
-        fruit->y = fruit_y;
-        fruit->vine_id = vine->id;
-        fruit->height_ratio = height_ratio;
-        fruit->points = points;
-        fruit->collected = false;
-        fruit->sprite = sprite;
-        
-        level->fruit_count++;
-        
-#if DEBUG_MODE
-        printf("✓ Spawned fruit %d (type=%d, points=%d) at vine %d, position (%.0f, %.0f)\n",
-               fruit->id, fruit_type, points, vine->id, fruit_x, fruit_y);
-#endif
-    }
-    
-    printf("✓ Initialized %d fruits on %d visible vines\n", level->fruit_count, visible_vine_count);
+    printf("✓ Fruit system initialized (max: %d, ready for admin spawning)\n", level->max_fruits);
 }
 
 // ============================================================
@@ -182,22 +98,27 @@ bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, 
     }
     
     // Calculate position on vine
-    // position_y is 0-24 scale, convert to height_ratio (0.0-1.0)
-    float vine_height = target_vine->y_bottom - target_vine->y_top;
+    // position_y is block number from vine start (0 = first block, n = last block)
+    // Each block is 24px (VINE_HEIGHT constant)
+    const float BLOCK_HEIGHT = 24.0f;
     
-    // Map position_y to height (0 = top, max = bottom)
-    // Get max position for this vine
-    float max_positions = 24.0f;  // Default max
+    // Calculate vine height in blocks
+    float vine_height_px = target_vine->y_bottom - target_vine->y_top;
+    int vine_height_blocks = (int)(vine_height_px / BLOCK_HEIGHT);
     
-    // Calculate height ratio (0.0 = top, 1.0 = bottom)
-    float height_ratio = (float)position_y / max_positions;
+    // Validate position_y is within vine bounds
+    if (position_y < 0 || position_y > vine_height_blocks) {
+        printf("[ADMIN] Warning: position_y=%d out of bounds for vine %d (max blocks: %d), clamping\n",
+               position_y, vine_id, vine_height_blocks);
+        if (position_y < 0) position_y = 0;
+        if (position_y > vine_height_blocks) position_y = vine_height_blocks;
+    }
     
-    // Clamp to safe range
-    if (height_ratio < 0.1f) height_ratio = 0.1f;
-    if (height_ratio > 0.9f) height_ratio = 0.9f;
+    // Calculate actual Y position: vine top + (block number * block height)
+    float fruit_y = target_vine->y_top + (position_y * BLOCK_HEIGHT);
     
-    // Calculate actual Y position
-    float fruit_y = target_vine->y_top + (vine_height * height_ratio);
+    // Calculate height ratio for compatibility
+    float height_ratio = (float)position_y / (float)vine_height_blocks;
     
     // Center fruit on vine
     float fruit_x = target_vine->x - (FRUIT_WIDTH / 2.0f);
@@ -220,6 +141,35 @@ bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, 
     
     return true;
 }
+
+// ============================================================
+// FASE 4: FRUIT REMOVAL
+// ============================================================
+
+bool fruit_remove_by_id(Level* level, int fruit_id) {
+    if (!level || !level->fruits) {
+        printf("[ADMIN] Error: Invalid level\n");
+        return false;
+    }
+    
+    // Find fruit with matching ID
+    for (int i = 0; i < level->fruit_count; i++) {
+        if (level->fruits[i].id == fruit_id && !level->fruits[i].collected) {
+            // Mark as collected (effectively removes it from rendering)
+            level->fruits[i].collected = true;
+            
+            printf("[ADMIN] ✓ Removed fruit ID=%d\n", fruit_id);
+            return true;
+        }
+    }
+    
+    printf("[ADMIN] Error: Fruit ID %d not found or already collected\n", fruit_id);
+    return false;
+}
+
+// ============================================================
+// FRUIT POPUP SYSTEM
+// ============================================================
 
 /**
  * Initialize points popup system

@@ -247,7 +247,7 @@ public class ServerUI extends JFrame {
         tipoFruta.setBounds(25, 480, 200, 25);
         mainPanel.add(tipoFruta);
 
-        JComboBox<String> fruitPointsCombo = new JComboBox<>(new String[]{"Mango- 200 pts", "Manzana- 150 pts", "Banana- 100 pts"});
+        JComboBox<String> fruitPointsCombo = new JComboBox<>(new String[]{"Mango 800 pts", "Banana 400 pts", "Manzana 200 pts"});
         fruitPointsCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         fruitPointsCombo.setFont(new Font("Arial", Font.PLAIN, 16));
         fruitPointsCombo.setBackground(Color.WHITE);
@@ -424,14 +424,14 @@ public class ServerUI extends JFrame {
         fruitList.setBorder(new LineBorder(new Color(139, 69, 19), 3));
 
         JScrollPane fruitScrollPane = new JScrollPane(fruitList);
-        fruitScrollPane.setBounds(20, 720, 280, 200);
+        fruitScrollPane.setBounds(20, 720, 290, 200);
         mainPanel.add(fruitScrollPane);
 
         JButton removeButton = new JButton("Eliminar");
         removeButton.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         removeButton.setBackground(new Color(211, 182, 131));
         removeButton.setFont(new Font("Arial", Font.BOLD, 15));
-        removeButton.setBounds(315, 790, 98, 40);
+        removeButton.setBounds(320, 790, 98, 40);
         removeButton.setOpaque(true);
         removeButton.setBorderPainted(true);
         removeButton.setContentAreaFilled(true);
@@ -458,20 +458,34 @@ public class ServerUI extends JFrame {
             if (selectedIndex != -1 && selectedPlayerId != -1) {
                 try {
                     // Get the selected fruit text from UI
-                    String removedFruit = fruitListModel.remove(selectedIndex);
+                    String fruitEntry = fruitListModel.get(selectedIndex);
                     
-                    // Remove from player object using the exact same text
-                    Player player = players.get(selectedPlayerId);
-                    if (player != null) {
-                        player.removeFruit(removedFruit);
-                        System.out.println("Fruit removed from Player #" + selectedPlayerId + ": " + removedFruit);
+                    // Extract fruit ID from entry (format: "Type (Liana X, PosY: Y, ID: XXXX)")
+                    int idIndex = fruitEntry.lastIndexOf("ID: ");
+                    if (idIndex != -1) {
+                        String idStr = fruitEntry.substring(idIndex + 4).replace(")", "").trim();
+                        int fruitId = Integer.parseInt(idStr);
+                        
+                        // Get game session and remove fruit
+                        server.src.gamestate.GameSession session = server.getGameSession(selectedPlayerId);
+                        if (session != null && session.removeAdminFruit(fruitId)) {
+                            // Remove from UI list
+                            fruitListModel.remove(selectedIndex);
+                            
+                            // Send REMOVE_FRUIT command to client
+                            String command = "REMOVE_FRUIT:" + fruitId;
+                            server.sendMessageToClient(selectedPlayerId, command);
+                            
+                            System.out.println("✓ Sent to Player #" + selectedPlayerId + ": " + command);
+                        } else {
+                            System.err.println("✗ Failed to remove fruit ID " + fruitId + " from session");
+                        }
+                    } else {
+                        System.err.println("✗ Could not extract fruit ID from: " + fruitEntry);
                     }
-                    
-                    // Send message to selected player
-                    server.sendMessageToClient(selectedPlayerId, "Eliminar Fruta:" + removedFruit);
-                    System.out.println("Message sent to Player #" + selectedPlayerId);
                 } catch (Exception ex) {
                     System.err.println("Error removing fruit: " + ex.getMessage());
+                    ex.printStackTrace();
                 }
             }
         });
@@ -843,5 +857,27 @@ public class ServerUI extends JFrame {
 
     public Map<Integer, Player> getPlayersData() {
         return players;
+    }
+    
+    /**
+     * Remove fruit from UI list by ID (called when player collects fruit)
+     * @param playerId Player whose fruit list to update
+     * @param fruitId ID of fruit to remove
+     */
+    public void removeFruitFromUI(Integer playerId, int fruitId) {
+        // Only update if this is the currently selected player
+        if (playerId.equals(selectedPlayerId)) {
+            SwingUtilities.invokeLater(() -> {
+                // Find and remove fruit with matching ID from list
+                for (int i = 0; i < fruitListModel.size(); i++) {
+                    String entry = fruitListModel.get(i);
+                    if (entry.contains("ID: " + fruitId + ")")) {
+                        fruitListModel.remove(i);
+                        System.out.println("[UI] Removed fruit ID=" + fruitId + " from admin list");
+                        break;
+                    }
+                }
+            });
+        }
     }
 }

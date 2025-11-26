@@ -35,7 +35,10 @@ public class Main {
         // Ahora sí, crear el servidor y la UI
         GameServer server = new GameServer();
         
-        SwingUtilities.invokeLater(() -> new ServerUI(server));
+        SwingUtilities.invokeLater(() -> {
+            ServerUI ui = new ServerUI(server);
+            server.setUI(ui);  // Set UI reference for updates
+        });
         
         Thread serverThread = new Thread(server::start);
         serverThread.setName("GameServer-Thread");

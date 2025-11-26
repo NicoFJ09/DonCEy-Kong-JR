@@ -19,6 +19,7 @@ public class GameServer {
     private Map<Integer, ClientHandler> clientHandlers;
     private Map<Integer, GameSession> gameSessions;  // Player game state
     private MapData currentMap;
+    private server.src.ui.ServerUI ui;  // UI reference for updates
 
     public GameServer() {
         this.running = false;
@@ -259,6 +260,22 @@ public class GameServer {
         } else {
             System.err.println("Client #" + clientId + " not found");
         }
+    }
+    
+    /**
+     * Set UI reference for admin panel updates
+     * @param ui ServerUI instance
+     */
+    public void setUI(server.src.ui.ServerUI ui) {
+        this.ui = ui;
+    }
+    
+    /**
+     * Get UI reference for updating admin panel
+     * @return ServerUI instance
+     */
+    public server.src.ui.ServerUI getUI() {
+        return ui;
     }
     
     private void printServerHeader() {

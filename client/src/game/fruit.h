@@ -45,6 +45,14 @@ void fruit_render_popups(Level* level);
 void fruit_update_popups(Level* level, float deltaTime);
 
 /**
+ * Remove fruit by ID (FASE 4: Admin panel deletion)
+ * @param level Level containing fruits
+ * @param fruit_id ID of fruit to remove
+ * @return true if fruit was found and removed, false otherwise
+ */
+bool fruit_remove_by_id(Level* level, int fruit_id);
+
+/**
  * Check collision between player and fruits
  * @param player Player to check collision with
  * @param level Level containing fruits
@@ -76,7 +84,7 @@ void fruit_destroy(Level* level);
  * @param fruit_id Unique fruit ID from server
  * @param vine_id Vine ID (1-11)
  * @param position_y Vertical position on vine (0-24 depending on vine)
- * @param type_str Fruit type string ("Mango- 200 pts", etc.)
+ * @param type_str Fruit type string ("Mango- 800 pts", etc.)
  * @return true if spawn successful, false if failed
  */
 bool fruit_spawn_admin(Level* level, int fruit_id, int vine_id, int position_y, const char* type_str);

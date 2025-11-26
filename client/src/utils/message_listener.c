@@ -9,6 +9,9 @@
 #include <pthread.h>
 #include <unistd.h>
 
+// External reference to current level (defined in player_screen.c)
+extern Level* g_current_level;
+
 // ============================================================
 // ADMIN COMMAND QUEUE (Thread-Safe)
 // Stores commands from server to be processed in main thread
@@ -248,7 +251,7 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
         // ============================================================
         // FASE 3: SPAWN_FRUIT HANDLER
         // Format: "SPAWN_FRUIT:vineId:positionY:type:fruitId"
-        // Example: "SPAWN_FRUIT:2:10:Mango- 200 pts:1001"
+        // Example: "SPAWN_FRUIT:2:10:Mango- 800 pts:1001"
         // ============================================================
         else if (strncmp(command, ADMIN_SPAWN_FRUIT, strlen(ADMIN_SPAWN_FRUIT)) == 0) {
             // Parse command
@@ -273,10 +276,25 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
             }
         }
         // ============================================================
-        // FASE 4: REMOVE_FRUIT HANDLER (STUB)
+        // FASE 4: REMOVE_FRUIT HANDLER
         // ============================================================
+        // Format: "REMOVE_FRUIT:fruitId"
+        // Example: "REMOVE_FRUIT:1001"
         else if (strncmp(command, ADMIN_REMOVE_FRUIT, strlen(ADMIN_REMOVE_FRUIT)) == 0) {
-            printf("[ADMIN] → Fruit remove command received (FASE 4 - not implemented yet)\n");
+            const char* params = command + strlen(ADMIN_REMOVE_FRUIT);
+            
+            int fruit_id = atoi(params);
+            
+            if (fruit_id > 0) {
+                Level* lvl = (Level*)g_current_level;
+                if (lvl && fruit_remove_by_id(lvl, fruit_id)) {
+                    printf("[ADMIN] ✓ Removed fruit ID=%d\n", fruit_id);
+                } else {
+                    printf("[ADMIN] Error: Failed to remove fruit ID=%d\n", fruit_id);
+                }
+            } else {
+                printf("[ADMIN] Error: Invalid REMOVE_FRUIT format: %s\n", command);
+            }
         }
         else {
             printf("[ADMIN] → Unknown command: %s\n", command);

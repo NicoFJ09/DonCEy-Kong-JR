@@ -1,6 +1,7 @@
 package server.src.network;
 
 import server.src.utils.Config;
+import server.src.gamestate.GameSession;
 import java.io.*;
 import java.net.*;
 import java.util.Map;
@@ -244,9 +245,24 @@ public class ClientHandler extends Thread {
             try {
                 String[] parts = message.split(":");
                 if (parts.length >= 3) {
+                    int fruitId = Integer.parseInt(parts[1]);
                     int points = Integer.parseInt(parts[2]);
+                    
+                    // Update score
                     session.onFruitCollected(points);
                     sendMessage("SCORE_UPDATE:" + session.getScore());
+                    
+                    // Remove fruit from admin tracking (won't respawn on death)
+                    if (session.removeAdminFruit(fruitId)) {
+                        System.out.println("[HANDLER] ✓ Player #" + id + " collected admin fruit ID=" + fruitId + 
+                                         " (removed from tracking, won't respawn)");
+                        
+                        // Update admin UI to remove fruit from list
+                        if (server.getUI() != null) {
+                            server.getUI().removeFruitFromUI(id, fruitId);
+                        }
+                    }
+                    
                     return true;
                 }
             } catch (Exception e) {
@@ -272,6 +288,9 @@ public class ClientHandler extends Thread {
                         String livesMsg = "LIVES_UPDATE:" + session.getLives();
                         sendMessage(livesMsg);
                         System.out.println("[HANDLER] Sent LIVES_UPDATE to Player #" + id + ": " + livesMsg);
+                        
+                        // Reset level (will restore admin fruits)
+                        session.resetLevel();
                     }
                     
                     return true;
@@ -294,6 +313,18 @@ public class ClientHandler extends Thread {
         // PLAYER_RESPAWN
         if (message.equals("PLAYER_RESPAWN")) {
             session.onRespawn();
+            
+            // Re-spawn all admin fruits after respawn
+            Map<Integer, GameSession.SpawnedFruit> fruits = session.getAdminFruits();
+            for (Map.Entry<Integer, GameSession.SpawnedFruit> entry : fruits.entrySet()) {
+                GameSession.SpawnedFruit fruit = entry.getValue();
+                String spawnCmd = "SPAWN_FRUIT:" + fruit.vineId + ":" + 
+                                 fruit.positionY + ":" + fruit.type + ":" + fruit.id;
+                sendMessage(spawnCmd);
+                System.out.println("[HANDLER] Re-spawned fruit ID=" + fruit.id + 
+                                 " for Player #" + id + " after respawn");
+            }
+            
             return true;
         }
         
