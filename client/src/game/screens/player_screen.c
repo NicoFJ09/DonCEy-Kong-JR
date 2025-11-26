@@ -426,12 +426,13 @@ void show_player_screen(int client_id, Connection* conn) {
                 if (player.state == STATE_DYING) {
                     player.death_timer += deltaTime;
                     if (player.death_timer >= 1.0f) {
-                        // Death animation complete - DON'T respawn yet, check game_over in next frame
+                        // Death animation complete - use special marker value to trigger respawn check
                         printf("[DEBUG] Death animation complete. Lives: %d, Score: %d, GameOver: %s\n", 
                                player_lives, player_score, game_over ? "true" : "false");
                         
-                        // Reset death timer to prevent multiple respawns
-                        player.death_timer = 0.0f;
+                        // Use special marker (0.5f) to indicate "just died, ready to respawn"
+                        // (0.0f = just died, -1.0f = normal gameplay, 0.5f = ready for respawn check)
+                        player.death_timer = 0.5f;
                         
                         // Change state to allow game over check at top of loop
                         player.state = STATE_IDLE;
@@ -441,8 +442,8 @@ void show_player_screen(int client_id, Connection* conn) {
                 }
                 
                 // After death animation, check if should respawn or game over
-                if (player.state == STATE_IDLE && player.death_timer == 0.0f && 
-                    player.y > (UI_WINDOW_HEIGHT - 200)) {
+                // Check death_timer == 0.5f (marker set above when death animation completes)
+                if (player.state == STATE_IDLE && player.death_timer == 0.5f) {
                     // Just transitioned from death - check game over
                     if (game_over) {
                         printf("[PLAYER] ☠️ GAME OVER! Final Score: %d\n", player_score);

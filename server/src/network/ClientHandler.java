@@ -211,12 +211,6 @@ public class ClientHandler extends Thread {
                 return true;
             }
             
-            if (message.equals("PLAY_AGAIN")) {
-                System.out.println("Client #" + id + " wants to play again");
-                sendMessage("INFO:Play again - starting new round");
-                continue;
-            }
-            
             if (message.equalsIgnoreCase("exit")) {
                 sendMessage("BYE");
                 return false;

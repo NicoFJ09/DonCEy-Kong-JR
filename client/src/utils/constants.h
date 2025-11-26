@@ -13,7 +13,6 @@
 #define CMD_JOIN_PLAYER "1"
 #define CMD_JOIN_SPECTATOR_PREFIX "JOIN_SPECTATOR:"
 #define CMD_DISCONNECT "DISCONNECT"
-#define CMD_PLAY_AGAIN "PLAY_AGAIN"
 #define CMD_EXIT "exit"
 
 // ============================================================

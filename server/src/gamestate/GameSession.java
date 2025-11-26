@@ -142,7 +142,7 @@ public class GameSession {
     }
     
     /**
-     * Reset session to initial state (for play again after game over)
+     * Reset session to initial state when player reconnects
      * This allows spectators to persist and watch multiple games from same player
      */
     public synchronized void reset() {

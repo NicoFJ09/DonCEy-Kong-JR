@@ -102,7 +102,7 @@ public class GameServer {
             // Reset existing session instead of creating new one
             // This keeps spectators connected across multiple games
             existingSession.reset();
-            System.out.println("  ✓ Player #" + id + " session reset (play again after game over)");
+            System.out.println("  ✓ Player #" + id + " session reset (player reconnected)");
         } else if (existingSession == null) {
             // Create new session only if none exists
             GameSession newSession = new GameSession(id);
