@@ -253,13 +253,11 @@ void fruit_render_popups(Level* level) {
         
         SpriteSheet* sprite = sprite_manager_get(sprite_type);
         
-        if (sprite && sprite->loaded) {
-            // Points sprites are 8x8, scaled 3x = 24x24
-            Rectangle src = {0, 0, sprite->frame_width, sprite->frame_height};
-            Rectangle dest = {popup->x, popup->y, 24, 24};
-            Vector2 origin = {0, 0};
-            
-            // Fade out as lifetime decreases (1.0 second total)
+    if (sprite && sprite->loaded) {
+        // Points sprites are 8x8, scaled 4.5x = 36x36 (balanced visibility)
+        Rectangle src = {0, 0, sprite->frame_width, sprite->frame_height};
+        Rectangle dest = {popup->x, popup->y, 36, 36};
+        Vector2 origin = {0, 0};            // Fade out as lifetime decreases (1.0 second total)
             float alpha = popup->lifetime / POPUP_DURATION;
             if (alpha > 1.0f) alpha = 1.0f;
             if (alpha < 0.0f) alpha = 0.0f;
