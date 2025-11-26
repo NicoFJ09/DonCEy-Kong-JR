@@ -305,14 +305,17 @@ void fruit_update_popups(Level* level, float deltaTime) {
 // ============================================================
 
 /**
- * Check collision between player and fruits
+ * Check collision between player and fruits using AABB (hitbox overlap)
+ * Works when jumping, on vine, or moving - any time hitboxes touch
  */
 void fruit_check_collision(Player* player, Level* level) {
     if (!player || !level || !level->fruits) return;
     
-    // Player center point (use collision box center)
-    float player_center_x = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH / 2;
-    float player_center_y = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT / 2;
+    // Player hitbox bounds (using collision box from constants.h)
+    float player_left = player->x + COLLISION_OFFSET_X;
+    float player_right = player_left + COLLISION_WIDTH;
+    float player_top = player->y + COLLISION_OFFSET_Y;
+    float player_bottom = player_top + COLLISION_HEIGHT;
     
     for (int i = 0; i < level->fruit_count; i++) {
         Fruit* fruit = &level->fruits[i];
@@ -320,22 +323,28 @@ void fruit_check_collision(Player* player, Level* level) {
         // Skip collected fruits
         if (fruit->collected) continue;
         
-        // Fruit center point
-        float fruit_center_x = fruit->x + FRUIT_WIDTH / 2;
-        float fruit_center_y = fruit->y + FRUIT_HEIGHT / 2;
+        // Fruit hitbox bounds (48x48 sprite, full size for collision)
+        float fruit_left = fruit->x;
+        float fruit_right = fruit->x + FRUIT_WIDTH;
+        float fruit_top = fruit->y;
+        float fruit_bottom = fruit->y + FRUIT_HEIGHT;
         
-        // Calculate distance
-        float dx = player_center_x - fruit_center_x;
-        float dy = player_center_y - fruit_center_y;
-        float distance = sqrtf(dx * dx + dy * dy);
+        // AABB collision detection: check if rectangles overlap
+        bool collision = (player_left < fruit_right &&
+                         player_right > fruit_left &&
+                         player_top < fruit_bottom &&
+                         player_bottom > fruit_top);
         
-        // Check collision
-        if (distance < FRUIT_COLLISION_RADIUS) {
+        if (collision) {
             // Collect fruit
             int points = fruit_collect(level, i);
             
 #if DEBUG_MODE
-            printf("✓ Player collected fruit %d, earned %d points!\n", fruit->id, points);
+            printf("✓ Player hitbox collided with fruit %d, earned %d points!\n", fruit->id, points);
+            printf("  Player box: (%.0f,%.0f) to (%.0f,%.0f)\n", 
+                   player_left, player_top, player_right, player_bottom);
+            printf("  Fruit box:  (%.0f,%.0f) to (%.0f,%.0f)\n", 
+                   fruit_left, fruit_top, fruit_right, fruit_bottom);
 #endif
         }
     }
