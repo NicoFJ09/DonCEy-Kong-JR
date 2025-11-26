@@ -5,11 +5,17 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-// se supone que aquí se debe de agregar que se quiere hacer con ese mensaje. Al en otro thread aparte se hixo este 
-//message listener para no bloquear el hilo principal al estar esperando mensajes del servidor
+// Message listener runs in separate thread to avoid blocking main thread
+// Handles server responses for game events (score updates, lives, etc)
 
+// Callback function type for handling server messages
+typedef void (*MessageCallback)(const char* message, void* user_data);
 
+// Start listening for messages with optional callback
 pthread_t message_listener_start(Connection* conn);
+
+// Set callback for handling messages
+void message_listener_set_callback(MessageCallback callback, void* user_data);
 
 void message_listener_stop(pthread_t thread_id);
 

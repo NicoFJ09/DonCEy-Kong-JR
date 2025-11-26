@@ -1,6 +1,7 @@
 // fruit.h now includes level.h and player.h, so we just need fruit.h
 #include "fruit.h"
 #include "../rendering/sprite_manager.h"
+#include "../network/game_events.h"
 #include "../utils/constants.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -311,7 +312,7 @@ void fruit_update_popups(Level* level, float deltaTime) {
  * Check collision between player and fruits using AABB (hitbox overlap)
  * Works when jumping, on vine, or moving - any time hitboxes touch
  */
-void fruit_check_collision(Player* player, Level* level) {
+void fruit_check_collision(Player* player, Level* level, Connection* conn) {
     if (!player || !level || !level->fruits) return;
     
     // Player hitbox bounds (using collision box from constants.h)
@@ -339,8 +340,13 @@ void fruit_check_collision(Player* player, Level* level) {
                          player_bottom > fruit_top);
         
         if (collision) {
-            // Collect fruit
-            int points = fruit_collect(level, i, player);
+            // Collect fruit locally (immediate feedback)
+            int points = fruit_collect(level, i);
+            
+            // Notify server (async, non-blocking)
+            if (conn) {
+                event_send_fruit_collected(conn, fruit->id, points);
+            }
             
 #if DEBUG_MODE
             printf("✓ Player hitbox collided with fruit %d, earned %d points!\n", fruit->id, points);
@@ -354,10 +360,12 @@ void fruit_check_collision(Player* player, Level* level) {
 }
 
 /**
- * Collect a fruit and award points to player
- * Also creates a points popup at the fruit location
+ * Collect a fruit and create popup (score handled by server)
+ * @param level Level containing the fruit
+ * @param fruit_index Index of fruit to collect
+ * @return Points awarded (for popup display only, server updates actual score)
  */
-int fruit_collect(Level* level, int fruit_index, Player* player) {
+int fruit_collect(Level* level, int fruit_index) {
     if (!level || !level->fruits || fruit_index < 0 || fruit_index >= level->fruit_count) {
         return 0;
     }
@@ -368,18 +376,15 @@ int fruit_collect(Level* level, int fruit_index, Player* player) {
         return 0;  // Already collected
     }
     
-    // Mark as collected
+    // Mark as collected locally (optimistic update)
     fruit->collected = true;
     int points = fruit->points;
     
-    // Update player score
-    if (player) {
-        player->score += points;
-        printf("✨ [FRUIT] Collected! Points: %d (Total score: %d)\n", 
-               points, player->score);
-    }
+    // NOTE: Do NOT update player->score here
+    // Score will be updated when server confirms via SCORE_UPDATE
+    printf("✨ [FRUIT] Collected locally! Points: %d (Server will confirm)\n", points);
     
-    // Create popup at fruit location
+    // Create popup at fruit location (immediate feedback)
     if (level->popups) {
         // Find an inactive popup slot
         for (int i = 0; i < level->max_popups; i++) {

@@ -35,6 +35,23 @@
 #define PROTO_PLAYER_INFO "PLAYER:"
 
 // ============================================================
+// GAME EVENTS (Client → Server)
+// ============================================================
+
+#define EVENT_FRUIT_COLLECTED "FRUIT_COLLECTED:"
+#define EVENT_PLAYER_DIED "PLAYER_DIED:"
+#define EVENT_LEVEL_COMPLETED "LEVEL_COMPLETED"
+
+// ============================================================
+// GAME STATE UPDATES (Server → Client)
+// ============================================================
+
+#define UPDATE_SCORE "SCORE_UPDATE:"
+#define UPDATE_LIVES "LIVES_UPDATE:"
+#define UPDATE_LEVEL "LEVEL_UPDATE:"
+#define UPDATE_GAME_OVER "GAME_OVER:"
+
+// ============================================================
 // MAP DATA PROTOCOL
 // Server sends map geometry once per session after SESSION_START
 // Format: MAP_DATA:{json}
@@ -128,7 +145,7 @@
 
 // Player spawn point in BLOCKS (converted to pixels in code)
 #define PLAYER_SPAWN_X_BLOCK 0    // x = 0 blocks (0px) - left border
-#define PLAYER_SPAWN_Y_BLOCK 34   // y = 34 blocks (816px) - 2 blocks above spawn platform
+#define PLAYER_SPAWN_Y_BLOCK 32   // y = 32 blocks (768px) - 4 blocks above spawn platform (864px)
 
 // Hand offset for vine grabbing (sprite-specific, hands not centered)
 #define HAND_OFFSET_FROM_CENTER 16.0f

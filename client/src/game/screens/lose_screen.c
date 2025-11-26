@@ -8,7 +8,7 @@
 // RENDERING
 // ============================================================
 
-static void draw_lose_screen(LoseOption selected, int client_id) {
+static void draw_lose_screen(int client_id) {
     ClearBackground(UI_COLOR_BACKGROUND);
     
     // Draw client ID at top center
@@ -21,25 +21,14 @@ static void draw_lose_screen(LoseOption selected, int client_id) {
     int title_y = 300;
     font_manager_draw_text(title, title_x, title_y, UI_FONT_SIZE_TITLE, UI_COLOR_TEXT);
     
-    // Options (centered below title)
-    const char* options[] = {
-        "Play Again",
-        "Return to Title"
-    };
+    // Single option: "Return to Title"
+    const char* option = "Return to Title";
+    int text_width = font_manager_measure_text(option, UI_FONT_SIZE_NORMAL);
+    int text_x = (UI_WINDOW_WIDTH - text_width) / 2;
+    int text_y = 450;
     
-    int start_y = 450;
-    int spacing = UI_MENU_SPACING;
-    
-    for (LoseOption i = LOSE_PLAY_AGAIN; i <= LOSE_RETURN_TITLE; i++) {
-        // Selected option = yellow, unselected = white
-        Color color = (selected == i) ? UI_COLOR_SELECTED : UI_COLOR_TEXT;
-        
-        int text_width = font_manager_measure_text(options[i], UI_FONT_SIZE_NORMAL);
-        int text_x = (UI_WINDOW_WIDTH - text_width) / 2;
-        int text_y = start_y + (i * spacing);
-        
-        font_manager_draw_text(options[i], text_x, text_y, UI_FONT_SIZE_NORMAL, color);
-    }
+    // Always yellow (selected)
+    font_manager_draw_text(option, text_x, text_y, UI_FONT_SIZE_NORMAL, UI_COLOR_SELECTED);
 }
 
 // ============================================================
@@ -48,49 +37,28 @@ static void draw_lose_screen(LoseOption selected, int client_id) {
 
 LoseOption show_lose_screen(int client_id) {
     printf("\n========================================\n");
-    printf("Lose Screen Active\n");
+    printf("Game Over - Press ENTER to return\n");
     printf("========================================\n");
-    printf("Use arrow keys to navigate\n");
-    printf("Press ENTER to select\n\n");
     
-    // IMPORTANT: Clear all pending key presses to avoid double-input bug
-    // This prevents the ENTER key from the previous screen from being detected
+    // Clear all pending key presses
     while (GetKeyPressed() != 0) {
         // Consume all queued key presses
     }
     
-    LoseOption selected = LOSE_PLAY_AGAIN;
     bool done = false;
     
     while (!done && !WindowShouldClose()) {
-        // Handle input
-        if (IsKeyPressed(KEY_DOWN)) {
-            selected = (selected + 1) % 2;
-        }
-        
-        if (IsKeyPressed(KEY_UP)) {
-            selected = (selected - 1 + 2) % 2;
-        }
-        
+        // Wait for ENTER
         if (IsKeyPressed(KEY_ENTER)) {
             done = true;
         }
         
         // Render
         BeginDrawing();
-            draw_lose_screen(selected, client_id);
+            draw_lose_screen(client_id);
         EndDrawing();
     }
     
-    // Debug output
-    switch (selected) {
-        case LOSE_PLAY_AGAIN:
-            printf("DEBUG: Selected Play Again\n");
-            break;
-        case LOSE_RETURN_TITLE:
-            printf("DEBUG: Selected Return to Title\n");
-            break;
-    }
-    
-    return selected;
+    printf("DEBUG: Returning to title\n");
+    return LOSE_RETURN_TITLE;
 }

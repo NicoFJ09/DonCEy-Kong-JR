@@ -1,4 +1,6 @@
 #include "player_screen.h"
+#include "../../network/game_events.h"
+#include "../../utils/message_listener.h"
 #include "../../utils/constants.h"
 #include "../../utils/font_manager.h"
 #include "../../rendering/sprite_manager.h"
@@ -8,6 +10,8 @@
 #include "../fruit.h"
 #include "raylib.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 // ============================================================
@@ -15,6 +19,19 @@
 // ============================================================
 
 Level* g_current_level = NULL;
+
+// Player data that can be updated from message listener thread
+typedef struct {
+    int* score_ptr;
+    int* lives_ptr;
+    int* level_ptr;
+    float* speed_multiplier_ptr;
+    bool* game_over_ptr;
+    bool* level_complete_ptr;
+    Player* player_ptr;  // For instant HUD updates
+} PlayerUpdateData;
+
+static PlayerUpdateData g_player_update_data = {NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 // ============================================================
 // HUD RESOURCES
@@ -197,6 +214,105 @@ static void render_goal_objects(Level* level, float deltaTime) {
 }
 
 // ============================================================
+// SERVER MESSAGE HANDLER
+// ============================================================
+
+/**
+ * Handle messages from server (runs in listener thread)
+ * Updates player score/lives based on server responses
+ */
+static void handle_server_message(const char* message, void* user_data) {
+    (void)user_data;  // Unused
+    
+    // SCORE_UPDATE:value
+    if (strncmp(message, "SCORE_UPDATE:", 13) == 0) {
+        int new_score = atoi(message + 13);
+        printf("[DEBUG] Received SCORE_UPDATE: %d (ptr: %p)\n", new_score, (void*)g_player_update_data.score_ptr);
+        if (g_player_update_data.score_ptr) {
+            int old_score = *g_player_update_data.score_ptr;
+            *g_player_update_data.score_ptr = new_score;
+            
+            // Update HUD immediately (no delay)
+            if (g_player_update_data.player_ptr) {
+                g_player_update_data.player_ptr->score = new_score;
+            }
+            
+            printf("[SERVER] ✓ Score updated: %d → %d (HUD synced)\n", old_score, new_score);
+        } else {
+            printf("[ERROR] score_ptr is NULL!\n");
+        }
+        return;
+    }
+    
+    // LIVES_UPDATE:value
+    if (strncmp(message, "LIVES_UPDATE:", 13) == 0) {
+        int new_lives = atoi(message + 13);
+        printf("[DEBUG] Received LIVES_UPDATE: %d (ptr: %p)\n", new_lives, (void*)g_player_update_data.lives_ptr);
+        if (g_player_update_data.lives_ptr) {
+            int old_lives = *g_player_update_data.lives_ptr;
+            *g_player_update_data.lives_ptr = new_lives;
+            
+            // Update HUD immediately (no delay)
+            if (g_player_update_data.player_ptr) {
+                g_player_update_data.player_ptr->lives = new_lives;
+            }
+            
+            printf("[SERVER] ✓ Lives updated: %d → %d (HUD synced)\n", old_lives, new_lives);
+        } else {
+            printf("[ERROR] lives_ptr is NULL!\n");
+        }
+        return;
+    }
+    
+    // LEVEL_UPDATE:level:lives:speed
+    if (strncmp(message, "LEVEL_UPDATE:", 13) == 0) {
+        // Parse: level:lives:speed
+        int level, lives;
+        float speed;
+        if (sscanf(message + 13, "%d:%d:%f", &level, &lives, &speed) == 3) {
+            if (g_player_update_data.lives_ptr) {
+                *g_player_update_data.lives_ptr = lives;
+            }
+            if (g_player_update_data.level_ptr) {
+                *g_player_update_data.level_ptr = level;
+            }
+            if (g_player_update_data.speed_multiplier_ptr) {
+                *g_player_update_data.speed_multiplier_ptr = speed;
+            }
+            if (g_player_update_data.level_complete_ptr) {
+                *g_player_update_data.level_complete_ptr = true;
+            }
+            
+            // Update HUD immediately
+            if (g_player_update_data.player_ptr) {
+                g_player_update_data.player_ptr->lives = lives;
+            }
+            
+            printf("[SERVER] ✓ Level complete! Now Level %d, Lives: %d, Speed: %.1fx\n", 
+                   level, lives, speed);
+        }
+        return;
+    }
+    
+    // GAME_OVER:finalScore
+    if (strncmp(message, "GAME_OVER:", 10) == 0) {
+        int final_score = atoi(message + 10);
+        if (g_player_update_data.game_over_ptr) {
+            *g_player_update_data.game_over_ptr = true;
+        }
+        
+        // Update HUD immediately
+        if (g_player_update_data.player_ptr) {
+            g_player_update_data.player_ptr->lives = 0;
+            g_player_update_data.player_ptr->score = final_score;
+        }
+        
+        printf("[SERVER] ☠️ GAME OVER! Final Score: %d (game_over flag set)\n", final_score);
+        return;
+    }
+}
+
+// ============================================================
 // PLAYER SCREEN
 // ============================================================
 
@@ -210,12 +326,31 @@ void show_player_screen(int client_id, Connection* conn) {
     // Initialize HUD
     hud_initialize();
     
-    // Game state variables (persist across levels)
+    // Game state variables (persist across levels) - SERVER AUTHORITATIVE
+    // CRITICAL: Reset all state when entering player screen (fresh start)
     int level_number = 1;
     float enemy_speed_multiplier = 1.0f;
-    bool game_over = false;
-    int player_lives = 3;      // Start with 3 lives
-    int player_score = 0;      // Start with 0 points
+    bool game_over = false;          // MUST start false (server session is reset)
+    bool level_complete = false;
+    int player_lives = 3;            // Will be updated by server
+    int player_score = 0;            // Will be updated by server
+    
+    // Player object will be initialized in game loop
+    Player player;
+    
+    // Set up server message handler to update these variables
+    g_player_update_data.score_ptr = &player_score;
+    g_player_update_data.lives_ptr = &player_lives;
+    g_player_update_data.level_ptr = &level_number;
+    g_player_update_data.speed_multiplier_ptr = &enemy_speed_multiplier;
+    g_player_update_data.game_over_ptr = &game_over;
+    g_player_update_data.level_complete_ptr = &level_complete;
+    g_player_update_data.player_ptr = &player;  // For instant HUD updates
+    message_listener_set_callback(handle_server_message, NULL);
+    
+    printf("[PLAYER] Server message handler active (SERVER AUTHORITATIVE MODE)\n");
+    printf("[PLAYER] Fresh session - game_over=%s, lives=%d, score=%d\n", 
+           game_over ? "true" : "false", player_lives, player_score);
     
     // Main game loop - continues until out of lives or quit
     while (!game_over && !WindowShouldClose()) {
@@ -231,8 +366,7 @@ void show_player_screen(int client_id, Connection* conn) {
         g_current_level->level_number = level_number;
         g_current_level->speed_multiplier = enemy_speed_multiplier;
 
-        // Create player - start on platform center
-        Player player;
+        // Initialize player - start on platform center
         player_init(&player, 
                     PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE, 
                     PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
@@ -240,6 +374,10 @@ void show_player_screen(int client_id, Connection* conn) {
         // Restore persistent game state
         player.lives = player_lives;
         player.score = player_score;
+        
+        // CRITICAL: Prevent immediate respawn trigger on first frame
+        // death_timer == 0.0f is used to detect "just died", so set to -1.0f
+        player.death_timer = -1.0f;
 
         bool level_active = true;
         
@@ -251,6 +389,17 @@ void show_player_screen(int client_id, Connection* conn) {
             // Clamp deltaTime to prevent physics explosion
             if (deltaTime > MAX_DELTA_TIME) {
                 deltaTime = MAX_DELTA_TIME;
+            }
+            
+            // Sync display values from server (for HUD rendering)
+            player.lives = player_lives;
+            player.score = player_score;
+            
+            // Check game over IMMEDIATELY (server authoritative)
+            if (game_over) {
+                printf("[PLAYER] ☠️ GAME OVER DETECTED! Exiting level immediately. Final Score: %d\n", player_score);
+                level_active = false;
+                continue;
             }
             
             // PAUSE GAME when window loses focus
@@ -270,32 +419,49 @@ void show_player_screen(int client_id, Connection* conn) {
                 
                 // Check fruit collision (only if player is alive)
                 if (player.state != STATE_DYING) {
-                    fruit_check_collision(&player, g_current_level);
+                    fruit_check_collision(&player, g_current_level, conn);
                 }
                 
                 // If player is dying, count down timer
                 if (player.state == STATE_DYING) {
                     player.death_timer += deltaTime;
                     if (player.death_timer >= 1.0f) {
-                        // Death animation complete
-                        if (player.lives <= 0) {
-                            // Game Over - exit to lose screen
-                            printf("[GAME] Game Over - Lives: %d, Final Score: %d\n", 
-                                   player.lives, player.score);
-                            level_active = false;
-                            game_over = true;
-                        } else {
-                            // Save persistent state
-                            player_lives = player.lives;
-                            player_score = player.score;
-                            
-                            // Respawn player
-                            printf("[PLAYER] Respawning - Lives remaining: %d\n", player.lives);
-                            player_reset(&player, 
-                                        PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE,
-                                        PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
-                            level_reset(g_current_level);
+                        // Death animation complete - DON'T respawn yet, check game_over in next frame
+                        printf("[DEBUG] Death animation complete. Lives: %d, Score: %d, GameOver: %s\n", 
+                               player_lives, player_score, game_over ? "true" : "false");
+                        
+                        // Reset death timer to prevent multiple respawns
+                        player.death_timer = 0.0f;
+                        
+                        // Change state to allow game over check at top of loop
+                        player.state = STATE_IDLE;
+                        
+                        printf("[DEBUG] State changed to IDLE, will check game_over in next frame\n");
+                    }
+                }
+                
+                // After death animation, check if should respawn or game over
+                if (player.state == STATE_IDLE && player.death_timer == 0.0f && 
+                    player.y > (UI_WINDOW_HEIGHT - 200)) {
+                    // Just transitioned from death - check game over
+                    if (game_over) {
+                        printf("[PLAYER] ☠️ GAME OVER! Final Score: %d\n", player_score);
+                        level_active = false;
+                    } else {
+                        printf("[PLAYER] Respawning - Lives remaining: %d (from server)\n", player_lives);
+                        player_reset(&player, 
+                                    PLAYER_SPAWN_X_BLOCK * PLATFORM_BLOCK_SIZE,
+                                    PLAYER_SPAWN_Y_BLOCK * PLATFORM_BLOCK_SIZE);
+                        level_reset(g_current_level);
+                        
+                        // Notify server that player respawned (session state: DEAD -> PLAYING)
+                        // CRITICAL: Only send if not game over (prevents old messages after rejoin)
+                        if (!game_over) {
+                            event_send_player_respawn(conn);
                         }
+                        
+                        // Mark as handled
+                        player.death_timer = -1.0f;
                     }
                 }
                 
@@ -371,19 +537,25 @@ void show_player_screen(int client_id, Connection* conn) {
                 float dist_y = player_center_y - cage_center_y;
                 float distance = sqrtf(dist_x * dist_x + dist_y * dist_y);
                 
-                if (distance < 80.0f) {
-                    // Level complete! Add life and increase difficulty
-                    player.lives++;
+                if (distance < 80.0f && !level_complete) {
+                    // Level complete! Notify server and wait for confirmation
+                    level_complete = true;  // Prevent multiple sends
+                    
+                    printf("[LEVEL] Reached DK cage! Waiting for server confirmation...\n");
+                    
+                    // Notify server - server will send LEVEL_UPDATE with new values
+                    event_send_level_completed(conn);
+                }
+                
+                // Check if server confirmed level completion
+                if (level_complete && level_active) {
+                    // Server sent LEVEL_UPDATE with new level/lives/speed
+                    printf("[LEVEL] Server confirmed level complete! Level %d, Lives: %d, Speed: %.1fx\n",
+                           level_number, player_lives, enemy_speed_multiplier);
+                    
+                    // Exit level to recreate with new parameters
                     level_active = false;
-                    level_number++;
-                    enemy_speed_multiplier += 0.2f;  // 20% speed increase each level
-                    
-                    // Save persistent state for next level
-                    player_lives = player.lives;
-                    player_score = player.score;
-                    
-                    printf("[LEVEL] Completed level %d! Lives: %d, Score: %d, Next speed: %.1fx\n",
-                           level_number - 1, player.lives, player.score, enemy_speed_multiplier);
+                    level_complete = false;  // Reset for next level
                 }
                 
                 // Check collision with Mario (static enemy at spawn point)
@@ -407,11 +579,16 @@ void show_player_screen(int client_id, Connection* conn) {
                                           player_bottom > mario_top);
                     
                     if (mario_collision) {
-                        // Player death by Mario
+                        // Player death by Mario (server will update lives)
                         player.state = STATE_DYING;
                         player.death_timer = 0.0f;
-                        player.lives--;
-                        printf("[PLAYER] Killed by Mario! Lives remaining: %d\n", player.lives);
+                        printf("[PLAYER] Killed by Mario! Notifying server...\n");
+                        
+                        // Notify server - server will send LIVES_UPDATE
+                        // CRITICAL: Only send if not game over (prevents old messages after rejoin)
+                        if (!game_over) {
+                            event_send_player_died(conn, "mario");
+                        }
                     }
                 }
                 
@@ -421,11 +598,16 @@ void show_player_screen(int client_id, Connection* conn) {
                     
                     // Check collision with player only if still alive
                     if (player.state != STATE_DYING && enemy_collides_with_player(&g_current_level->enemies[i], player.x, player.y)) {
-                        // Player death by enemy
+                        // Player death by enemy (server will update lives)
                         player.state = STATE_DYING;
                         player.death_timer = 0.0f;
-                        player.lives--;
-                        printf("[PLAYER] Killed by enemy! Lives remaining: %d\n", player.lives);
+                        printf("[PLAYER] Killed by enemy! Notifying server...\n");
+                        
+                        // Notify server - server will send LIVES_UPDATE
+                        // CRITICAL: Only send if not game over (prevents old messages after rejoin)
+                        if (!game_over) {
+                            event_send_player_died(conn, "enemy");
+                        }
                         break;
                     }
                 }
@@ -435,11 +617,16 @@ void show_player_screen(int client_id, Connection* conn) {
                 // Set threshold lower to avoid false positives when walking on bottom platform
                 float water_check = 850.0f;  // Safely below normal ground, but above water surface
                 if (player.state != STATE_DYING && player.y >= water_check && player.velocity_y > 0) {
-                    // Player death by drowning (only when falling down, not when on ground)
+                    // Player death by drowning (server will update lives)
                     player.state = STATE_DYING;
                     player.death_timer = 0.0f;
-                    player.lives--;
                     printf("[PLAYER] Drowned! Lives remaining: %d\n", player.lives);
+                    
+                    // Notify server
+                    // CRITICAL: Only send if not game over (prevents old messages after rejoin)
+                    if (!game_over) {
+                        event_send_player_died(conn, "water");
+                    }
                 }
             }
             // If window NOT focused: game is PAUSED
@@ -477,6 +664,14 @@ void show_player_screen(int client_id, Connection* conn) {
         level_destroy(g_current_level);
         g_current_level = NULL;
     }
+    
+    // Clear server message handler
+    g_player_update_data.score_ptr = NULL;
+    g_player_update_data.lives_ptr = NULL;
+    g_player_update_data.game_over_ptr = NULL;
+    message_listener_set_callback(NULL, NULL);
+    
+    printf("[PLAYER] Server message handler cleared\n");
     
     // Cleanup HUD
     hud_cleanup();

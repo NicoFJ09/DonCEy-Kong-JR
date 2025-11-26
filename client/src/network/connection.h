@@ -96,6 +96,13 @@ char* connection_receive_with_timeout(Connection* conn, char* buffer, int buffer
 bool connection_has_data(Connection* conn);
 
 /**
+ * Drain/clear all pending data from socket buffer
+ * Use before reconnecting to ensure clean state
+ * @param conn Connection pointer
+ */
+void connection_drain_buffer(Connection* conn);
+
+/**
  * Close connection and free resources
  * @param conn Connection pointer to close
  */

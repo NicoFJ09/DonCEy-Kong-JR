@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "level.h"  // Now we CAN include level.h because Fruit/PointsPopup are defined there
 #include "player.h"  // Need Player typedef for collision checking
+#include "../network/connection.h"  // Need Connection for event sending
 
 // Note: Fruit and PointsPopup typedefs are now defined in level.h
 // This avoids circular dependency issues
@@ -48,7 +49,7 @@ void fruit_update_popups(Level* level, float deltaTime);
  * @param player Player to check collision with
  * @param level Level containing fruits
  */
-void fruit_check_collision(Player* player, Level* level);
+void fruit_check_collision(Player* player, Level* level, Connection* conn);
 
 /**
  * Collect a fruit and award points to player
@@ -57,7 +58,7 @@ void fruit_check_collision(Player* player, Level* level);
  * @param player Player who collected the fruit (to update score)
  * @return Points awarded
  */
-int fruit_collect(Level* level, int fruit_index, Player* player);
+int fruit_collect(Level* level, int fruit_index);
 
 /**
  * Cleanup fruit resources

@@ -2,16 +2,16 @@
 #include "../utils/constants.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <unistd.h>
 
-//Structure to hold context for the listener thread
-//This holds the connection and a running flag
-
-
+// Structure to hold context for the listener thread
 typedef struct {
     Connection* conn;
     volatile bool running;
+    MessageCallback callback;
+    void* user_data;
 } MessageListenerContext;
 
 static MessageListenerContext* g_listener_context = NULL;
@@ -20,20 +20,32 @@ static void* listener_thread_func(void* arg) {
     MessageListenerContext* ctx = (MessageListenerContext*)arg;
     char buffer[BUFFER_SIZE];
     
-    printf("DEBUG: Message listener thread started\n");
+    printf("[LISTENER] Thread started\n");
     
     while (ctx->running && ctx->conn && ctx->conn->connected) {
         // Check if there's data available without blocking
         if (connection_has_data(ctx->conn)) {
             if (connection_receive(ctx->conn, buffer, BUFFER_SIZE)) {
-                printf("CLIENT RECEIVED FROM SERVER: %s\n", buffer);
+                printf("[LISTENER] Received message: '%s'\n", buffer);
+                
+                // Call callback if set
+                if (ctx->callback) {
+                    printf("[LISTENER] Calling callback for message\n");
+                    ctx->callback(buffer, ctx->user_data);
+                    printf("[LISTENER] Callback completed\n");
+                } else {
+                    printf("[LISTENER] WARNING: No callback set!\n");
+                }
+            } else {
+                printf("[LISTENER] connection_receive returned false\n");
             }
         } else {
             usleep(100000);  // 100ms
         }
     }
     
-    printf("DEBUG: Message listener thread stopped\n");
+    printf("[LISTENER] Thread stopped (running=%d, connected=%d)\n", 
+           ctx->running, ctx->conn ? ctx->conn->connected : 0);
     return NULL;
 }
 
@@ -50,6 +62,8 @@ pthread_t message_listener_start(Connection* conn) {
     
     ctx->conn = conn;
     ctx->running = true;
+    ctx->callback = NULL;
+    ctx->user_data = NULL;
     g_listener_context = ctx;
     
     pthread_t thread_id;
@@ -61,6 +75,13 @@ pthread_t message_listener_start(Connection* conn) {
     }
     
     return thread_id;
+}
+
+void message_listener_set_callback(MessageCallback callback, void* user_data) {
+    if (g_listener_context) {
+        g_listener_context->callback = callback;
+        g_listener_context->user_data = user_data;
+    }
 }
 
 void message_listener_stop(pthread_t thread_id) {

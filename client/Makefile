@@ -24,7 +24,8 @@ OBJ_DIR = $(BUILD_DIR)/obj
 
 EXTERNAL_SOURCES = src/external/cJSON.c
 
-NETWORK_SOURCES = src/network/connection.c
+NETWORK_SOURCES = src/network/connection.c \
+                  src/network/game_events.c
 
 RENDERING_SOURCES = src/rendering/sprite_manager.c \
                     src/rendering/animation.c \
@@ -51,7 +52,8 @@ SOURCES = $(MAIN_SOURCE) $(EXTERNAL_SOURCES) $(NETWORK_SOURCES) $(RENDERING_SOUR
 
 EXTERNAL_OBJECTS = $(OBJ_DIR)/cJSON.o
 
-NETWORK_OBJECTS = $(OBJ_DIR)/connection.o
+NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
+                  $(OBJ_DIR)/game_events.o
 
 RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
                     $(OBJ_DIR)/animation.o \
@@ -77,6 +79,7 @@ OBJECTS = $(OBJ_DIR)/main.o $(EXTERNAL_OBJECTS) $(NETWORK_OBJECTS) $(RENDERING_O
 
 HEADERS = src/external/cJSON.h \
           src/network/connection.h \
+          src/network/game_events.h \
           src/rendering/sprite_manager.h \
           src/rendering/animation.h \
           src/rendering/renderer.h \
@@ -110,6 +113,9 @@ $(OBJ_DIR)/cJSON.o: src/external/cJSON.c src/external/cJSON.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/game_events.o: src/network/game_events.c src/network/game_events.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/sprite_manager.o: src/rendering/sprite_manager.c src/rendering/sprite_manager.h

@@ -337,6 +337,28 @@ bool connection_has_data(Connection* conn) {
     #endif
 }
 
+void connection_drain_buffer(Connection* conn) {
+    if (!conn || !conn->connected) {
+        return;
+    }
+    
+    char drain_buffer[BUFFER_SIZE];
+    int drained = 0;
+    
+    // Read and discard all pending data
+    while (connection_has_data(conn)) {
+        int bytes = recv(conn->socket_fd, drain_buffer, BUFFER_SIZE - 1, 0);
+        if (bytes <= 0) {
+            break;
+        }
+        drained += bytes;
+    }
+    
+    if (drained > 0) {
+        printf("[CONNECTION] Drained %d bytes from socket buffer\n", drained);
+    }
+}
+
 // ============================================================
 // CONNECTION MANAGEMENT
 // ============================================================

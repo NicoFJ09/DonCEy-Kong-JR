@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 // ============================================================
 // MAIN GAME FLOW
@@ -168,34 +169,25 @@ bool game_flow_run(void) {
                     conn->map_loaded = true;
                     printf("✓ Map data loaded (%zu bytes)\n", strlen(conn->map_json));
 
+                    // Start message listener
                     pthread_t listener_thread = message_listener_start(conn);
-
-                    // Player screen loop
-                    bool playing = true;
-                    while (playing && conn->connected && !WindowShouldClose()) {
-                        show_player_screen(conn->client_id, conn);
-                        
-                        LoseOption choice = show_lose_screen(conn->client_id);
-                        
-                        switch (choice) {
-                            case LOSE_PLAY_AGAIN:
-                                printf("DEBUG: Playing again (continuing in session)\n");
-                                // Just continue the loop - stay in player session
-                                break;
-                                
-                            case LOSE_RETURN_TITLE:
-                                printf("DEBUG: Returning to title - sending DISCONNECT to exit session\n");
-                                if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
-                                    printf("ERROR: Failed to send DISCONNECT\n");
-                                }
-                                printf("DEBUG: Ready to return to title screen\n");
-                                
-                                playing = false;
-                                break;
-                        }
-                    }
                     
+                    // Player screen
+                    show_player_screen(conn->client_id, conn);
+                    
+                    // Stop listener
                     message_listener_stop(listener_thread);
+                    printf("DEBUG: Message listener stopped\n");
+                    
+                    // Show lose screen (only option is return to title)
+                    show_lose_screen(conn->client_id);
+                    
+                    // Send DISCONNECT and return to title
+                    printf("DEBUG: Returning to title - sending DISCONNECT\n");
+                    if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
+                        printf("ERROR: Failed to send DISCONNECT\n");
+                    }
+                    printf("DEBUG: Ready to return to title screen\n");
                     
                 } else if (strncmp(buffer, PROTO_REJECTED, strlen(PROTO_REJECTED)) == 0) {
                     const char* reason = buffer + strlen(PROTO_REJECTED);

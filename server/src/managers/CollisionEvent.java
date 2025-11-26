@@ -8,7 +8,6 @@ public class CollisionEvent {
         PLAYER_ENEMY,
         PLAYER_FRUIT,
         PLAYER_WATER,
-        PLAYER_PLATFORM
     }
     
     private Type type;

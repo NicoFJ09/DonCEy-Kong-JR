@@ -24,11 +24,15 @@ cd server
 # Limpiar
 rm -rf bin/*
 
-# Compilar
-javac -d bin src/Main.java src/network/*.java src/utils/*.java src/ui/*.java src/game/*.java
+# Compilar (incluye gamestate)
+javac -d bin src/Main.java src/network/*.java src/utils/*.java src/ui/*.java src/game/*.java src/gamestate/GameSession.java
 
 # Ejecutar
 java -cp bin server.src.Main
+
+# IMPORTANTE: Solo se permite una instancia del servidor a la vez
+# Si intentas ejecutar una segunda instancia, verás un mensaje de error
+# y la aplicación no se iniciará
 ```
 
 ### Terminal 1: Ejecución del Servidor (Java) EN WINDOWS
@@ -38,8 +42,8 @@ cd server
 # Limpiar
 Remove-Item -Recurse -Force bin\* -ErrorAction SilentlyContinue
 
-# Compilar
-javac -d bin src\Main.java src\network\*.java src\utils\*.java src\ui\*.java src\game\*.java
+# Compilar (incluye gamestate)
+javac -d bin src\Main.java src\network\*.java src\utils\*.java src\ui\*.java src\game\*.java src\gamestate\GameSession.java
 
 # Ejecutar
 java -cp bin server.src.Main

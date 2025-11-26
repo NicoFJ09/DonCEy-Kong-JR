@@ -205,7 +205,9 @@ public class ClientHandler extends Thread {
             message = message.trim();
             
             if (message.equals("DISCONNECT")) {
-                System.out.println("Client #" + id + " returning to lobby");
+                System.out.println("Client #" + id + " returning to lobby - cleaning up session");
+                // Clean up player session to free slot for new players
+                server.unregisterPlayerFromSession(id);
                 return true;
             }
             
@@ -220,7 +222,85 @@ public class ClientHandler extends Thread {
                 return false;
             }
             
+            // Handle game events if player session
+            if (type == ClientType.PLAYER) {
+                if (handleGameEvent(message)) {
+                    continue;
+                }
+            }
+            
             sendMessage("ECHO:" + message);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Handle game events from client
+     * Returns true if message was a game event, false otherwise
+     */
+    private boolean handleGameEvent(String message) {
+        server.src.gamestate.GameSession session = server.getGameSession(id);
+        if (session == null) {
+            return false;
+        }
+        
+        // FRUIT_COLLECTED:fruitId:points
+        if (message.startsWith("FRUIT_COLLECTED:")) {
+            try {
+                String[] parts = message.split(":");
+                if (parts.length >= 3) {
+                    int points = Integer.parseInt(parts[2]);
+                    session.onFruitCollected(points);
+                    sendMessage("SCORE_UPDATE:" + session.getScore());
+                    return true;
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing FRUIT_COLLECTED: " + e.getMessage());
+            }
+        }
+        
+        // PLAYER_DIED:cause
+        if (message.startsWith("PLAYER_DIED:")) {
+            try {
+                String[] parts = message.split(":");
+                if (parts.length >= 2) {
+                    String cause = parts[1];
+                    session.onPlayerDied(cause);
+                    
+                    // CRITICAL: If game over, send ONLY GAME_OVER (no lives update)
+                    if (session.isGameOver()) {
+                        String gameOverMsg = "GAME_OVER:" + session.getScore();
+                        sendMessage(gameOverMsg);
+                        System.out.println("[HANDLER] ☠️ Sent GAME_OVER to Player #" + id + ": " + gameOverMsg);
+                    } else {
+                        // Only send lives update if NOT game over
+                        String livesMsg = "LIVES_UPDATE:" + session.getLives();
+                        sendMessage(livesMsg);
+                        System.out.println("[HANDLER] Sent LIVES_UPDATE to Player #" + id + ": " + livesMsg);
+                    }
+                    
+                    return true;
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing PLAYER_DIED: " + e.getMessage());
+            }
+        }
+        
+        // LEVEL_COMPLETED
+        if (message.equals("LEVEL_COMPLETED")) {
+            session.onLevelCompleted();
+            sendMessage("LEVEL_UPDATE:" + session.getLevel() + ":" + 
+                       session.getLives() + ":" + 
+                       String.format("%.1f", session.getSpeedMultiplier()));
+            session.onLevelReady();  // Auto-ready for next level
+            return true;
+        }
+        
+        // PLAYER_RESPAWN
+        if (message.equals("PLAYER_RESPAWN")) {
+            session.onRespawn();
+            return true;
         }
         
         return false;

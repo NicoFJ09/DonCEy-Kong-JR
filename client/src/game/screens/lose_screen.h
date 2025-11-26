@@ -5,8 +5,7 @@
  * Options for lose screen
  */
 typedef enum {
-    LOSE_PLAY_AGAIN,
-    LOSE_RETURN_TITLE
+    LOSE_RETURN_TITLE = 0
 } LoseOption;
 
 /**
@@ -14,7 +13,7 @@ typedef enum {
  * Shows "YOU LOST" title and 2 options
  * Arrow keys to navigate, ENTER to select
  * @param client_id Client ID to display
- * @return Selected LoseOption (PLAY_AGAIN or RETURN_TITLE)
+ * @return Selected LoseOption (always LOSE_RETURN_TITLE)
  */
 LoseOption show_lose_screen(int client_id);
 

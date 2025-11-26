@@ -3,6 +3,7 @@ package server.src.network;
 import server.src.utils.Config;
 import server.src.game.MapData;
 import server.src.game.DefaultMap;
+import server.src.gamestate.GameSession;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -16,6 +17,7 @@ public class GameServer {
     private Map<Integer, NetworkPlayer> players;
     private Map<Integer, Integer> spectators;
     private Map<Integer, ClientHandler> clientHandlers;
+    private Map<Integer, GameSession> gameSessions;  // Player game state
     private MapData currentMap;
 
     public GameServer() {
@@ -24,6 +26,7 @@ public class GameServer {
         this.players = new ConcurrentHashMap<>();
         this.spectators = new ConcurrentHashMap<>();
         this.clientHandlers = new ConcurrentHashMap<>();
+        this.gameSessions = new ConcurrentHashMap<>();
         this.currentMap = DefaultMap.create();
         System.out.println("✓ Map initialized with " +
                          currentMap.getPlatforms().size() + " platforms, " +
@@ -92,8 +95,27 @@ public class GameServer {
             System.out.println("  ✗ Player #" + id + " registration failed - server full (" + players.size() + "/" + Config.MAX_PLAYERS + ")");
             return false;
         }
+        
+        // Check if player already has a session (reconnecting after game over)
+        GameSession existingSession = gameSessions.get(id);
+        if (existingSession != null && existingSession.isGameOver()) {
+            // Reset existing session instead of creating new one
+            // This keeps spectators connected across multiple games
+            existingSession.reset();
+            System.out.println("  ✓ Player #" + id + " session reset (play again after game over)");
+        } else if (existingSession == null) {
+            // Create new session only if none exists
+            GameSession newSession = new GameSession(id);
+            gameSessions.put(id, newSession);
+            System.out.println("  ✓ Player #" + id + " new session created");
+        } else {
+            // Session exists but not in GAME_OVER state (shouldn't happen, but log it)
+            System.out.println("  ⚠ Player #" + id + " already has active session: " + existingSession.getState());
+        }
+        
         NetworkPlayer player = new NetworkPlayer(id, address);
         players.put(id, player);
+        
         System.out.println("  ✓ Player #" + id + " registered (" + players.size() + "/" + Config.MAX_PLAYERS + ")");
         return true;
     }
@@ -161,6 +183,12 @@ public class GameServer {
     public synchronized void cleanup(Integer id) {
         clientHandlers.remove(id);
         
+        // Clean up game session
+        GameSession session = gameSessions.remove(id);
+        if (session != null) {
+            System.out.println("  Cleaned up game session: " + session);
+        }
+        
         NetworkPlayer player = players.remove(id);
         if (player != null) {
             System.out.println("Player #" + id + " disconnected");
@@ -218,6 +246,10 @@ public class GameServer {
 
     public MapData getMapData() {
         return currentMap;
+    }
+    
+    public synchronized GameSession getGameSession(Integer playerId) {
+        return gameSessions.get(playerId);
     }
 
     public synchronized void sendMessageToClient(Integer clientId, String message) {
