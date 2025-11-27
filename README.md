@@ -111,7 +111,7 @@ build-tools/     # Scripts de build locales
 
 ## 📝 Licencia
 
-Proyecto académico - Universidad EAFIT
+Proyecto académico - Instituto Tecnológico de Costa Rica
 
 ---
 
