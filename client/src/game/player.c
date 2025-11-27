@@ -140,6 +140,9 @@ void player_reset(Player* player, float spawn_x, float spawn_y) {
 
 // Check if a specific lateral position would collide with platforms
 // Returns true if the given lateral_pos would put player hitbox inside a platform
+
+#define collision_position_fix 0.5f  // Minimum separation required (pixels)
+
 static bool would_collide_at_position(Player* player, int lateral_pos) {
     if (!g_current_level) return false;
     
@@ -184,19 +187,20 @@ static bool would_collide_at_position(Player* player, int lateral_pos) {
     float collision_top = player->y + COLLISION_OFFSET_Y;
     float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
 
-    // Check against all platforms
     for (int p = 0; p < g_current_level->platform_count; p++) {
         Platform* platform = &g_current_level->platforms[p];
         float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
         float platform_bottom = platform->y + PLATFORM_BLOCK_SIZE;
 
-        // Check if collision box would overlap with platform
-        bool horizontal_overlap = (collision_right > platform->x && 
-                                  collision_left < platform->x + platform_width_px);
-        bool vertical_overlap = (collision_bottom > platform->y && 
-                                collision_top < platform_bottom);
+        // Collision box must be completely clear of platform
+        bool would_collide = (
+            collision_right > platform->x + collision_position_fix &&                      // Right edge past platform left + margin
+            collision_left < platform->x + platform_width_px - collision_position_fix &&  // Left edge before platform right - margin
+            collision_bottom > platform->y + collision_position_fix &&                   // Bottom edge past platform top + margin
+            collision_top < platform_bottom - collision_position_fix                    // Top edge before platform bottom - margin
+        );
 
-        if (horizontal_overlap && vertical_overlap) {
+        if (would_collide) {
             return true;  // Would collide!
         }
     }
@@ -648,17 +652,18 @@ void player_update(Player* player, float deltaTime) {
                 collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
             }
 
-            // Check if player is horizontally aligned with platform
-            bool horizontally_aligned = (collision_right > platform->x &&
-                                        collision_left < platform->x + platform_width_px);
+            // Check if player is horizontally aligned with platform (STRICT: use epsilon)
+            bool horizontally_aligned = (collision_right > platform->x + collision_position_fix &&
+                                        collision_left < platform->x + platform_width_px - collision_position_fix);
 
-            // Check if player is vertically aligned with platform
-            bool vertically_aligned = (collision_bottom > platform->y &&
-                                      collision_top < platform_bottom);
+            // Check if player is vertically aligned with platform (STRICT: use epsilon)
+            bool vertically_aligned = (collision_bottom > platform->y + collision_position_fix &&
+                                      collision_top < platform_bottom - collision_position_fix);
 
             if (horizontally_aligned) {
                 // TOP collision - player lands ON top of platform
-                if (collision_bottom >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
+                // STRICT: collision must be within tight tolerance (0.1-1.5px)
+                if (collision_bottom >= platform->y - collision_position_fix &&
                     collision_bottom <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_y >= 0) {
 
@@ -679,8 +684,8 @@ void player_update(Player* player, float deltaTime) {
                 }
 
                 // BOTTOM collision - player hits bottom of platform (blocks upward movement)
-                // This prevents climbing through platforms from below
-                if (collision_top <= platform_bottom + PLATFORM_COLLISION_TOLERANCE &&
+                // Prevents climbing through platforms from below 
+                if (collision_top <= platform_bottom + collision_position_fix &&
                     collision_top >= platform_bottom - PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_y < 0) {
 
@@ -694,24 +699,24 @@ void player_update(Player* player, float deltaTime) {
 
             if (vertically_aligned && !player->climbing) {
                 // LEFT side collision - player hits left edge of platform (only when NOT climbing)
-                if (collision_right >= platform->x - PLATFORM_COLLISION_TOLERANCE &&
+                if (collision_right >= platform->x - collision_position_fix &&
                     collision_right <= platform->x + PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_x > 0) {
 
-                    // Push player back to left of platform
-                    player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH;
+                    // Push player back to left of platform to ensure full separation
+                    player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH - collision_position_fix;
                     player->velocity_x = 0;
                     // Continue checking platforms - we might still be standing on another platform
                     continue;
                 }
 
                 // RIGHT side collision - player hits right edge of platform (only when NOT climbing)
-                if (collision_left <= platform->x + platform_width_px + PLATFORM_COLLISION_TOLERANCE &&
+                if (collision_left <= platform->x + platform_width_px + collision_position_fix &&
                     collision_left >= platform->x + platform_width_px - PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_x < 0) {
 
-                    // Push player back to right of platform
-                    player->x = platform->x + platform_width_px - COLLISION_OFFSET_X;
+                    // Push player back to right of platform to ensure full separation
+                    player->x = platform->x + platform_width_px - COLLISION_OFFSET_X + collision_position_fix;
                     player->velocity_x = 0;
                     // Continue checking platforms - we might still be standing on another platform
                     continue;
