@@ -1,6 +1,7 @@
 #include "spectator_screen.h"
 #include "../../utils/constants.h"
 #include "../../utils/font_manager.h"
+#include "../../game/level.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <string.h>
@@ -15,10 +16,25 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
     printf("========================================\n");
     printf("Spectating Player #%d\n", player_id);
     printf("Press Q to quit\n\n");
-    
+
     bool voluntary_exit = false;
     bool running = true;
     char buffer[512];
+    
+    // Create level
+    if (!conn->map_loaded || !conn->map_json) {
+        printf("ERROR: Map not loaded!\n");
+        snprintf(kick_message, kick_message_size, "Map data missing");
+        return false;
+    }
+    
+    Level* level = level_create_from_json(conn->map_json);
+    if (!level) {
+        printf("ERROR: Failed to create level from JSON\n");
+        snprintf(kick_message, kick_message_size, "Failed to load map");
+        return false;
+    }
+    printf("✓ Level created for spectator\n");
     
     while (running && conn->connected && !WindowShouldClose()) {
         // Check for user input
@@ -71,6 +87,10 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
             int text_x = UI_WINDOW_WIDTH - text_width - 20;
             font_manager_draw_text(spectating_text, text_x, 50, UI_FONT_SIZE_ERROR, UI_COLOR_SELECTED);
             
+            // Draw map and game
+
+            level_render(level);
+
             const char* placeholder = "Waiting for game state...";
             int placeholder_width = font_manager_measure_text(placeholder, UI_FONT_SIZE_NORMAL);
             int placeholder_x = (UI_WINDOW_WIDTH - placeholder_width) / 2;
@@ -80,5 +100,8 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
         EndDrawing();
     }
     
+    level_destroy(level);
+    printf("Level properly destroyed for spectator");
+
     return voluntary_exit;
 }
