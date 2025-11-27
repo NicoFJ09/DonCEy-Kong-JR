@@ -86,11 +86,16 @@ SRCS = src/main.c \
 # Object files
 OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
 
+# Windows resource file for icon
+ifeq ($(UNAME_S),Windows_NT)
+    OBJS += $(BUILD_DIR)/client_res.o
+endif
+
 # ============================================================
 # TARGETS
 # ============================================================
 
-.PHONY: all clean run help
+.PHONY: all clean run help verify
 
 all: $(TARGET)
 
@@ -107,6 +112,14 @@ $(OBJ_DIR)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Compile Windows resource file (for icon)
+ifeq ($(UNAME_S),Windows_NT)
+$(BUILD_DIR)/client_res.o: client.rc
+	@echo "Compiling resource file..."
+	@mkdir -p $(BUILD_DIR)
+	windres client.rc -O coff -o $(BUILD_DIR)/client_res.o
+endif
+
 # Clean
 clean:
 	@echo "Cleaning..."
@@ -118,6 +131,32 @@ run: all
 	@echo "Running $(TARGET_NAME)..."
 	@cd $(BUILD_DIR) && ./$(TARGET_NAME)
 
+# Verify executable dependencies
+verify: $(TARGET)
+	@echo "Verifying $(TARGET) dependencies..."
+	@echo ""
+ifeq ($(UNAME_S),Linux)
+	@echo "Checking dynamic library dependencies (ldd):"
+	@ldd $(TARGET) || true
+	@echo ""
+	@echo "✓ Executable should only depend on system libraries (libc, libm, libGL, libX11, etc.)"
+	@echo "  If you see 'libraylib.so' listed, Raylib is NOT statically linked!"
+endif
+ifeq ($(UNAME_S),Darwin)
+	@echo "Checking dynamic library dependencies (otool):"
+	@otool -L $(TARGET) || true
+	@echo ""
+	@echo "✓ Executable should only depend on system frameworks"
+	@echo "  If you see 'libraylib.dylib' listed, Raylib is NOT statically linked!"
+endif
+ifeq ($(UNAME_S),Windows_NT)
+	@echo "Checking DLL dependencies (objdump):"
+	@objdump -p $(TARGET) | grep "DLL Name:" || echo "No external DLLs found"
+	@echo ""
+	@echo "✓ Executable should only depend on system DLLs (kernel32, msvcrt, etc.)"
+	@echo "  If you see 'raylib.dll' listed, Raylib is NOT statically linked!"
+endif
+
 # Help
 help:
 	@echo "DonCEy Kong Jr - Makefile"
@@ -126,7 +165,19 @@ help:
 	@echo "  all    - Build executable"
 	@echo "  clean  - Remove build artifacts"
 	@echo "  run    - Build and run"
+	@echo "  verify - Check if executable is standalone (no Raylib dependency)"
 	@echo "  help   - Show this message"
 	@echo ""
 	@echo "Platform: $(UNAME_S)"
 	@echo "Target: $(TARGET)"
+	@echo ""
+	@echo "To verify standalone build:"
+ifeq ($(UNAME_S),Linux)
+	@echo "  make verify  (or manually: ldd $(TARGET))"
+endif
+ifeq ($(UNAME_S),Darwin)
+	@echo "  make verify  (or manually: otool -L $(TARGET))"
+endif
+ifeq ($(UNAME_S),Windows_NT)
+	@echo "  make verify  (or manually: objdump -p $(TARGET) | grep 'DLL Name:')"
+endif

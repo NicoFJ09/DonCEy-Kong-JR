@@ -1,7 +1,5 @@
 # DonCEy Kong Jr
 
-[![Build All Platforms](https://github.com/NicoFJ09/DonCEy-Kong-JR/actions/workflows/build-all-platforms.yml/badge.svg)](https://github.com/NicoFJ09/DonCEy-Kong-JR/actions/workflows/build-all-platforms.yml)
-
 Implementación multiplayer del clásico arcade Donkey Kong Jr con networking cliente-servidor.
 
 ## 🎮 Características
@@ -9,97 +7,95 @@ Implementación multiplayer del clásico arcade Donkey Kong Jr con networking cl
 - **Cliente nativo en C** con Raylib (static linking)
 - **Servidor Java** con interfaz de administración
 - **Multiplayer en tiempo real** via UDP
-- **Compilación automática** para Linux, Windows y macOS
+- **Compilación local** para Linux, Windows y macOS
 
-## 📥 Descargar Ejecutables
+## 📥 Obtener Ejecutables
 
-### Desde GitHub Actions
-
-1. Ve a [**Actions**](https://github.com/NicoFJ09/DonCEy-Kong-JR/actions)
-2. Click en el último workflow exitoso (✓)
-3. Descarga los **Artifacts** de tu plataforma:
-   - 🐧 `client-linux` → Linux
-   - 🪟 `client-windows` → Windows
-   - 🍎 `client-macos-dmg` → macOS
-   - ☕ `server-universal` → Cualquier OS con Java
-
-### Desde Releases (cuando estén disponibles)
-
-Ve a [**Releases**](https://github.com/NicoFJ09/DonCEy-Kong-JR/releases) para descargar versiones oficiales.
+Para obtener ejecutables, debes compilar localmente en tu plataforma. Ver la sección **🛠️ Compilar Localmente** más abajo.
 
 ## 🚀 Inicio Rápido
 
 ### Cliente
 
-**Linux**:
+Después de compilar (ver sección siguiente):
+
+**Linux/macOS**:
 ```bash
-tar -xzf DonCEy-Kong-Jr-Client-Linux.tar.gz
-cd DonCEy-Kong-Jr-Client-Linux
-./launch-client.sh
+cd client/build
+./client
 ```
 
 **Windows**:
 ```cmd
-Extraer DonCEy-Kong-Jr-Client-Windows.zip
-Doble click en launch-client.bat
-```
-
-**macOS**:
-```bash
-Abrir el DMG
-Arrastrar "DonCEy Kong Jr.app" a Applications
+cd client\build
+client.exe
 ```
 
 ### Servidor
 
-**Cualquier plataforma con Java 11+**:
+Después de compilar:
+
 ```bash
 # Linux/Mac
-unzip DonCEy-Kong-Jr-Server-Universal.zip
-./launch-server.sh
+cd server/bin
+java -jar DonCEy-Kong-Jr-Server.jar
 
 # Windows
-Extraer el ZIP
-Doble click en launch-server.bat
+cd server\bin
+java -jar DonCEy-Kong-Jr-Server.jar
 ```
 
 ## 🛠️ Compilar Localmente
 
 ### Requisitos
-- **Cliente**: GCC, Make, Raylib 5.5
+- **Cliente**: GCC, Make, Raylib 5.5 (static library)
 - **Servidor**: Java JDK 11+
 
-### Build desde tu máquina
+### Cliente (Makefile multiplataforma)
 
 ```bash
-# Cliente (tu plataforma actual)
-cd client && make
-
-# Servidor (universal)
-cd server && javac -d bin src/**/*.java
+cd client
+make           # Compilar
+make verify    # Verificar que es standalone (sin dependencias externas)
+make run       # Compilar y ejecutar
+make clean     # Limpiar build
 ```
 
-### Build para TODAS las plataformas (GitHub Actions)
+El Makefile detecta automáticamente tu plataforma (Linux/macOS/Windows) y configura el linking correcto.
 
+### Servidor (Java)
+
+Usa los scripts de build incluidos:
+
+**Linux**:
 ```bash
-git add .
-git commit -m "Update code"
-git push origin main
+./build-tools/build-server-linux.sh
 ```
 
-Espera 10-15 minutos y los ejecutables de **Linux, Windows y macOS** estarán disponibles en Actions.
+**macOS**:
+```bash
+./build-tools/build-server-macos.sh
+```
 
-Ver [.github/GITHUB_ACTIONS.md](.github/GITHUB_ACTIONS.md) para más detalles.
+**Windows**:
+```cmd
+build-tools\build-server-windows.bat
+```
+
+Estos scripts generan distribuciones completas con ejecutable JAR, scripts de lanzamiento y README.
 
 ## 📁 Estructura
 
 ```
 client/          # Cliente C + Raylib
+  src/           # Código fuente
+  assets/        # Sprites, fuentes, iconos
+  Makefile       # Sistema de build multiplataforma
+  client.rc      # Recurso para icono de Windows
 server/          # Servidor Java
-build-tools/     # Scripts de build locales
-.github/         # GitHub Actions workflows
-  workflows/
-    build-all-platforms.yml  # Compilación automática
+  src/           # Código fuente
+  assets/        # Recursos del servidor
+build-tools/     # Scripts de build para distribución
 ```
 
 ## 🎮 Cómo Jugar
@@ -112,7 +108,3 @@ build-tools/     # Scripts de build locales
 ## 📝 Licencia
 
 Proyecto académico - Instituto Tecnológico de Costa Rica
-
----
-
-**Build Status**: ![Build Status](https://github.com/NicoFJ09/DonCEy-Kong-JR/actions/workflows/build-all-platforms.yml/badge.svg)
