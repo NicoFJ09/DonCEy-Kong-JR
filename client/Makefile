@@ -1,183 +1,181 @@
-# ============================================================
-# DonCEy Kong Jr - Client Makefile
-# Cross-platform build system (Linux, macOS, Windows)
-# ============================================================
-
-# Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
+RAYLIB_FLAGS = -lraylib -lm
 
-# Platform detection
-UNAME_S := $(shell uname -s 2>/dev/null || echo Windows_NT)
-# Normalize MSYS/MinGW variants to Windows_NT
-ifneq (,$(findstring MINGW,$(UNAME_S)))
-    UNAME_S := Windows_NT
-endif
-ifneq (,$(findstring MSYS,$(UNAME_S)))
-    UNAME_S := Windows_NT
+ifeq ($(OS),Windows_NT)
+	LDFLAGS = -lws2_32 $(RAYLIB_FLAGS) -lopengl32 -lgdi32 -lwinmm
+	TARGET = build/client.exe
+	RM = cmd /C "if exist build rmdir /S /Q build"
+	MKDIR = cmd /C "if not exist build mkdir build && if not exist build\obj mkdir build\obj"
+else
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Darwin)
+		LDFLAGS = $(RAYLIB_FLAGS) -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+	else
+		LDFLAGS = $(RAYLIB_FLAGS) -lpthread -dl -lrt -lX11
+	endif
+	TARGET = build/client
+	RM = rm -rf build
+	MKDIR = mkdir -p build/obj
 endif
 
-# Directories
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
-# Platform-specific settings
-ifeq ($(UNAME_S),Linux)
-    # Static linking for Raylib on Linux
-    LDFLAGS = -lraylib -lm -lpthread -ldl
-    LDFLAGS += -lGL -lX11 -lXrandr -lXi -lXcursor -lXinerama
-    TARGET_NAME = client
-endif
+EXTERNAL_SOURCES = src/external/cJSON.c
 
-ifeq ($(UNAME_S),Darwin)
-    RAYLIB_PATHS = /usr/local/lib /usr/local/Cellar/raylib/5.5/lib /opt/homebrew/lib
-    RAYLIB_INCLUDE_PATHS = /usr/local/include /usr/local/Cellar/raylib/5.5/include /opt/homebrew/include
+NETWORK_SOURCES = src/network/connection.c \
+				  src/network/game_events.c
 
-    RAYLIB_LIB_DIR := $(firstword $(foreach dir,$(RAYLIB_PATHS),$(wildcard $(dir)/libraylib.a)))
-    RAYLIB_INCLUDE_DIR := $(firstword $(foreach dir,$(RAYLIB_INCLUDE_PATHS),$(wildcard $(dir)/raylib.h)))
+RENDERING_SOURCES = src/rendering/sprite_manager.c \
+					src/rendering/animation.c \
+					src/rendering/renderer.c \
+					src/rendering/sprite_test.c
 
-    ifneq ($(RAYLIB_LIB_DIR),)
-        LDFLAGS := -L$(dir $(RAYLIB_LIB_DIR)) -lraylib -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-    else
-        LDFLAGS := -lraylib -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-    endif
+UTILS_SOURCES = src/utils/font_manager.c \
+				src/utils/message_listener.c
 
-    ifneq ($(RAYLIB_INCLUDE_DIR),)
-        CFLAGS += -I$(dir $(RAYLIB_INCLUDE_DIR))
-    endif
+GAME_SOURCES = src/game/game_flow.c \
+			   src/game/level.c \
+			   src/game/player.c \
+			   src/game/enemy.c \
+			   src/game/fruit.c \
+			   src/game/screens/ip_input_screen.c \
+			   src/game/screens/title_screen.c \
+			   src/game/screens/player_screen.c \
+			   src/game/screens/lose_screen.c \
+			   src/game/screens/player_selection_screen.c \
+			   src/game/screens/spectator_screen.c
 
-    TARGET_NAME = client
-endif
+MAIN_SOURCE = src/main.c
+SOURCES = $(MAIN_SOURCE) $(EXTERNAL_SOURCES) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(UTILS_SOURCES) $(GAME_SOURCES)
 
-ifeq ($(UNAME_S),Windows_NT)
-    # Windows linking - order matters!
-    # Link against static raylib, but don't force all libs to be static
-    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lm
-    LDFLAGS += -static-libgcc
-    TARGET_NAME = client.exe
-endif
+EXTERNAL_OBJECTS = $(OBJ_DIR)/cJSON.o
 
-# Full path to target
-TARGET = $(BUILD_DIR)/$(TARGET_NAME)
+NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
+				  $(OBJ_DIR)/game_events.o
 
-# Source files
-SRCS = src/main.c \
-       src/external/cJSON.c \
-       src/game/game_flow.c \
-       src/game/level.c \
-       src/game/player.c \
-       src/game/enemy.c \
-       src/game/fruit.c \
-       src/game/screens/ip_input_screen.c \
-       src/game/screens/title_screen.c \
-       src/game/screens/player_screen.c \
-       src/game/screens/lose_screen.c \
-       src/game/screens/player_selection_screen.c \
-       src/game/screens/spectator_screen.c \
-       src/network/connection.c \
-       src/network/game_events.c \
-       src/rendering/renderer.c \
-       src/rendering/sprite_manager.c \
-       src/rendering/sprite_test.c \
-       src/rendering/animation.c \
-       src/utils/font_manager.c \
-       src/utils/message_listener.c
+RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
+					$(OBJ_DIR)/animation.o \
+					$(OBJ_DIR)/renderer.o \
+					$(OBJ_DIR)/sprite_test.o
 
-# Object files
-OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
+UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o \
+				$(OBJ_DIR)/message_listener.o
 
-# Windows resource file for icon
-ifeq ($(UNAME_S),Windows_NT)
-    OBJS += $(BUILD_DIR)/client_res.o
-endif
+GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
+			   $(OBJ_DIR)/level.o \
+			   $(OBJ_DIR)/player.o \
+			   $(OBJ_DIR)/enemy.o \
+			   $(OBJ_DIR)/fruit.o \
+			   $(OBJ_DIR)/ip_input_screen.o \
+			   $(OBJ_DIR)/title_screen.o \
+			   $(OBJ_DIR)/player_screen.o \
+			   $(OBJ_DIR)/lose_screen.o \
+			   $(OBJ_DIR)/player_selection_screen.o \
+			   $(OBJ_DIR)/spectator_screen.o
 
-# ============================================================
-# TARGETS
-# ============================================================
+OBJECTS = $(OBJ_DIR)/main.o $(EXTERNAL_OBJECTS) $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(UTILS_OBJECTS) $(GAME_OBJECTS)
 
-.PHONY: all clean run help verify
+HEADERS = src/external/cJSON.h \
+		  src/network/connection.h \
+		  src/network/game_events.h \
+		  src/rendering/sprite_manager.h \
+		  src/rendering/animation.h \
+		  src/rendering/renderer.h \
+		  src/rendering/sprite_test.h \
+		  src/utils/font_manager.h \
+		  src/utils/constants.h \
+		  src/utils/message_listener.h \
+		  src/game/game_flow.h \
+		  src/game/level.h \
+		  src/game/player.h \
+		  src/game/screens/ip_input_screen.h \
+		  src/game/screens/title_screen.h \
+		  src/game/screens/player_screen.h \
+		  src/game/screens/lose_screen.h \
+		  src/game/screens/player_selection_screen.h \
+		  src/game/screens/spectator_screen.h
 
-all: $(TARGET)
+all: directories $(TARGET)
 
-# Link executable (CRITICAL: LDFLAGS va AL FINAL)
-$(TARGET): $(OBJS)
-	@echo "Linking $(TARGET)..."
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
-	@echo "✓ Build complete: $(TARGET)"
+directories:
+	$(MKDIR)
 
-# Compile source files
-$(OBJ_DIR)/%.o: src/%.c
-	@echo "Compiling $<..."
-	@mkdir -p $(dir $@)
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+	@echo "✓ Build successful: $(TARGET)"
+
+$(OBJ_DIR)/main.o: src/main.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compile Windows resource file (for icon)
-ifeq ($(UNAME_S),Windows_NT)
-$(BUILD_DIR)/client_res.o: client.rc
-	@echo "Compiling resource file..."
-	@mkdir -p $(BUILD_DIR)
-	windres client.rc -O coff -o $(BUILD_DIR)/client_res.o
-endif
+$(OBJ_DIR)/cJSON.o: src/external/cJSON.c src/external/cJSON.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean
+$(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/game_events.o: src/network/game_events.c src/network/game_events.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/sprite_manager.o: src/rendering/sprite_manager.c src/rendering/sprite_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/animation.o: src/rendering/animation.c src/rendering/animation.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/renderer.o: src/rendering/renderer.c src/rendering/renderer.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/game_flow.o: src/game/game_flow.c src/game/game_flow.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/level.o: src/game/level.c src/game/level.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player.o: src/game/player.c src/game/player.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/enemy.o: src/game/enemy.c src/game/enemy.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/fruit.o: src/game/fruit.c src/game/fruit.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/title_screen.o: src/game/screens/title_screen.c src/game/screens/title_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player_screen.o: src/game/screens/player_screen.c src/game/screens/player_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/lose_screen.o: src/game/screens/lose_screen.c src/game/screens/lose_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/player_selection_screen.o: src/game/screens/player_selection_screen.c src/game/screens/player_selection_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/spectator_screen.o: src/game/screens/spectator_screen.c src/game/screens/spectator_screen.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/message_listener.o: src/utils/message_listener.c src/utils/message_listener.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
-	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR)
+	$(RM)
 	@echo "✓ Cleaned"
 
-# Run
 run: all
-	@echo "Running $(TARGET_NAME)..."
-	@cd $(BUILD_DIR) && ./$(TARGET_NAME)
+	$(TARGET)
 
-# Verify executable dependencies
-verify: $(TARGET)
-	@echo "Verifying $(TARGET) dependencies..."
-	@echo ""
-ifeq ($(UNAME_S),Linux)
-	@echo "Checking dynamic library dependencies (ldd):"
-	@ldd $(TARGET) || true
-	@echo ""
-	@echo "✓ Executable should only depend on system libraries (libc, libm, libGL, libX11, etc.)"
-	@echo "  If you see 'libraylib.so' listed, Raylib is NOT statically linked!"
-endif
-ifeq ($(UNAME_S),Darwin)
-	@echo "Checking dynamic library dependencies (otool):"
-	@otool -L $(TARGET) || true
-	@echo ""
-	@echo "✓ Executable should only depend on system frameworks"
-	@echo "  If you see 'libraylib.dylib' listed, Raylib is NOT statically linked!"
-endif
-ifeq ($(UNAME_S),Windows_NT)
-	@echo "Checking DLL dependencies (objdump):"
-	@objdump -p $(TARGET) | grep "DLL Name:" || echo "No external DLLs found"
-	@echo ""
-	@echo "✓ Executable should only depend on system DLLs (kernel32, msvcrt, etc.)"
-	@echo "  If you see 'raylib.dll' listed, Raylib is NOT statically linked!"
-endif
+rebuild: clean all
 
-# Help
-help:
-	@echo "DonCEy Kong Jr - Makefile"
-	@echo ""
-	@echo "Targets:"
-	@echo "  all    - Build executable"
-	@echo "  clean  - Remove build artifacts"
-	@echo "  run    - Build and run"
-	@echo "  verify - Check if executable is standalone (no Raylib dependency)"
-	@echo "  help   - Show this message"
-	@echo ""
-	@echo "Platform: $(UNAME_S)"
-	@echo "Target: $(TARGET)"
-	@echo ""
-	@echo "To verify standalone build:"
-ifeq ($(UNAME_S),Linux)
-	@echo "  make verify  (or manually: ldd $(TARGET))"
-endif
-ifeq ($(UNAME_S),Darwin)
-	@echo "  make verify  (or manually: otool -L $(TARGET))"
-endif
-ifeq ($(UNAME_S),Windows_NT)
-	@echo "  make verify  (or manually: objdump -p $(TARGET) | grep 'DLL Name:')"
-endif
+.PHONY: all clean run rebuild directories
