@@ -112,6 +112,8 @@
 // GAME CONSTANTS
 // ============================================================
 
+#define PROTO_GAME_STATE "GAME_STATE:"
+
 // Level dimensions - must match UI window dimensions
 #define LEVEL_WIDTH 1200   // 50 blocks * 24px
 #define LEVEL_HEIGHT 912   // 38 blocks * 24px

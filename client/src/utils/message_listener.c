@@ -3,6 +3,7 @@
 #include "../game/level.h"
 #include "../game/enemy.h"
 #include "../game/fruit.h"
+#include "../game/spectator_protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,13 @@ static AdminCommandQueue g_admin_queue = {
     .tail = 0,
     .mutex = PTHREAD_MUTEX_INITIALIZER
 };
+
+typedef struct {
+    Connection* conn;
+    StateBuffer* state_buffer;
+    bool* running;
+} SpectatorListenerData;
+
 
 // ============================================================
 // ADMIN COMMAND QUEUE FUNCTIONS
@@ -202,7 +210,7 @@ void message_listener_stop(pthread_t thread_id) {
 // To be called from main thread (player_screen.c)
 // ============================================================
 
-void message_listener_process_admin_commands(struct Level* level, Connection* conn) {
+void message_listener_process_admin_commands(Level* level, Connection* conn) {
     if (!level) {
         return;  // Can't process commands without a level
     }
@@ -241,10 +249,10 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
                     bool success = false;
                     
                     if (strcmp(type, ENEMY_TYPE_RED) == 0) {
-                        success = enemy_spawn_red_at_vine_id(empty_slot, level, vine_id);
+                        success = enemy_spawn_red_at_vine_id(empty_slot, (struct Level*)level, vine_id);
                     }
                     else if (strcmp(type, ENEMY_TYPE_BLUE) == 0) {
-                        success = enemy_spawn_blue_at_vine_id(empty_slot, level, vine_id);
+                        success = enemy_spawn_blue_at_vine_id(empty_slot, (struct Level*)level, vine_id);
                     }
                     else {
                         printf("[ADMIN] Error: Unknown enemy type '%s'\n", type);
@@ -316,4 +324,111 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
     }
     
     (void)conn;  // Will be used in Phase 2/3 for confirmations
+}
+
+void* spectator_message_listener_thread(void* arg) {
+    SpectatorListenerData* data = (SpectatorListenerData*)arg;
+    char recv_buf[BUFFER_SIZE * 4];
+
+   if (!data) {
+        printf("ERROR: SpectatorListenerData is NULL!\n");
+        return NULL;
+    }
+    
+    printf("DEBUG: Spectator listener thread started\n");
+    printf("DEBUG: data->running = %p, *running = %d\n", data->running, *(data->running));
+    printf("DEBUG: data->conn = %p\n", data->conn);
+    printf("DEBUG: data->conn->connected = %d\n", data->conn ? data->conn->connected : -1);
+    
+    while (*(data->running) && data->conn && data->conn->connected) {
+        // Only attempt recv when data is available to avoid blocking
+        if (connection_has_data(data->conn)) {
+            if (connection_receive(data->conn, recv_buf, sizeof(recv_buf))) {
+                // Debug: print received message (trimmed)
+                size_t len = strnlen(recv_buf, sizeof(recv_buf));
+                size_t show = len < 200 ? len : 200;
+                char tmp[201];
+                memcpy(tmp, recv_buf, show);
+                tmp[show] = '\0';
+                printf("DEBUG: Spectator received raw (%zu bytes): '%s'\n", len, tmp);
+
+                // If server sent an admin command, queue it so the main thread processes spawns/removes
+                if (strncmp(recv_buf, "SPAWN_", 6) == 0 || strncmp(recv_buf, "REMOVE_", 7) == 0) {
+                    admin_queue_enqueue(recv_buf);
+                    continue;
+                }
+
+                if (strncmp(recv_buf, PROTO_GAME_STATE, strlen(PROTO_GAME_STATE)) == 0) {
+                    GameStateSnapshot snapshot;
+                    if (parse_game_state_message(recv_buf, &snapshot)) {
+                        state_buffer_push(data->state_buffer, &snapshot);
+
+                        // Print a concise spectator update so it's obvious we're receiving states
+                        int total = snapshot.entity_count;
+                        int enemies = 0;
+                        int enemies_red = 0;
+                        int enemies_blue = 0;
+                        int fruits = 0;
+                        for (int ei = 0; ei < snapshot.entity_count && ei < MAX_ENTITIES; ei++) {
+                            EntitySnapshot* e = &snapshot.entities[ei];
+                            if (e->type == ENTITY_ENEMY_RED) { enemies++; enemies_red++; }
+                            else if (e->type == ENTITY_ENEMY_BLUE) { enemies++; enemies_blue++; }
+                            else if (e->type == ENTITY_FRUIT) { fruits++; }
+                        }
+
+                        printf("SPECTATOR UPDATE: score=%d lives=%d entities=%d enemies=%d (R=%d B=%d) fruits=%d ts=%.2f\n",
+                               snapshot.score, snapshot.lives, total, enemies, enemies_red, enemies_blue, fruits, snapshot.timestamp);
+                    } else {
+                        printf("DEBUG: Failed to parse GAME_STATE message\n");
+                    }
+                } else if (strncmp(recv_buf, PROTO_PLAYER_LEFT_SESSION, strlen(PROTO_PLAYER_LEFT_SESSION)) == 0) {
+                    // Watched player left — keep the spectator connected so admin spawns and global GAME_STATE
+                    // updates are still received and applied. Do not stop the listener here.
+                    printf("DEBUG: Player left - continuing as spectator\n");
+                } else if (strncmp(recv_buf, PROTO_PLAYER_DISCONNECTED, strlen(PROTO_PLAYER_DISCONNECTED)) == 0) {
+                    printf("DEBUG: Player disconnected - continuing as spectator\n");
+                } else if (strncmp(recv_buf, "GAME_OVER", 9) == 0) {
+                    // For GAME_OVER we also continue receiving; UI may decide what to show.
+                    printf("DEBUG: Game over received - continuing to listen\n");
+                }
+            } else {
+                // connection_receive failed despite has_data(); small backoff
+                usleep(2000);
+            }
+        } else {
+            // No data available — short sleep so thread exits promptly when signaled
+            usleep(5000);
+        }
+    }
+
+    printf("DEBUG: Spectator listener thread stopped\n");
+    printf("DEBUG: Exit reason - running=%d, conn=%p, connected=%d\n", 
+           *(data->running), 
+           data->conn, 
+           data->conn ? data->conn->connected : -1);
+    free(data);
+    return NULL;
+}
+
+pthread_t spectator_listener_start(Connection* conn, StateBuffer* state_buffer, bool* running) {
+    if (!conn || !state_buffer || !running) return 0;
+
+    SpectatorListenerData* data = malloc(sizeof(SpectatorListenerData));
+    if (!data) {
+        printf("ERROR: Could not allocate SpectatorListenerData\n");
+        return 0;
+    }
+
+    data->conn = conn;
+    data->state_buffer = state_buffer;
+    data->running = running;
+
+    pthread_t thread = 0;
+    if (pthread_create(&thread, NULL, spectator_message_listener_thread, data) != 0) {
+        printf("ERROR: Could not create spectator listener thread\n");
+        free(data);
+        return 0;
+    }
+
+    return thread;
 }
