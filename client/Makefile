@@ -19,7 +19,6 @@ ifeq ($(UNAME_S),Linux)
     LDFLAGS = -lraylib -lm -lGL -lX11 -lXrandr -lXi -lpthread -ldl
     TARGET = $(BUILD_DIR)/client
     MKDIR = mkdir -p
-    RM = rm -rf
 endif
 
 ifeq ($(UNAME_S),Darwin)
@@ -43,15 +42,13 @@ ifeq ($(UNAME_S),Darwin)
     
     TARGET = $(BUILD_DIR)/client
     MKDIR = mkdir -p
-    RM = rm -rf
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
     # Windows: TODAS las librerías en orden correcto
     LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lcrypt32 -lm
     TARGET = $(BUILD_DIR)/client.exe
-    MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
-    RM = powershell -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+    MKDIR = mkdir -p
 endif
 
 # Source files (organized by module)
@@ -103,7 +100,7 @@ endif
 	@echo "LDFLAGS: $(LDFLAGS)"
 	@echo "TARGET: $(TARGET)"
 
-# Link executable (CRITICAL: $@ expands to full target path)
+# Link executable
 $(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
@@ -112,22 +109,14 @@ $(TARGET): $(OBJS)
 # Compile source files
 $(OBJ_DIR)/%.o: src/%.c
 	@echo "Compiling $<..."
-ifeq ($(UNAME_S),Windows_NT)
-	@powershell -Command "New-Item -ItemType Directory -Force -Path $(OBJ_DIR) | Out-Null"
-	@powershell -Command "New-Item -ItemType Directory -Force -Path $(dir $@) | Out-Null"
-else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean build artifacts
+# Clean build artifacts (ARREGLADO - funciona en todos los OS)
 clean:
 	@echo "Cleaning build artifacts..."
-ifeq ($(UNAME_S),Windows_NT)
-	@powershell -Command "if (Test-Path $(BUILD_DIR)) { Remove-Item -Recurse -Force $(BUILD_DIR) }"
-else
-	@rm -rf $(BUILD_DIR)
-endif
+	@rm -rf $(BUILD_DIR) 2>/dev/null || true
+	@find . -name "*.o" -delete 2>/dev/null || true
 	@echo "✓ Cleaned"
 
 # Run the client

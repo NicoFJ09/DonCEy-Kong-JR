@@ -61,7 +61,7 @@ jobs:
         name: client-linux
         path: dist/DonCEy-Kong-Jr-Client-Linux.tar.gz
 
-# ============================================================================
+  # ============================================================================
   # BUILD CLIENT - WINDOWS
   # ============================================================================
   build-client-windows:
@@ -90,34 +90,43 @@ jobs:
         cp libraylib.a /mingw64/lib/
         cp raylib.h raymath.h rlgl.h /mingw64/include/
     
-    - name: Build client (REFORZADO)
+    - name: Build client (LIMPIEZA FORZADA)
       shell: msys2 {0}
       run: |
         cd client
         
-        # PRE-CREAR DIRECTORIOS EXPLÍCITAMENTE
+        echo "=== Makefile Check ==="
+        if ! grep -q "lcrypt32" Makefile; then
+          echo "ERROR: Makefile does not contain -lcrypt32!"
+          grep "LDFLAGS" Makefile | head -5
+          exit 1
+        fi
+        echo "✓ Makefile contains -lcrypt32"
+        
+        echo "=== Force Clean ==="
+        rm -rf build/
+        find . -name "*.o" -delete 2>/dev/null || true
+        
+        echo "=== Creating Directories ==="
         mkdir -p build/obj/game/screens
         mkdir -p build/obj/network
         mkdir -p build/obj/rendering
         mkdir -p build/obj/utils
         mkdir -p build/obj/external
         
-        # LIMPIAR BUILD PREVIO
-        if [ -f build/client.exe ]; then
-          rm -f build/client.exe
-        fi
-        
-        # COMPILAR (Makefile ya tiene el orden correcto de LDFLAGS)
-        mingw32-make clean
+        echo "=== Building ==="
         mingw32-make
         
-        # VERIFICAR QUE EL EJECUTABLE EXISTA
+        echo "=== Checking Output ==="
         if [ ! -f build/client.exe ]; then
           echo "ERROR: client.exe was not created!"
+          echo "Contents of build/:"
+          ls -laR build/ || echo "build/ directory does not exist"
           exit 1
         fi
         
         echo "✓ Build successful: build/client.exe"
+        ls -lh build/client.exe
     
     - name: Package client
       shell: pwsh
@@ -147,7 +156,7 @@ jobs:
         name: client-windows
         path: dist/DonCEy-Kong-Jr-Client-Windows.zip
 
-# ============================================================================
+  # ============================================================================
   # BUILD CLIENT - MACOS
   # ============================================================================
   build-client-macos:
@@ -157,22 +166,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install Raylib (ARREGLADO)
+    - name: Install Raylib
       run: |
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
-        
-        # INSTALAR EN /usr/local (no en /usr/local/Cellar)
         sudo mkdir -p /usr/local/lib
         sudo mkdir -p /usr/local/include
         sudo cp libraylib.a /usr/local/lib/
         sudo cp raylib.h raymath.h rlgl.h /usr/local/include/
-        
-        # VERIFICAR INSTALACIÓN
-        echo "✓ Raylib installed:"
-        ls -la /usr/local/lib/libraylib.a
-        ls -la /usr/local/include/raylib.h
     
     - name: Build client
       run: |
