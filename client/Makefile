@@ -101,8 +101,9 @@ ifeq ($(UNAME_S),Darwin)
 endif
 	@echo "CFLAGS: $(CFLAGS)"
 	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo "TARGET: $(BUILD_DIR)/$(TARGET)"
 
-# Link executable
+# Link executable (ARREGLADO: output correcto)
 $(BUILD_DIR)/$(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
