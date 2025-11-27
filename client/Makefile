@@ -43,9 +43,10 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    # Windows static linking - order matters!
-    LDFLAGS = -static -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32
-    LDFLAGS += -static-libgcc -lm
+    # Windows linking - order matters!
+    # Link against static raylib, but don't force all libs to be static
+    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lm
+    LDFLAGS += -static-libgcc
     TARGET_NAME = client.exe
 endif
 
