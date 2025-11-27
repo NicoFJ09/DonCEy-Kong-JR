@@ -18,7 +18,6 @@ OBJ_DIR = $(BUILD_DIR)/obj
 ifeq ($(UNAME_S),Linux)
     LDFLAGS = -lraylib -lm -lGL -lX11 -lXrandr -lXi -lpthread -ldl
     TARGET_NAME = client
-    MKDIR = mkdir -p
 endif
 
 ifeq ($(UNAME_S),Darwin)
@@ -39,16 +38,15 @@ ifeq ($(UNAME_S),Darwin)
     endif
     
     TARGET_NAME = client
-    MKDIR = mkdir -p
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lcrypt32 -lm
+    # CRITICAL: Windows necesita TODAS estas libs en este ORDEN
+    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lm
     TARGET_NAME = client.exe
-    MKDIR = mkdir -p
 endif
 
-# CRITICAL: Full path to target
+# Full path to target
 TARGET = $(BUILD_DIR)/$(TARGET_NAME)
 
 # Source files
@@ -81,22 +79,11 @@ OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
 # TARGETS
 # ============================================================
 
-.PHONY: all clean run test-raylib help debug
+.PHONY: all clean run help
 
-all: debug $(TARGET)
+all: $(TARGET)
 
-debug:
-	@echo "=== Makefile Debug Info ==="
-	@echo "UNAME_S: $(UNAME_S)"
-	@echo "TARGET: $(TARGET)"
-	@echo "TARGET_NAME: $(TARGET_NAME)"
-	@echo "BUILD_DIR: $(BUILD_DIR)"
-	@echo "LDFLAGS: $(LDFLAGS)"
-	@echo "Number of SRCS: $(words $(SRCS))"
-	@echo "Number of OBJS: $(words $(OBJS))"
-	@echo "==========================="
-
-# Link executable
+# Link executable (CRITICAL: LDFLAGS va AL FINAL)
 $(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
 	@mkdir -p $(BUILD_DIR)
@@ -112,22 +99,23 @@ $(OBJ_DIR)/%.o: src/%.c
 # Clean
 clean:
 	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR) 2>/dev/null || true
+	@rm -rf $(BUILD_DIR)
 	@echo "✓ Cleaned"
 
 # Run
 run: all
-	@echo "Running..."
-ifeq ($(UNAME_S),Windows_NT)
+	@echo "Running $(TARGET_NAME)..."
 	@cd $(BUILD_DIR) && ./$(TARGET_NAME)
-else
-	@cd $(BUILD_DIR) && ./$(TARGET_NAME)
-endif
 
 # Help
 help:
+	@echo "DonCEy Kong Jr - Makefile"
+	@echo ""
 	@echo "Targets:"
 	@echo "  all    - Build executable"
 	@echo "  clean  - Remove build artifacts"
 	@echo "  run    - Build and run"
-	@echo "  debug  - Show Makefile variables"
+	@echo "  help   - Show this message"
+	@echo ""
+	@echo "Platform: $(UNAME_S)"
+	@echo "Target: $(TARGET)"
