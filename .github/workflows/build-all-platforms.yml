@@ -29,10 +29,9 @@ jobs:
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
+        # Copiar biblioteca y headers (están en /tmp/raylib/src directamente)
         sudo cp libraylib.a /usr/lib/x86_64-linux-gnu/
-        sudo cp raylib.h /usr/include/
-        sudo cp raymath.h /usr/include/
-        sudo cp rlgl.h /usr/include/
+        sudo cp raylib.h raymath.h rlgl.h /usr/include/
     
     - name: Build client
       run: |
@@ -91,10 +90,9 @@ jobs:
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         mingw32-make PLATFORM=PLATFORM_DESKTOP CC=gcc
+        # Copiar biblioteca y headers (están en /tmp/raylib/src directamente)
         cp libraylib.a /mingw64/lib/
-        cp raylib.h /mingw64/include/
-        cp raymath.h /mingw64/include/
-        cp rlgl.h /mingw64/include/
+        cp raylib.h raymath.h rlgl.h /mingw64/include/
     
     - name: Build client
       shell: msys2 {0}
