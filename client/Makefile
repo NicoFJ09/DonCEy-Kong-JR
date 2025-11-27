@@ -12,7 +12,10 @@ else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
         # macOS - Static Raylib linking (standalone .app)
-        RAYLIB_STATIC = /usr/local/Cellar/raylib/5.5/lib/libraylib.a
+        # Detectar path de Raylib (local o Homebrew)
+        RAYLIB_PATH := $(shell [ -d /usr/local/Cellar/raylib/5.5 ] && echo "/usr/local/Cellar/raylib/5.5" || brew --prefix raylib 2>/dev/null)
+        RAYLIB_STATIC = $(RAYLIB_PATH)/lib/libraylib.a
+        CFLAGS += -I$(RAYLIB_PATH)/include
         LDFLAGS = $(RAYLIB_STATIC) -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     else
         # Linux - Static linking (standalone binary)
