@@ -16,7 +16,9 @@ OBJ_DIR = $(BUILD_DIR)/obj
 
 # Platform-specific settings
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS = -lraylib -lm -lGL -lX11 -lXrandr -lXi -lpthread -ldl
+    # Static linking for Raylib on Linux
+    LDFLAGS = -lraylib -lm -lpthread -ldl
+    LDFLAGS += -lGL -lX11 -lXrandr -lXi -lXcursor -lXinerama
     TARGET_NAME = client
 endif
 
@@ -41,8 +43,9 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    # CRITICAL: Windows necesita TODAS estas libs en este ORDEN
-    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lm
+    # Windows static linking - order matters!
+    LDFLAGS = -static -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32
+    LDFLAGS += -static-libgcc -lm
     TARGET_NAME = client.exe
 endif
 

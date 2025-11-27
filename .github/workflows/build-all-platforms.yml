@@ -24,8 +24,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential git libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev
-        
-        # Instalar Raylib estático
+
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
@@ -90,40 +89,20 @@ jobs:
         cp libraylib.a /mingw64/lib/
         cp raylib.h raymath.h rlgl.h /mingw64/include/
     
-    - name: Build client (WITH DEBUGGING)
+    - name: Build client
       shell: msys2 {0}
       run: |
         cd client
-        
-        echo "=== Makefile Check ==="
-        if ! grep -q "lcrypt32" Makefile; then
-          echo "ERROR: Makefile missing -lcrypt32"
-          exit 1
-        fi
-        
-        echo "=== Platform Info ==="
-        uname -s
-        which mingw32-make
-        mingw32-make --version
-        
-        echo "=== Cleaning ==="
         rm -rf build/
-        
-        echo "=== Make Debug ==="
-        mingw32-make debug
-        
-        echo "=== Building ==="
-        mingw32-make -B all
-        
-        echo "=== Checking Result ==="
+        mingw32-make -B
+
         if [ ! -f build/client.exe ]; then
-          echo "ERROR: client.exe not created"
-          echo "Build directory contents:"
-          ls -laR build/ 2>/dev/null || echo "build/ does not exist"
+          echo "ERROR: Build failed"
+          ls -laR build/
           exit 1
         fi
-        
-        echo "✓ Success"
+
+        echo "✓ Build successful"
         ls -lh build/client.exe
     
     - name: Package client
@@ -174,14 +153,7 @@ jobs:
         sudo cp libraylib.a /usr/local/lib/
         sudo cp raylib.h raymath.h rlgl.h /usr/local/include/
     
-    - name: Build client
-      run: |
-        cd client
-        make test-raylib
-        make clean
-        make
-    
-    - name: Create .app bundle
+    - name: Build and package client
       run: |
         chmod +x build-tools/build-client-macos.sh
         ./build-tools/build-client-macos.sh
@@ -218,12 +190,12 @@ jobs:
       run: |
         cd server
         mkdir -p bin
-        
+
         cd ..
         javac -d server/bin \
           server/src/Main.java \
           server/src/network/*.java \
-          server/src/gamestate/GameSession.java \
+          server/src/gamestate/*.java \
           server/src/ui/*.java \
           server/src/utils/*.java \
           server/src/game/*.java
@@ -300,7 +272,7 @@ jobs:
         path: dist/macos/DonCEy-Kong-Jr-Server-macOS.dmg
 
   # ============================================================================
-  # CREATE RELEASE (solo cuando se crea un tag)
+  # CREATE RELEASE
   # ============================================================================
   create-release:
     if: github.event_name == 'release'

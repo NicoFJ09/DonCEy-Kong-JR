@@ -23,7 +23,7 @@ mkdir -p server/bin
 javac -d server/bin \
     server/src/Main.java \
     server/src/network/*.java \
-    server/src/gamestate/GameSession.java \
+    server/src/gamestate/*.java \
     server/src/ui/*.java \
     server/src/utils/*.java \
     server/src/game/*.java
