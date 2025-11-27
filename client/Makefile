@@ -6,15 +6,18 @@
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
-LDFLAGS = -lraylib -lm
 
 # Platform detection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows_NT)
 
+# Directories
+BUILD_DIR = build
+OBJ_DIR = $(BUILD_DIR)/obj
+
 # Platform-specific settings
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS += -lGL -lX11 -lXrandr -lXi -lpthread -ldl
-    TARGET = client
+    LDFLAGS = -lraylib -lm -lGL -lX11 -lXrandr -lXi -lpthread -ldl
+    TARGET = $(BUILD_DIR)/client
     MKDIR = mkdir -p
     RM = rm -rf
 endif
@@ -29,31 +32,27 @@ ifeq ($(UNAME_S),Darwin)
     RAYLIB_INCLUDE_DIR := $(firstword $(foreach dir,$(RAYLIB_INCLUDE_PATHS),$(wildcard $(dir)/raylib.h)))
     
     ifneq ($(RAYLIB_LIB_DIR),)
-        LDFLAGS := -L$(dir $(RAYLIB_LIB_DIR)) $(LDFLAGS)
+        LDFLAGS := -L$(dir $(RAYLIB_LIB_DIR)) -lraylib -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+    else
+        LDFLAGS := -lraylib -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     endif
     
     ifneq ($(RAYLIB_INCLUDE_DIR),)
         CFLAGS += -I$(dir $(RAYLIB_INCLUDE_DIR))
     endif
     
-    LDFLAGS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-    TARGET = client
+    TARGET = $(BUILD_DIR)/client
     MKDIR = mkdir -p
     RM = rm -rf
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    # Windows: TODAS las librerías necesarias en orden correcto
-    # ORDEN CRÍTICO: -lraylib primero, luego system libs
+    # Windows: TODAS las librerías en orden correcto
     LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lcrypt32 -lm
-    TARGET = client.exe
+    TARGET = $(BUILD_DIR)/client.exe
     MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
     RM = powershell -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
 endif
-
-# Directories
-BUILD_DIR = build
-OBJ_DIR = $(BUILD_DIR)/obj
 
 # Source files (organized by module)
 SRCS = src/main.c \
@@ -85,9 +84,9 @@ OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
 # TARGETS
 # ============================================================
 
-.PHONY: all clean run test-raylib
+.PHONY: all clean run test-raylib help
 
-all: $(BUILD_DIR)/$(TARGET)
+all: $(TARGET)
 
 # Test Raylib installation
 test-raylib:
@@ -102,15 +101,15 @@ ifeq ($(UNAME_S),Darwin)
 endif
 	@echo "CFLAGS: $(CFLAGS)"
 	@echo "LDFLAGS: $(LDFLAGS)"
-	@echo "TARGET: $(BUILD_DIR)/$(TARGET)"
+	@echo "TARGET: $(TARGET)"
 
-# Link executable (ARREGLADO: output correcto + todas las libs)
-$(BUILD_DIR)/$(TARGET): $(OBJS)
+# Link executable (CRITICAL: $@ expands to full target path)
+$(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
-	@echo "✓ Build complete: $(BUILD_DIR)/$(TARGET)"
+	@echo "✓ Build complete: $(TARGET)"
 
-# Compile source files (REFORZADO con creación explícita de directorios)
+# Compile source files
 $(OBJ_DIR)/%.o: src/%.c
 	@echo "Compiling $<..."
 ifeq ($(UNAME_S),Windows_NT)
@@ -134,7 +133,11 @@ endif
 # Run the client
 run: all
 	@echo "Running client..."
-	@cd $(BUILD_DIR) && ./$(TARGET)
+ifeq ($(UNAME_S),Windows_NT)
+	@cd $(BUILD_DIR) && client.exe
+else
+	@cd $(BUILD_DIR) && ./client
+endif
 
 # Help
 help:
@@ -148,4 +151,4 @@ help:
 	@echo "  help          - Show this help message"
 	@echo ""
 	@echo "Platform: $(UNAME_S)"
-	@echo "Target: $(BUILD_DIR)/$(TARGET)"
+	@echo "TARGET: $(TARGET)"
