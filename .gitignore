@@ -88,11 +88,25 @@ out/
 nbproject/private/
 build/
 nbbuild/
-dist/
 
 # Maven
 target/
 .mvn/
+
+# ==========================
+# Distribution artifacts
+# ==========================
+
+# Distribution directory (created by build scripts)
+dist/
+
+# Platform-specific installers/packages
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+*.msi
 
 # Gradle
 .gradle/

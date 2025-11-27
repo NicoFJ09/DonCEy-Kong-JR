@@ -39,6 +39,23 @@ public class ServerUI extends JFrame {
         setResizable(false);
         setLocationRelativeTo(null);
         
+        // Set window icon
+        try {
+            String iconPath = "assets/icons/macos/server.icns";
+            java.io.File iconFile = new java.io.File(iconPath);
+            if (!iconFile.exists()) {
+                // Try PNG fallback
+                iconPath = "assets/ui/logo/logo.png";
+                iconFile = new java.io.File(iconPath);
+            }
+            if (iconFile.exists()) {
+                ImageIcon icon = new ImageIcon(iconFile.getAbsolutePath());
+                setIconImage(icon.getImage());
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load window icon: " + e.getMessage());
+        }
+        
         // Panel externo que actúa como borde
         JPanel outerPanel = new JPanel();
         outerPanel.setBackground(new Color(139, 69, 19)); // Color café (borde)
@@ -497,53 +514,69 @@ public class ServerUI extends JFrame {
         //           EN LA IZQUIERDA DE LA PANTALLA
         //__________________________________________________________
 
+        // Debug: print current directory and check if assets exist
         String currentDir = System.getProperty("user.dir");
-        String projectRoot = currentDir.endsWith("server") ? currentDir + "/.." : currentDir;
+        System.out.println("[DEBUG] Current directory: " + currentDir);
+        System.out.println("[DEBUG] Checking assets directory...");
+        
+        java.io.File assetsDir = new java.io.File("assets");
+        System.out.println("[DEBUG] assets exists: " + assetsDir.exists());
+        System.out.println("[DEBUG] assets absolute path: " + assetsDir.getAbsolutePath());
+        
+        if (assetsDir.exists()) {
+            System.out.println("[DEBUG] Contents of assets:");
+            for (java.io.File f : assetsDir.listFiles()) {
+                System.out.println("[DEBUG]   - " + f.getName());
+            }
+        }
+        
+        // Assets are now in server/assets directory (both dev and production)
+        String assetsBasePath = "assets";
         
         
         // plataformas - Primera fila de plataformas
         for (int i = 0; i < 25; i++) {
-            addPlatform(mainPanel, projectRoot, 440 + (i * 25), 180, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 440 + (i * 25), 180, 25, 25);
         }
         for (int i = 0; i < 13; i++) {
-            addPlatform(mainPanel, projectRoot, 1065 + (i * 25), 200, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 1065 + (i * 25), 200, 25, 25);
         }
 
         for (int i = 0; i < 13; i++) {
-            addPlatform(mainPanel, projectRoot, 1240 + (i * 25), 470, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 1240 + (i * 25), 470, 25, 25);
         }
         for (int i = 0; i < 12; i++) {
-            addPlatform(mainPanel, projectRoot, 440 + (i * 25), 890, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 440 + (i * 25), 890, 25, 25);
         }
         //las del medio
         for (int i = 0; i < 5; i++) {
-            addPlatform(mainPanel, projectRoot, 670 + (i * 25), 420, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 670 + (i * 25), 420, 25, 25);
         }
         for (int i = 0; i < 8; i++) {
-            addPlatform(mainPanel, projectRoot, 670 + (i * 25), 595, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 670 + (i * 25), 595, 25, 25);
         }
         
 
         //bases
-        addBase(mainPanel, projectRoot, 1445, 795, 110, 30);
-        addStem(mainPanel, projectRoot, 1475, 820, 50, 95);
+        addBase(mainPanel, assetsBasePath, 1445, 795, 110, 30);
+        addStem(mainPanel, assetsBasePath, 1475, 820, 50, 95);
 
-        addBase(mainPanel, projectRoot, 1270, 830, 105, 30);
-        addStem(mainPanel, projectRoot, 1296, 835, 50, 80);
+        addBase(mainPanel, assetsBasePath, 1270, 830, 105, 30);
+        addStem(mainPanel, assetsBasePath, 1296, 835, 50, 80);
 
-        addBase(mainPanel, projectRoot, 1092, 860, 85, 30);
-        addStem(mainPanel, projectRoot, 1122, 885, 30, 30);
+        addBase(mainPanel, assetsBasePath, 1092, 860, 85, 30);
+        addStem(mainPanel, assetsBasePath, 1122, 885, 30, 30);
 
-        addBase(mainPanel, projectRoot, 910, 820, 105, 30);
-        addStem(mainPanel, projectRoot, 937, 835, 50, 80);
+        addBase(mainPanel, assetsBasePath, 910, 820, 105, 30);
+        addStem(mainPanel, assetsBasePath, 937, 835, 50, 80);
 
 
         //lianas despues de plataformas
         for (int i = 0; i < 8; i++) {
             int baseY = 205 + (i * 81);
-            addVine1(mainPanel, projectRoot, 580, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 580, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 580, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 580, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 580, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 580, baseY + 54, 30, 27);
             addVineBox(mainPanel, 580, baseY, 30, 27);
             addVineBox(mainPanel, 580, baseY + 27, 30, 27);
             addVineBox(mainPanel, 580, baseY + 54, 30, 27);
@@ -557,9 +590,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 7; i++) {
             int baseY = 205 + (i * 81);
-            addVine1(mainPanel, projectRoot, 640, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 640, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 640, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 640, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 640, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 640, baseY + 54, 30, 27);
             addVineBox(mainPanel, 640, baseY, 30, 27);
             addVineBox(mainPanel, 640, baseY + 27, 30, 27);
             addVineBox(mainPanel, 640, baseY + 54, 30, 27);
@@ -573,9 +606,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 6; i++) {
             int baseY = 205 + (i * 81);
-            addVine1(mainPanel, projectRoot, 900, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 900, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 900, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 900, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 900, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 900, baseY + 54, 30, 27);
             addVineBox(mainPanel, 900, baseY, 30, 27);
             addVineBox(mainPanel, 900, baseY + 27, 30, 27);
             addVineBox(mainPanel, 900, baseY + 54, 30, 27);
@@ -589,9 +622,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 3; i++) {
             int baseY = 205 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1010, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1010, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1010, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1010, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1010, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1010, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1010, baseY, 30, 27);
             addVineBox(mainPanel, 1010, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1010, baseY + 54, 30, 27);
@@ -605,9 +638,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 3; i++) {
             int baseY = 225 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1090, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1090, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1090, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1090, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1090, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1090, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1090, baseY, 30, 27);
             addVineBox(mainPanel, 1090, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1090, baseY + 54, 30, 27);
@@ -621,9 +654,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 4; i++) {
             int baseY = 225 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1200, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1200, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1200, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1200, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1200, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1200, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1200, baseY, 30, 27);
             addVineBox(mainPanel, 1200, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1200, baseY + 54, 30, 27);
@@ -636,9 +669,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 5; i++) {
             int baseY = 445 + (i * 81);
-            addVine1(mainPanel, projectRoot, 700, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 700, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 700, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 700, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 700, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 700, baseY + 54, 30, 27);
             addVineBox(mainPanel, 700, baseY, 30, 27);
             addVineBox(mainPanel, 700, baseY + 27, 30, 27);
             addVineBox(mainPanel, 700, baseY + 54, 30, 27);
@@ -651,9 +684,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 2; i++) {
             int baseY = 495 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1273, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1273, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1273, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1273, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1273, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1273, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1273, baseY, 30, 27);
             addVineBox(mainPanel, 1273, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1273, baseY + 54, 30, 27);
@@ -667,9 +700,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 6; i++) {
             int baseY = 225 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1360, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1360, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1360, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1360, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1360, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1360, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1360, baseY, 30, 27);
             addVineBox(mainPanel, 1360, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1360, baseY + 54, 30, 27);
@@ -683,9 +716,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 7; i++) {
             int baseY = 0 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1440, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1440, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1440, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1440, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1440, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1440, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1440, baseY, 30, 27);
             addVineBox(mainPanel, 1440, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1440, baseY + 54, 30, 27);
@@ -698,9 +731,9 @@ public class ServerUI extends JFrame {
 
         for (int i = 0; i < 8; i++) {
             int baseY = 0 + (i * 81);
-            addVine1(mainPanel, projectRoot, 1500, baseY, 30, 27);
-            addVine2(mainPanel, projectRoot, 1500, baseY + 27, 30, 27);
-            addVine3(mainPanel, projectRoot, 1500, baseY + 54, 30, 27);
+            addVine1(mainPanel, assetsBasePath, 1500, baseY, 30, 27);
+            addVine2(mainPanel, assetsBasePath, 1500, baseY + 27, 30, 27);
+            addVine3(mainPanel, assetsBasePath, 1500, baseY + 54, 30, 27);
             addVineBox(mainPanel, 1500, baseY, 30, 27);
             addVineBox(mainPanel, 1500, baseY + 27, 30, 27);
             addVineBox(mainPanel, 1500, baseY + 54, 30, 27);
@@ -714,9 +747,9 @@ public class ServerUI extends JFrame {
 
         //aditional 
         for (int i = 0; i < 46; i++) {
-            addWater(mainPanel, projectRoot, 440 + (i * 25), 915, 25, 25);
+            addWater(mainPanel, assetsBasePath, 440 + (i * 25), 915, 25, 25);
         }
-        addDonkeyJr(mainPanel, projectRoot, 430, 840, 90, 50);
+        addDonkeyJr(mainPanel, assetsBasePath, 430, 840, 90, 50);
 
 
         outerPanel.add(mainPanel, BorderLayout.CENTER);
@@ -725,8 +758,8 @@ public class ServerUI extends JFrame {
     }
     
 
-    private void addVine1(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String vinePath1 = projectRoot + "/client/assets/environment/vines/vine1.png";
+    private void addVine1(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String vinePath1 = assetsBasePath + "/environment/vines/vine1.png";
         ImageIcon vineIcon1 = new ImageIcon(vinePath1);
         Image vineImage = vineIcon1.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon1 = new ImageIcon(vineImage);
@@ -735,8 +768,8 @@ public class ServerUI extends JFrame {
         panel.add(vineLabel1);
     }
 
-    private void addDonkeyJr(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String donkeyJrPath = projectRoot + "/client/assets/characters/junior/idle.png";
+    private void addDonkeyJr(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String donkeyJrPath = assetsBasePath + "/characters/junior/idle.png";
         ImageIcon donkeyJrIcon = new ImageIcon(donkeyJrPath);
         Image donkeyJrImage = donkeyJrIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon1 = new ImageIcon(donkeyJrImage);
@@ -745,8 +778,8 @@ public class ServerUI extends JFrame {
         panel.add(donkeyJrLabel);
     }
 
-    private void addVine2(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String vinePath2 = projectRoot + "/client/assets/environment/vines/vine2.png";
+    private void addVine2(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String vinePath2 = assetsBasePath + "/environment/vines/vine2.png";
         ImageIcon vineIcon2 = new ImageIcon(vinePath2);
         Image vineImage = vineIcon2.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon2 = new ImageIcon(vineImage);
@@ -754,8 +787,8 @@ public class ServerUI extends JFrame {
         vineLabel2.setBounds(x, y, width, height);
         panel.add(vineLabel2);
     }
-    private void addVine3(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String vinePath3 = projectRoot + "/client/assets/environment/vines/vine3.png";
+    private void addVine3(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String vinePath3 = assetsBasePath + "/environment/vines/vine3.png";
         ImageIcon vineIcon3 = new ImageIcon(vinePath3);
         Image vineImage = vineIcon3.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon3 = new ImageIcon(vineImage);
@@ -765,8 +798,8 @@ public class ServerUI extends JFrame {
     }
 
 
-    private void addPlatform(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String platformPath = projectRoot + "/client/assets/environment/platforms/platform.png";
+    private void addPlatform(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String platformPath = assetsBasePath + "/environment/platforms/platform.png";
         ImageIcon platformIcon = new ImageIcon(platformPath);
         Image platformImage = platformIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon = new ImageIcon(platformImage);
@@ -775,8 +808,8 @@ public class ServerUI extends JFrame {
         panel.add(platformLabel);
     }
 
-    private void addBase(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String vinePath = projectRoot + "/client/assets/environment/grass/wide_grass.png";
+    private void addBase(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String vinePath = assetsBasePath + "/environment/grass/wide_grass.png";
         ImageIcon vineIcon = new ImageIcon(vinePath);
         Image vineImage = vineIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon = new ImageIcon(vineImage);
@@ -785,8 +818,8 @@ public class ServerUI extends JFrame {
         panel.add(vineLabel);
     }
 
-    private void addStem(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String platformPath = projectRoot + "/client/assets/environment/grass/wide_stem.png";
+    private void addStem(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String platformPath = assetsBasePath + "/environment/grass/wide_stem.png";
         ImageIcon platformIcon = new ImageIcon(platformPath);
         Image platformImage = platformIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledIcon = new ImageIcon(platformImage);
@@ -795,8 +828,8 @@ public class ServerUI extends JFrame {
         panel.add(platformLabel);
     }
 
-    private void addWater(JPanel panel, String projectRoot, int x, int y, int width, int height) {
-        String waterPath = projectRoot + "/client/assets/environment/water/water.png";
+    private void addWater(JPanel panel, String assetsBasePath, int x, int y, int width, int height) {
+        String waterPath = assetsBasePath + "/environment/water/water.png";
         ImageIcon waterIcon = new ImageIcon(waterPath);
         Image waterImage = waterIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         ImageIcon scaledWaterIcon = new ImageIcon(waterImage);
