@@ -43,8 +43,9 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    # Windows: ORDEN CRÍTICO de las librerías
-    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lm
+    # Windows: TODAS las librerías necesarias en orden correcto
+    # ORDEN CRÍTICO: -lraylib primero, luego system libs
+    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lcrypt32 -lm
     TARGET = client.exe
     MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
     RM = powershell -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
@@ -103,7 +104,7 @@ endif
 	@echo "LDFLAGS: $(LDFLAGS)"
 	@echo "TARGET: $(BUILD_DIR)/$(TARGET)"
 
-# Link executable (ARREGLADO: output correcto)
+# Link executable (ARREGLADO: output correcto + todas las libs)
 $(BUILD_DIR)/$(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
