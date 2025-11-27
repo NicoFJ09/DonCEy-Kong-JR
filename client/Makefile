@@ -20,6 +20,22 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifeq ($(UNAME_S),Darwin)
+    # macOS: Buscar Raylib en múltiples ubicaciones
+    RAYLIB_PATHS = /usr/local/lib /usr/local/Cellar/raylib/5.5/lib /opt/homebrew/lib
+    RAYLIB_INCLUDE_PATHS = /usr/local/include /usr/local/Cellar/raylib/5.5/include /opt/homebrew/include
+    
+    # Encontrar la primera ruta válida
+    RAYLIB_LIB_DIR := $(firstword $(foreach dir,$(RAYLIB_PATHS),$(wildcard $(dir)/libraylib.a)))
+    RAYLIB_INCLUDE_DIR := $(firstword $(foreach dir,$(RAYLIB_INCLUDE_PATHS),$(wildcard $(dir)/raylib.h)))
+    
+    ifneq ($(RAYLIB_LIB_DIR),)
+        LDFLAGS := -L$(dir $(RAYLIB_LIB_DIR)) $(LDFLAGS)
+    endif
+    
+    ifneq ($(RAYLIB_INCLUDE_DIR),)
+        CFLAGS += -I$(dir $(RAYLIB_INCLUDE_DIR))
+    endif
+    
     LDFLAGS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     TARGET = client
     MKDIR = mkdir -p
@@ -27,7 +43,8 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    LDFLAGS += -lopengl32 -lgdi32 -lwinmm -lws2_32
+    # Windows: ORDEN CRÍTICO de las librerías
+    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lm
     TARGET = client.exe
     MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
     RM = powershell -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
@@ -67,9 +84,23 @@ OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
 # TARGETS
 # ============================================================
 
-.PHONY: all clean run
+.PHONY: all clean run test-raylib
 
 all: $(BUILD_DIR)/$(TARGET)
+
+# Test Raylib installation
+test-raylib:
+	@echo "Testing Raylib installation..."
+	@echo "Platform: $(UNAME_S)"
+ifeq ($(UNAME_S),Darwin)
+	@echo "Checking Raylib paths..."
+	@echo "Library paths: $(RAYLIB_PATHS)"
+	@echo "Include paths: $(RAYLIB_INCLUDE_PATHS)"
+	@echo "Found library: $(RAYLIB_LIB_DIR)"
+	@echo "Found headers: $(RAYLIB_INCLUDE_DIR)"
+endif
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
 
 # Link executable
 $(BUILD_DIR)/$(TARGET): $(OBJS)
@@ -111,6 +142,7 @@ help:
 	@echo "  all (default) - Build client executable"
 	@echo "  clean         - Remove build artifacts"
 	@echo "  run           - Build and run client"
+	@echo "  test-raylib   - Test Raylib installation"
 	@echo "  help          - Show this help message"
 	@echo ""
 	@echo "Platform: $(UNAME_S)"

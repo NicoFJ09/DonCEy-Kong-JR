@@ -61,8 +61,8 @@ jobs:
         name: client-linux
         path: dist/DonCEy-Kong-Jr-Client-Linux.tar.gz
 
-  # ============================================================================
-  # BUILD CLIENT - WINDOWS (REFORZADO)
+# ============================================================================
+  # BUILD CLIENT - WINDOWS
   # ============================================================================
   build-client-windows:
     runs-on: windows-latest
@@ -107,7 +107,7 @@ jobs:
           rm -f build/client.exe
         fi
         
-        # COMPILAR
+        # COMPILAR (Makefile ya tiene el orden correcto de LDFLAGS)
         mingw32-make clean
         mingw32-make
         
@@ -147,7 +147,7 @@ jobs:
         name: client-windows
         path: dist/DonCEy-Kong-Jr-Client-Windows.zip
 
-  # ============================================================================
+# ============================================================================
   # BUILD CLIENT - MACOS
   # ============================================================================
   build-client-macos:
@@ -157,19 +157,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install Raylib
+    - name: Install Raylib (ARREGLADO)
       run: |
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
-        sudo mkdir -p /usr/local/Cellar/raylib/5.5/lib
-        sudo mkdir -p /usr/local/Cellar/raylib/5.5/include
-        sudo cp libraylib.a /usr/local/Cellar/raylib/5.5/lib/
-        sudo cp raylib.h raymath.h rlgl.h /usr/local/Cellar/raylib/5.5/include/
+        
+        # INSTALAR EN /usr/local (no en /usr/local/Cellar)
+        sudo mkdir -p /usr/local/lib
+        sudo mkdir -p /usr/local/include
+        sudo cp libraylib.a /usr/local/lib/
+        sudo cp raylib.h raymath.h rlgl.h /usr/local/include/
+        
+        # VERIFICAR INSTALACIÓN
+        echo "✓ Raylib installed:"
+        ls -la /usr/local/lib/libraylib.a
+        ls -la /usr/local/include/raylib.h
     
     - name: Build client
       run: |
         cd client
+        make test-raylib
         make clean
         make
     
