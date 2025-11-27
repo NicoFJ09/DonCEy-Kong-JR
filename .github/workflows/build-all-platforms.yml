@@ -134,9 +134,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install dependencies
+    - name: Install Raylib
       run: |
-        brew install raylib gcc make
+        # Compilar Raylib desde fuente (versión 5.5 estática)
+        git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
+        cd /tmp/raylib/src
+        make PLATFORM=PLATFORM_DESKTOP
+        # Instalar en /usr/local para que el Makefile lo encuentre
+        sudo mkdir -p /usr/local/Cellar/raylib/5.5/lib
+        sudo mkdir -p /usr/local/Cellar/raylib/5.5/include
+        sudo cp libraylib.a /usr/local/Cellar/raylib/5.5/lib/
+        sudo cp raylib.h raymath.h rlgl.h /usr/local/Cellar/raylib/5.5/include/
     
     - name: Build client with static linking
       run: |
