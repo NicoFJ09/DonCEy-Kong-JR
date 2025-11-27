@@ -488,7 +488,7 @@ int show_player_screen(int client_id, Connection* conn) {
                 // Process any pending admin commands from server
                 // Commands are queued by message_listener thread, processed here in main thread
                 // ============================================================
-                message_listener_process_admin_commands((struct Level*)g_current_level, conn);
+                message_listener_process_admin_commands(g_current_level, conn);
                 
                 // ============================================================
                 // AUTOMATIC ENEMY SPAWNING (COMMENTED OUT - NOW ADMIN CONTROLLED)
