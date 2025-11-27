@@ -178,7 +178,7 @@ jobs:
         cd server
         mkdir -p bin
         
-        # Compilar desde project root para respetar packages
+        # Compilar desde project root para respetar packages (solo archivos que existen)
         cd ..
         javac -d server/bin \
           server/src/Main.java \
@@ -186,9 +186,7 @@ jobs:
           server/src/gamestate/GameSession.java \
           server/src/ui/*.java \
           server/src/utils/*.java \
-          server/src/game/*.java \
-          server/src/entities/*.java \
-          server/src/managers/*.java
+          server/src/game/*.java
         
         # Crear JAR
         cd server/bin
