@@ -90,30 +90,36 @@ jobs:
         cp libraylib.a /mingw64/lib/
         cp raylib.h raymath.h rlgl.h /mingw64/include/
     
-    - name: Build client (LIMPIEZA FORZADA)
+    - name: Build client (WITH DEBUGGING)
       shell: msys2 {0}
       run: |
         cd client
         
-        # Verificar Makefile
         echo "=== Makefile Check ==="
         if ! grep -q "lcrypt32" Makefile; then
           echo "ERROR: Makefile missing -lcrypt32"
           exit 1
         fi
         
-        # Limpiar completamente
+        echo "=== Platform Info ==="
+        uname -s
+        which mingw32-make
+        mingw32-make --version
+        
         echo "=== Cleaning ==="
         rm -rf build/
         
-        # Compilar FORZOSAMENTE (ignorar timestamps)
-        echo "=== Building with -B (force rebuild) ==="
-        mingw32-make -B
+        echo "=== Make Debug ==="
+        mingw32-make debug
         
-        # Verificar resultado
+        echo "=== Building ==="
+        mingw32-make -B all
+        
+        echo "=== Checking Result ==="
         if [ ! -f build/client.exe ]; then
           echo "ERROR: client.exe not created"
-          ls -laR build/
+          echo "Build directory contents:"
+          ls -laR build/ 2>/dev/null || echo "build/ does not exist"
           exit 1
         fi
         

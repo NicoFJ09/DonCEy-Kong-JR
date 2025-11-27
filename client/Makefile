@@ -17,16 +17,14 @@ OBJ_DIR = $(BUILD_DIR)/obj
 # Platform-specific settings
 ifeq ($(UNAME_S),Linux)
     LDFLAGS = -lraylib -lm -lGL -lX11 -lXrandr -lXi -lpthread -ldl
-    TARGET = $(BUILD_DIR)/client
+    TARGET_NAME = client
     MKDIR = mkdir -p
 endif
 
 ifeq ($(UNAME_S),Darwin)
-    # macOS: Buscar Raylib en múltiples ubicaciones
     RAYLIB_PATHS = /usr/local/lib /usr/local/Cellar/raylib/5.5/lib /opt/homebrew/lib
     RAYLIB_INCLUDE_PATHS = /usr/local/include /usr/local/Cellar/raylib/5.5/include /opt/homebrew/include
     
-    # Encontrar la primera ruta válida
     RAYLIB_LIB_DIR := $(firstword $(foreach dir,$(RAYLIB_PATHS),$(wildcard $(dir)/libraylib.a)))
     RAYLIB_INCLUDE_DIR := $(firstword $(foreach dir,$(RAYLIB_INCLUDE_PATHS),$(wildcard $(dir)/raylib.h)))
     
@@ -40,18 +38,20 @@ ifeq ($(UNAME_S),Darwin)
         CFLAGS += -I$(dir $(RAYLIB_INCLUDE_DIR))
     endif
     
-    TARGET = $(BUILD_DIR)/client
+    TARGET_NAME = client
     MKDIR = mkdir -p
 endif
 
 ifeq ($(UNAME_S),Windows_NT)
-    # Windows: TODAS las librerías en orden correcto
     LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lws2_32 -lcrypt32 -lm
-    TARGET = $(BUILD_DIR)/client.exe
+    TARGET_NAME = client.exe
     MKDIR = mkdir -p
 endif
 
-# Source files (organized by module)
+# CRITICAL: Full path to target
+TARGET = $(BUILD_DIR)/$(TARGET_NAME)
+
+# Source files
 SRCS = src/main.c \
        src/external/cJSON.c \
        src/game/game_flow.c \
@@ -81,29 +81,26 @@ OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
 # TARGETS
 # ============================================================
 
-.PHONY: all clean run test-raylib help
+.PHONY: all clean run test-raylib help debug
 
-all: $(TARGET)
+all: debug $(TARGET)
 
-# Test Raylib installation
-test-raylib:
-	@echo "Testing Raylib installation..."
-	@echo "Platform: $(UNAME_S)"
-ifeq ($(UNAME_S),Darwin)
-	@echo "Checking Raylib paths..."
-	@echo "Library paths: $(RAYLIB_PATHS)"
-	@echo "Include paths: $(RAYLIB_INCLUDE_PATHS)"
-	@echo "Found library: $(RAYLIB_LIB_DIR)"
-	@echo "Found headers: $(RAYLIB_INCLUDE_DIR)"
-endif
-	@echo "CFLAGS: $(CFLAGS)"
-	@echo "LDFLAGS: $(LDFLAGS)"
+debug:
+	@echo "=== Makefile Debug Info ==="
+	@echo "UNAME_S: $(UNAME_S)"
 	@echo "TARGET: $(TARGET)"
+	@echo "TARGET_NAME: $(TARGET_NAME)"
+	@echo "BUILD_DIR: $(BUILD_DIR)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo "Number of SRCS: $(words $(SRCS))"
+	@echo "Number of OBJS: $(words $(OBJS))"
+	@echo "==========================="
 
 # Link executable
 $(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 	@echo "✓ Build complete: $(TARGET)"
 
 # Compile source files
@@ -112,32 +109,25 @@ $(OBJ_DIR)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean build artifacts (ARREGLADO - funciona en todos los OS)
+# Clean
 clean:
-	@echo "Cleaning build artifacts..."
+	@echo "Cleaning..."
 	@rm -rf $(BUILD_DIR) 2>/dev/null || true
-	@find . -name "*.o" -delete 2>/dev/null || true
 	@echo "✓ Cleaned"
 
-# Run the client
+# Run
 run: all
-	@echo "Running client..."
+	@echo "Running..."
 ifeq ($(UNAME_S),Windows_NT)
-	@cd $(BUILD_DIR) && client.exe
+	@cd $(BUILD_DIR) && ./$(TARGET_NAME)
 else
-	@cd $(BUILD_DIR) && ./client
+	@cd $(BUILD_DIR) && ./$(TARGET_NAME)
 endif
 
 # Help
 help:
-	@echo "DonCEy Kong Jr - Client Makefile"
-	@echo ""
 	@echo "Targets:"
-	@echo "  all (default) - Build client executable"
-	@echo "  clean         - Remove build artifacts"
-	@echo "  run           - Build and run client"
-	@echo "  test-raylib   - Test Raylib installation"
-	@echo "  help          - Show this help message"
-	@echo ""
-	@echo "Platform: $(UNAME_S)"
-	@echo "TARGET: $(TARGET)"
+	@echo "  all    - Build executable"
+	@echo "  clean  - Remove build artifacts"
+	@echo "  run    - Build and run"
+	@echo "  debug  - Show Makefile variables"
