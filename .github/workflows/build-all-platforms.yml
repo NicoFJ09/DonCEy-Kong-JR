@@ -1,0 +1,293 @@
+name: Build All Platforms
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  # ============================================================================
+  # BUILD CLIENT - LINUX
+  # ============================================================================
+  build-client-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev
+        
+        # Instalar Raylib
+        git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
+        cd /tmp/raylib/src
+        make PLATFORM=PLATFORM_DESKTOP
+        sudo make install
+    
+    - name: Build client
+      run: |
+        cd client
+        make clean
+        make
+    
+    - name: Package client
+      run: |
+        mkdir -p dist/linux
+        cp client/build/client dist/linux/DonCEy-Kong-Jr-Client
+        cp -r client/assets dist/linux/assets
+        
+        # Crear launcher script
+        cat > dist/linux/launch-client.sh << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")"
+        ./DonCEy-Kong-Jr-Client
+        EOF
+        chmod +x dist/linux/launch-client.sh
+        chmod +x dist/linux/DonCEy-Kong-Jr-Client
+        
+        # Crear tar.gz para distribución
+        cd dist/linux
+        tar -czf ../DonCEy-Kong-Jr-Client-Linux.tar.gz .
+    
+    - name: Upload Linux Client
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-linux
+        path: dist/DonCEy-Kong-Jr-Client-Linux.tar.gz
+
+  # ============================================================================
+  # BUILD CLIENT - WINDOWS
+  # ============================================================================
+  build-client-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup MinGW
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-make
+          git
+    
+    - name: Install Raylib
+      shell: msys2 {0}
+      run: |
+        git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
+        cd /tmp/raylib/src
+        make PLATFORM=PLATFORM_DESKTOP
+        make install
+    
+    - name: Build client
+      shell: msys2 {0}
+      run: |
+        cd client
+        make clean
+        make
+    
+    - name: Package client
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path dist/windows
+        Copy-Item client/build/client.exe dist/windows/DonCEy-Kong-Jr-Client.exe
+        Copy-Item -Recurse client/assets dist/windows/assets
+        
+        # Crear batch launcher
+        @'
+        @echo off
+        cd /d "%~dp0"
+        start "" "DonCEy-Kong-Jr-Client.exe"
+        '@ | Out-File -FilePath dist/windows/launch-client.bat -Encoding ASCII
+        
+        # Crear ZIP
+        Compress-Archive -Path dist/windows/* -DestinationPath dist/DonCEy-Kong-Jr-Client-Windows.zip
+    
+    - name: Upload Windows Client
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-windows
+        path: dist/DonCEy-Kong-Jr-Client-Windows.zip
+
+  # ============================================================================
+  # BUILD CLIENT - MACOS
+  # ============================================================================
+  build-client-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        brew install raylib gcc make
+    
+    - name: Build client with static linking
+      run: |
+        cd client
+        make clean
+        make
+    
+    - name: Create .app bundle
+      run: |
+        chmod +x build-tools/build-client-macos.sh
+        ./build-tools/build-client-macos.sh
+    
+    - name: Upload macOS Client (.app)
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-macos-app
+        path: dist/macos/DonCEy Kong Jr.app
+    
+    - name: Upload macOS Client (DMG)
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-macos-dmg
+        path: dist/macos/DonCEy-Kong-Jr-Client-macOS.dmg
+
+  # ============================================================================
+  # BUILD SERVER - ALL PLATFORMS (Java es universal)
+  # ============================================================================
+  build-server:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+    
+    - name: Build server JAR
+      run: |
+        cd server
+        mkdir -p bin
+        
+        # Compilar desde project root para respetar packages
+        cd ..
+        javac -d server/bin \
+          server/src/Main.java \
+          server/src/network/*.java \
+          server/src/gamestate/GameSession.java \
+          server/src/ui/*.java \
+          server/src/utils/*.java \
+          server/src/game/*.java \
+          server/src/entities/*.java \
+          server/src/managers/*.java
+        
+        # Crear JAR
+        cd server/bin
+        cat > MANIFEST.MF << EOF
+        Manifest-Version: 1.0
+        Main-Class: server.src.Main
+        EOF
+        
+        find . -name "*.class" -print | xargs jar cfm DonCEy-Kong-Jr-Server.jar MANIFEST.MF
+        
+        # Mover a dist
+        mkdir -p ../../dist/universal
+        cp DonCEy-Kong-Jr-Server.jar ../../dist/universal/
+        cp -r ../../server/assets ../../dist/universal/
+    
+    - name: Create launcher scripts
+      run: |
+        cd dist/universal
+        
+        # Linux/Mac launcher
+        cat > launch-server.sh << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")"
+        java -jar DonCEy-Kong-Jr-Server.jar
+        EOF
+        chmod +x launch-server.sh
+        
+        # Windows launcher
+        cat > launch-server.bat << 'EOF'
+        @echo off
+        cd /d "%~dp0"
+        java -jar DonCEy-Kong-Jr-Server.jar
+        EOF
+        
+        # Crear ZIP universal
+        zip -r ../DonCEy-Kong-Jr-Server-Universal.zip .
+    
+    - name: Upload Server (Universal JAR)
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-universal
+        path: dist/DonCEy-Kong-Jr-Server-Universal.zip
+
+  # ============================================================================
+  # BUILD SERVER - MACOS APP BUNDLE
+  # ============================================================================
+  build-server-macos:
+    runs-on: macos-latest
+    needs: build-server
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+    
+    - name: Build server .app bundle
+      run: |
+        chmod +x build-tools/build-server-macos.sh
+        ./build-tools/build-server-macos.sh
+    
+    - name: Upload macOS Server (.app)
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-macos-app
+        path: dist/macos/DonCEy Kong Jr Server.app
+    
+    - name: Upload macOS Server (DMG)
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-macos-dmg
+        path: dist/macos/DonCEy-Kong-Jr-Server-macOS.dmg
+
+  # ============================================================================
+  # CREATE RELEASE (solo cuando se crea un tag)
+  # ============================================================================
+  create-release:
+    if: github.event_name == 'release'
+    needs: [build-client-linux, build-client-windows, build-client-macos, build-server, build-server-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/client-linux/DonCEy-Kong-Jr-Client-Linux.tar.gz
+          artifacts/client-windows/DonCEy-Kong-Jr-Client-Windows.zip
+          artifacts/client-macos-dmg/DonCEy-Kong-Jr-Client-macOS.dmg
+          artifacts/server-universal/DonCEy-Kong-Jr-Server-Universal.zip
+          artifacts/server-macos-dmg/DonCEy-Kong-Jr-Server-macOS.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

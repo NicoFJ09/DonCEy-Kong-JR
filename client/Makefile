@@ -1,18 +1,24 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
-RAYLIB_FLAGS = -lraylib -lm
 
 ifeq ($(OS),Windows_NT)
-    LDFLAGS = -lws2_32 $(RAYLIB_FLAGS) -lopengl32 -lgdi32 -lwinmm
+    # Windows - Static linking (standalone executable)
+    # GitHub Actions will compile Raylib statically
+    LDFLAGS = -static -lraylib -lm -lopengl32 -lgdi32 -lwinmm -lws2_32
     TARGET = build/client.exe
     RM = cmd /C "if exist build rmdir /S /Q build"
     MKDIR = cmd /C "if not exist build mkdir build && if not exist build\obj mkdir build\obj"
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
-        LDFLAGS = $(RAYLIB_FLAGS) -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+        # macOS - Static Raylib linking (standalone .app)
+        RAYLIB_STATIC = /usr/local/Cellar/raylib/5.5/lib/libraylib.a
+        LDFLAGS = $(RAYLIB_STATIC) -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     else
-        LDFLAGS = $(RAYLIB_FLAGS) -lpthread -ldl -lrt -lX11
+        # Linux - Static linking (standalone binary)
+        # Try system-installed libraylib.a first, fallback to pkg-config
+        RAYLIB_STATIC = $(shell [ -f /usr/lib/x86_64-linux-gnu/libraylib.a ] && echo "/usr/lib/x86_64-linux-gnu/libraylib.a" || echo "-l:libraylib.a")
+        LDFLAGS = $(RAYLIB_STATIC) -lm -lpthread -ldl -lrt -lX11 -lGL
     endif
     TARGET = build/client
     RM = rm -rf build
