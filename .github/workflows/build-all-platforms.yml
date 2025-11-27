@@ -25,11 +25,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential git libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev
         
-        # Instalar Raylib
+        # Instalar Raylib estático
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
-        sudo make install
+        sudo cp libraylib.a /usr/lib/x86_64-linux-gnu/
+        sudo cp ../include/raylib.h /usr/include/
+        sudo cp ../include/raymath.h /usr/include/
+        sudo cp ../include/rlgl.h /usr/include/
     
     - name: Build client
       run: |
@@ -87,15 +90,18 @@ jobs:
       run: |
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
-        make PLATFORM=PLATFORM_DESKTOP
-        make install
+        mingw32-make PLATFORM=PLATFORM_DESKTOP CC=gcc
+        cp libraylib.a /mingw64/lib/
+        cp ../include/raylib.h /mingw64/include/
+        cp ../include/raymath.h /mingw64/include/
+        cp ../include/rlgl.h /mingw64/include/
     
     - name: Build client
       shell: msys2 {0}
       run: |
         cd client
-        make clean
-        make
+        mingw32-make clean
+        mingw32-make
     
     - name: Package client
       shell: pwsh
