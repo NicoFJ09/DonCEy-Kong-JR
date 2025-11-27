@@ -32,20 +32,20 @@ endif
 ifeq ($(UNAME_S),Darwin)
     RAYLIB_PATHS = /usr/local/lib /usr/local/Cellar/raylib/5.5/lib /opt/homebrew/lib
     RAYLIB_INCLUDE_PATHS = /usr/local/include /usr/local/Cellar/raylib/5.5/include /opt/homebrew/include
-    
+
     RAYLIB_LIB_DIR := $(firstword $(foreach dir,$(RAYLIB_PATHS),$(wildcard $(dir)/libraylib.a)))
     RAYLIB_INCLUDE_DIR := $(firstword $(foreach dir,$(RAYLIB_INCLUDE_PATHS),$(wildcard $(dir)/raylib.h)))
-    
+
     ifneq ($(RAYLIB_LIB_DIR),)
         LDFLAGS := -L$(dir $(RAYLIB_LIB_DIR)) -lraylib -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     else
         LDFLAGS := -lraylib -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     endif
-    
+
     ifneq ($(RAYLIB_INCLUDE_DIR),)
         CFLAGS += -I$(dir $(RAYLIB_INCLUDE_DIR))
     endif
-    
+
     TARGET_NAME = client
 endif
 

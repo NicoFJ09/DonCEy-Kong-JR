@@ -134,41 +134,10 @@ jobs:
         path: dist/DonCEy-Kong-Jr-Client-Windows.zip
 
   # ============================================================================
-  # BUILD CLIENT - MACOS
+  # BUILD CLIENT - MACOS (Build locally, not in CI)
   # ============================================================================
-  build-client-macos:
-    runs-on: macos-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Install Raylib
-      run: |
-        git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
-        cd /tmp/raylib/src
-        make PLATFORM=PLATFORM_DESKTOP
-        sudo mkdir -p /usr/local/lib
-        sudo mkdir -p /usr/local/include
-        sudo cp libraylib.a /usr/local/lib/
-        sudo cp raylib.h raymath.h rlgl.h /usr/local/include/
-    
-    - name: Build and package client
-      run: |
-        chmod +x build-tools/build-client-macos.sh
-        ./build-tools/build-client-macos.sh
-    
-    - name: Upload macOS Client (.app)
-      uses: actions/upload-artifact@v4
-      with:
-        name: client-macos-app
-        path: dist/macos/DonCEy Kong Jr.app
-    
-    - name: Upload macOS Client (DMG)
-      uses: actions/upload-artifact@v4
-      with:
-        name: client-macos-dmg
-        path: dist/macos/DonCEy-Kong-Jr-Client-macOS.dmg
+  # macOS builds are handled locally due to architecture compatibility issues.
+  # To build: ./build-tools/build-client-macos.sh
 
   # ============================================================================
   # BUILD SERVER - UNIVERSAL JAR
@@ -238,45 +207,17 @@ jobs:
         path: dist/DonCEy-Kong-Jr-Server-Universal.zip
 
   # ============================================================================
-  # BUILD SERVER - MACOS APP BUNDLE
+  # BUILD SERVER - MACOS (Build locally, not in CI)
   # ============================================================================
-  build-server-macos:
-    runs-on: macos-latest
-    needs: build-server
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '11'
-    
-    - name: Build server .app bundle
-      run: |
-        chmod +x build-tools/build-server-macos.sh
-        ./build-tools/build-server-macos.sh
-    
-    - name: Upload macOS Server (.app)
-      uses: actions/upload-artifact@v4
-      with:
-        name: server-macos-app
-        path: dist/macos/DonCEy Kong Jr Server.app
-    
-    - name: Upload macOS Server (DMG)
-      uses: actions/upload-artifact@v4
-      with:
-        name: server-macos-dmg
-        path: dist/macos/DonCEy-Kong-Jr-Server-macOS.dmg
+  # macOS server builds are handled locally.
+  # To build: ./build-tools/build-server-macos.sh
 
   # ============================================================================
   # CREATE RELEASE
   # ============================================================================
   create-release:
     if: github.event_name == 'release'
-    needs: [build-client-linux, build-client-windows, build-client-macos, build-server, build-server-macos]
+    needs: [build-client-linux, build-client-windows, build-server]
     runs-on: ubuntu-latest
     
     steps:
@@ -291,8 +232,6 @@ jobs:
         files: |
           artifacts/client-linux/DonCEy-Kong-Jr-Client-Linux.tar.gz
           artifacts/client-windows/DonCEy-Kong-Jr-Client-Windows.zip
-          artifacts/client-macos-dmg/DonCEy-Kong-Jr-Client-macOS.dmg
           artifacts/server-universal/DonCEy-Kong-Jr-Server-Universal.zip
-          artifacts/server-macos-dmg/DonCEy-Kong-Jr-Server-macOS.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
