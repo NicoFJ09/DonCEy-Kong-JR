@@ -99,19 +99,4 @@ echo ""
 echo "Distribution directory: $PROJECT_ROOT/dist/$OS/"
 echo ""
 
-# Optional: Try cross-compilation for Windows if on macOS/Linux
-if [ "$OS" != "windows" ]; then
-    echo "================================================"
-    echo " Optional: Cross-compile for Windows?"
-    echo "================================================"
-    echo ""
-    echo "To build Windows executables from $OS, you can run:"
-    echo "  bash build-tools/build-client-windows.sh"
-    echo ""
-    echo "Requirements:"
-    echo "  - mingw-w64 toolchain"
-    echo "  - Windows Raylib libraries"
-    echo ""
-fi
-
 exit 0

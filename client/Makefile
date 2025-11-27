@@ -1,190 +1,117 @@
+# ============================================================
+# DonCEy Kong Jr - Client Makefile
+# Cross-platform build system (Linux, macOS, Windows)
+# ============================================================
+
+# Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
+LDFLAGS = -lraylib -lm
 
-ifeq ($(OS),Windows_NT)
-    # Windows - Static linking (standalone executable)
-    # GitHub Actions will compile Raylib statically
-    LDFLAGS = -static -lraylib -lm -lopengl32 -lgdi32 -lwinmm -lws2_32
-    TARGET = build/client.exe
-    RM = cmd /C "if exist build rmdir /S /Q build"
-    MKDIR = cmd /C "if not exist build mkdir build && if not exist build\obj mkdir build\obj"
-else
-    UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Darwin)
-        # macOS - Static Raylib linking (standalone .app)
-        # Detectar path de Raylib (local o Homebrew)
-        RAYLIB_PATH := $(shell [ -d /usr/local/Cellar/raylib/5.5 ] && echo "/usr/local/Cellar/raylib/5.5" || brew --prefix raylib 2>/dev/null)
-        RAYLIB_STATIC = $(RAYLIB_PATH)/lib/libraylib.a
-        CFLAGS += -I$(RAYLIB_PATH)/include
-        LDFLAGS = $(RAYLIB_STATIC) -lm -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-    else
-        # Linux - Static linking (standalone binary)
-        # Try system-installed libraylib.a first, fallback to pkg-config
-        RAYLIB_STATIC = $(shell [ -f /usr/lib/x86_64-linux-gnu/libraylib.a ] && echo "/usr/lib/x86_64-linux-gnu/libraylib.a" || echo "-l:libraylib.a")
-        LDFLAGS = $(RAYLIB_STATIC) -lm -lpthread -ldl -lrt -lX11 -lGL
-    endif
-    TARGET = build/client
-    RM = rm -rf build
-    MKDIR = mkdir -p build/obj
+# Platform detection
+UNAME_S := $(shell uname -s 2>/dev/null || echo Windows_NT)
+
+# Platform-specific settings
+ifeq ($(UNAME_S),Linux)
+    LDFLAGS += -lGL -lX11 -lXrandr -lXi -lpthread -ldl
+    TARGET = client
+    MKDIR = mkdir -p
+    RM = rm -rf
 endif
 
+ifeq ($(UNAME_S),Darwin)
+    LDFLAGS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+    TARGET = client
+    MKDIR = mkdir -p
+    RM = rm -rf
+endif
+
+ifeq ($(UNAME_S),Windows_NT)
+    LDFLAGS += -lopengl32 -lgdi32 -lwinmm -lws2_32
+    TARGET = client.exe
+    MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
+    RM = powershell -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+endif
+
+# Directories
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
-EXTERNAL_SOURCES = src/external/cJSON.c
+# Source files (organized by module)
+SRCS = src/main.c \
+       src/external/cJSON.c \
+       src/game/game_flow.c \
+       src/game/level.c \
+       src/game/player.c \
+       src/game/enemy.c \
+       src/game/fruit.c \
+       src/game/screens/ip_input_screen.c \
+       src/game/screens/title_screen.c \
+       src/game/screens/player_screen.c \
+       src/game/screens/lose_screen.c \
+       src/game/screens/player_selection_screen.c \
+       src/game/screens/spectator_screen.c \
+       src/network/connection.c \
+       src/network/game_events.c \
+       src/rendering/renderer.c \
+       src/rendering/sprite_manager.c \
+       src/rendering/sprite_test.c \
+       src/rendering/animation.c \
+       src/utils/font_manager.c \
+       src/utils/message_listener.c
 
-NETWORK_SOURCES = src/network/connection.c \
-                  src/network/game_events.c
+# Object files
+OBJS = $(SRCS:src/%.c=$(OBJ_DIR)/%.o)
 
-RENDERING_SOURCES = src/rendering/sprite_manager.c \
-                    src/rendering/animation.c \
-                    src/rendering/renderer.c \
-                    src/rendering/sprite_test.c
+# ============================================================
+# TARGETS
+# ============================================================
 
-UTILS_SOURCES = src/utils/font_manager.c \
-                src/utils/message_listener.c
+.PHONY: all clean run
 
-GAME_SOURCES = src/game/game_flow.c \
-               src/game/level.c \
-               src/game/player.c \
-               src/game/enemy.c \
-               src/game/fruit.c \
-               src/game/screens/ip_input_screen.c \
-               src/game/screens/title_screen.c \
-               src/game/screens/player_screen.c \
-               src/game/screens/lose_screen.c \
-               src/game/screens/player_selection_screen.c \
-               src/game/screens/spectator_screen.c
+all: $(BUILD_DIR)/$(TARGET)
 
-MAIN_SOURCE = src/main.c
-SOURCES = $(MAIN_SOURCE) $(EXTERNAL_SOURCES) $(NETWORK_SOURCES) $(RENDERING_SOURCES) $(UTILS_SOURCES) $(GAME_SOURCES)
+# Link executable
+$(BUILD_DIR)/$(TARGET): $(OBJS)
+	@echo "Linking $(TARGET)..."
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+	@echo "✓ Build complete: $(BUILD_DIR)/$(TARGET)"
 
-EXTERNAL_OBJECTS = $(OBJ_DIR)/cJSON.o
-
-NETWORK_OBJECTS = $(OBJ_DIR)/connection.o \
-                  $(OBJ_DIR)/game_events.o
-
-RENDERING_OBJECTS = $(OBJ_DIR)/sprite_manager.o \
-                    $(OBJ_DIR)/animation.o \
-                    $(OBJ_DIR)/renderer.o \
-                    $(OBJ_DIR)/sprite_test.o
-
-UTILS_OBJECTS = $(OBJ_DIR)/font_manager.o \
-                $(OBJ_DIR)/message_listener.o
-
-GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
-               $(OBJ_DIR)/level.o \
-               $(OBJ_DIR)/player.o \
-               $(OBJ_DIR)/enemy.o \
-               $(OBJ_DIR)/fruit.o \
-               $(OBJ_DIR)/ip_input_screen.o \
-               $(OBJ_DIR)/title_screen.o \
-               $(OBJ_DIR)/player_screen.o \
-               $(OBJ_DIR)/lose_screen.o \
-               $(OBJ_DIR)/player_selection_screen.o \
-               $(OBJ_DIR)/spectator_screen.o
-
-OBJECTS = $(OBJ_DIR)/main.o $(EXTERNAL_OBJECTS) $(NETWORK_OBJECTS) $(RENDERING_OBJECTS) $(UTILS_OBJECTS) $(GAME_OBJECTS)
-
-HEADERS = src/external/cJSON.h \
-          src/network/connection.h \
-          src/network/game_events.h \
-          src/rendering/sprite_manager.h \
-          src/rendering/animation.h \
-          src/rendering/renderer.h \
-          src/rendering/sprite_test.h \
-          src/utils/font_manager.h \
-          src/utils/constants.h \
-          src/utils/message_listener.h \
-          src/game/game_flow.h \
-          src/game/level.h \
-          src/game/player.h \
-          src/game/screens/ip_input_screen.h \
-          src/game/screens/title_screen.h \
-          src/game/screens/player_screen.h \
-          src/game/screens/lose_screen.h \
-          src/game/screens/player_selection_screen.h \
-          src/game/screens/spectator_screen.h
-
-all: directories $(TARGET)
-
-directories:
-	$(MKDIR)
-
-$(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
-	@echo "✓ Build successful: $(TARGET)"
-
-$(OBJ_DIR)/main.o: src/main.c $(HEADERS)
+# Compile source files (REFORZADO con creación explícita de directorios)
+$(OBJ_DIR)/%.o: src/%.c
+	@echo "Compiling $<..."
+ifeq ($(UNAME_S),Windows_NT)
+	@powershell -Command "New-Item -ItemType Directory -Force -Path $(OBJ_DIR) | Out-Null"
+	@powershell -Command "New-Item -ItemType Directory -Force -Path $(dir $@) | Out-Null"
+else
+	@mkdir -p $(dir $@)
+endif
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/cJSON.o: src/external/cJSON.c src/external/cJSON.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/connection.o: src/network/connection.c src/network/connection.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/game_events.o: src/network/game_events.c src/network/game_events.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/sprite_manager.o: src/rendering/sprite_manager.c src/rendering/sprite_manager.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/animation.o: src/rendering/animation.c src/rendering/animation.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/renderer.o: src/rendering/renderer.c src/rendering/renderer.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/sprite_test.o: src/rendering/sprite_test.c src/rendering/sprite_test.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/font_manager.o: src/utils/font_manager.c src/utils/font_manager.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/game_flow.o: src/game/game_flow.c src/game/game_flow.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/level.o: src/game/level.c src/game/level.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/player.o: src/game/player.c src/game/player.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/enemy.o: src/game/enemy.c src/game/enemy.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/fruit.o: src/game/fruit.c src/game/fruit.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/title_screen.o: src/game/screens/title_screen.c src/game/screens/title_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/player_screen.o: src/game/screens/player_screen.c src/game/screens/player_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/lose_screen.o: src/game/screens/lose_screen.c src/game/screens/lose_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/player_selection_screen.o: src/game/screens/player_selection_screen.c src/game/screens/player_selection_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/spectator_screen.o: src/game/screens/spectator_screen.c src/game/screens/spectator_screen.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/message_listener.o: src/utils/message_listener.c src/utils/message_listener.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
+# Clean build artifacts
 clean:
-	$(RM)
+	@echo "Cleaning build artifacts..."
+ifeq ($(UNAME_S),Windows_NT)
+	@powershell -Command "if (Test-Path $(BUILD_DIR)) { Remove-Item -Recurse -Force $(BUILD_DIR) }"
+else
+	@rm -rf $(BUILD_DIR)
+endif
 	@echo "✓ Cleaned"
 
+# Run the client
 run: all
-	$(TARGET)
+	@echo "Running client..."
+	@cd $(BUILD_DIR) && ./$(TARGET)
 
-rebuild: clean all
-
-.PHONY: all clean run rebuild directories
+# Help
+help:
+	@echo "DonCEy Kong Jr - Client Makefile"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all (default) - Build client executable"
+	@echo "  clean         - Remove build artifacts"
+	@echo "  run           - Build and run client"
+	@echo "  help          - Show this help message"
+	@echo ""
+	@echo "Platform: $(UNAME_S)"
+	@echo "Target: $(BUILD_DIR)/$(TARGET)"

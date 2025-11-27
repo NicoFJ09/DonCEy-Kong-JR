@@ -7,7 +7,7 @@ on:
     branches: [ main ]
   release:
     types: [ created ]
-  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub UI
+  workflow_dispatch:
 
 jobs:
   # ============================================================================
@@ -29,7 +29,6 @@ jobs:
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
-        # Copiar biblioteca y headers (están en /tmp/raylib/src directamente)
         sudo cp libraylib.a /usr/lib/x86_64-linux-gnu/
         sudo cp raylib.h raymath.h rlgl.h /usr/include/
     
@@ -45,7 +44,6 @@ jobs:
         cp client/build/client dist/linux/DonCEy-Kong-Jr-Client
         cp -r client/assets dist/linux/assets
         
-        # Crear launcher script
         cat > dist/linux/launch-client.sh << 'EOF'
         #!/bin/bash
         cd "$(dirname "$0")"
@@ -54,7 +52,6 @@ jobs:
         chmod +x dist/linux/launch-client.sh
         chmod +x dist/linux/DonCEy-Kong-Jr-Client
         
-        # Crear tar.gz para distribución
         cd dist/linux
         tar -czf ../DonCEy-Kong-Jr-Client-Linux.tar.gz .
     
@@ -65,7 +62,7 @@ jobs:
         path: dist/DonCEy-Kong-Jr-Client-Linux.tar.gz
 
   # ============================================================================
-  # BUILD CLIENT - WINDOWS
+  # BUILD CLIENT - WINDOWS (REFORZADO)
   # ============================================================================
   build-client-windows:
     runs-on: windows-latest
@@ -90,32 +87,58 @@ jobs:
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         mingw32-make PLATFORM=PLATFORM_DESKTOP CC=gcc
-        # Copiar biblioteca y headers (están en /tmp/raylib/src directamente)
         cp libraylib.a /mingw64/lib/
         cp raylib.h raymath.h rlgl.h /mingw64/include/
     
-    - name: Build client
+    - name: Build client (REFORZADO)
       shell: msys2 {0}
       run: |
         cd client
+        
+        # PRE-CREAR DIRECTORIOS EXPLÍCITAMENTE
+        mkdir -p build/obj/game/screens
+        mkdir -p build/obj/network
+        mkdir -p build/obj/rendering
+        mkdir -p build/obj/utils
+        mkdir -p build/obj/external
+        
+        # LIMPIAR BUILD PREVIO
+        if [ -f build/client.exe ]; then
+          rm -f build/client.exe
+        fi
+        
+        # COMPILAR
         mingw32-make clean
         mingw32-make
+        
+        # VERIFICAR QUE EL EJECUTABLE EXISTA
+        if [ ! -f build/client.exe ]; then
+          echo "ERROR: client.exe was not created!"
+          exit 1
+        fi
+        
+        echo "✓ Build successful: build/client.exe"
     
     - name: Package client
       shell: pwsh
       run: |
         New-Item -ItemType Directory -Force -Path dist/windows
-        Copy-Item client/build/client.exe dist/windows/DonCEy-Kong-Jr-Client.exe
+        
+        if (Test-Path client/build/client.exe) {
+          Copy-Item client/build/client.exe dist/windows/DonCEy-Kong-Jr-Client.exe
+        } else {
+          Write-Error "client.exe not found!"
+          exit 1
+        }
+        
         Copy-Item -Recurse client/assets dist/windows/assets
         
-        # Crear batch launcher
         @'
         @echo off
         cd /d "%~dp0"
         start "" "DonCEy-Kong-Jr-Client.exe"
         '@ | Out-File -FilePath dist/windows/launch-client.bat -Encoding ASCII
         
-        # Crear ZIP
         Compress-Archive -Path dist/windows/* -DestinationPath dist/DonCEy-Kong-Jr-Client-Windows.zip
     
     - name: Upload Windows Client
@@ -136,17 +159,15 @@ jobs:
     
     - name: Install Raylib
       run: |
-        # Compilar Raylib desde fuente (versión 5.5 estática)
         git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
-        # Instalar en /usr/local para que el Makefile lo encuentre
         sudo mkdir -p /usr/local/Cellar/raylib/5.5/lib
         sudo mkdir -p /usr/local/Cellar/raylib/5.5/include
         sudo cp libraylib.a /usr/local/Cellar/raylib/5.5/lib/
         sudo cp raylib.h raymath.h rlgl.h /usr/local/Cellar/raylib/5.5/include/
     
-    - name: Build client with static linking
+    - name: Build client
       run: |
         cd client
         make clean
@@ -170,7 +191,7 @@ jobs:
         path: dist/macos/DonCEy-Kong-Jr-Client-macOS.dmg
 
   # ============================================================================
-  # BUILD SERVER - ALL PLATFORMS (Java es universal)
+  # BUILD SERVER - UNIVERSAL JAR
   # ============================================================================
   build-server:
     runs-on: ubuntu-latest
@@ -190,7 +211,6 @@ jobs:
         cd server
         mkdir -p bin
         
-        # Compilar desde project root para respetar packages (solo archivos que existen)
         cd ..
         javac -d server/bin \
           server/src/Main.java \
@@ -200,7 +220,6 @@ jobs:
           server/src/utils/*.java \
           server/src/game/*.java
         
-        # Crear JAR
         cd server/bin
         cat > MANIFEST.MF << EOF
         Manifest-Version: 1.0
@@ -209,7 +228,6 @@ jobs:
         
         find . -name "*.class" -print | xargs jar cfm DonCEy-Kong-Jr-Server.jar MANIFEST.MF
         
-        # Mover a dist
         mkdir -p ../../dist/universal
         cp DonCEy-Kong-Jr-Server.jar ../../dist/universal/
         cp -r ../../server/assets ../../dist/universal/
@@ -218,7 +236,6 @@ jobs:
       run: |
         cd dist/universal
         
-        # Linux/Mac launcher
         cat > launch-server.sh << 'EOF'
         #!/bin/bash
         cd "$(dirname "$0")"
@@ -226,14 +243,12 @@ jobs:
         EOF
         chmod +x launch-server.sh
         
-        # Windows launcher
         cat > launch-server.bat << 'EOF'
         @echo off
         cd /d "%~dp0"
         java -jar DonCEy-Kong-Jr-Server.jar
         EOF
         
-        # Crear ZIP universal
         zip -r ../DonCEy-Kong-Jr-Server-Universal.zip .
     
     - name: Upload Server (Universal JAR)
