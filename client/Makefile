@@ -9,6 +9,13 @@ CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
 
 # Platform detection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows_NT)
+# Normalize MSYS/MinGW variants to Windows_NT
+ifneq (,$(findstring MINGW,$(UNAME_S)))
+    UNAME_S := Windows_NT
+endif
+ifneq (,$(findstring MSYS,$(UNAME_S)))
+    UNAME_S := Windows_NT
+endif
 
 # Directories
 BUILD_DIR = build
