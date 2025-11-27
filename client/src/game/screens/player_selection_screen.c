@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "player_selection_screen.h"
 #include "../../utils/constants.h"
 #include "../../utils/font_manager.h"

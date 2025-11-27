@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "game_flow.h"
 #include "screens/ip_input_screen.h"
 #include "screens/title_screen.h"

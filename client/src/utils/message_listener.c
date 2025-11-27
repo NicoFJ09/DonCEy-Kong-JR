@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "message_listener.h"
 #include "../utils/constants.h"
 #include "../game/level.h"
