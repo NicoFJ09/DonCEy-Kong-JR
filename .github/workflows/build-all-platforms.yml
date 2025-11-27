@@ -30,9 +30,9 @@ jobs:
         cd /tmp/raylib/src
         make PLATFORM=PLATFORM_DESKTOP
         sudo cp libraylib.a /usr/lib/x86_64-linux-gnu/
-        sudo cp ../include/raylib.h /usr/include/
-        sudo cp ../include/raymath.h /usr/include/
-        sudo cp ../include/rlgl.h /usr/include/
+        sudo cp raylib.h /usr/include/
+        sudo cp raymath.h /usr/include/
+        sudo cp rlgl.h /usr/include/
     
     - name: Build client
       run: |
@@ -92,9 +92,9 @@ jobs:
         cd /tmp/raylib/src
         mingw32-make PLATFORM=PLATFORM_DESKTOP CC=gcc
         cp libraylib.a /mingw64/lib/
-        cp ../include/raylib.h /mingw64/include/
-        cp ../include/raymath.h /mingw64/include/
-        cp ../include/rlgl.h /mingw64/include/
+        cp raylib.h /mingw64/include/
+        cp raymath.h /mingw64/include/
+        cp rlgl.h /mingw64/include/
     
     - name: Build client
       shell: msys2 {0}
