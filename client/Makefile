@@ -45,8 +45,6 @@ GAME_SOURCES = src/game/game_flow.c \
                src/game/player.c \
                src/game/enemy.c \
                src/game/fruit.c \
-               src/game/spectator_state.c \
-               src/game/spectator_protocol.c \
                src/game/screens/ip_input_screen.c \
                src/game/screens/title_screen.c \
                src/game/screens/player_screen.c \
@@ -75,8 +73,6 @@ GAME_OBJECTS = $(OBJ_DIR)/game_flow.o \
                $(OBJ_DIR)/player.o \
                $(OBJ_DIR)/enemy.o \
                $(OBJ_DIR)/fruit.o \
-               $(OBJ_DIR)/spectator_state.o \
-               $(OBJ_DIR)/spectator_protocol.o \
                $(OBJ_DIR)/ip_input_screen.o \
                $(OBJ_DIR)/title_screen.o \
                $(OBJ_DIR)/player_screen.o \

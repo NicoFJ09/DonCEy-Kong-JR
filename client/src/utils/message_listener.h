@@ -2,7 +2,6 @@
 #define MESSAGE_LISTENER_H
 
 #include "../network/connection.h"
-#include "../game/spectator_state.h"
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -37,9 +36,5 @@ void message_listener_stop(pthread_t thread_id);
  */
 #include "../game/level.h"
 void message_listener_process_admin_commands(Level* level, Connection* conn);
-
-
-// Start spectator message listener 
-pthread_t spectator_listener_start(Connection* conn, StateBuffer* buffer, bool* running);
 
 #endif
