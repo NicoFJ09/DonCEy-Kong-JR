@@ -37,7 +37,6 @@ Controla a Donkey Kong Jr. y rescata a Donkey Kong, que está atrapado en una ja
 - Si pierdes todas las vidas, el juego termina.
 
 ## Consejos y Notas Adicionales
-## Consejos y Notas Adicionales
 - Puedes abrir varias instancias del cliente en diferentes dispositivos conectados por LAN, pero cada instancia es una partida independiente (no hay varios jugadores en la misma partida).
 - El juego soporta hasta **2 jugadores** conectados al servidor, y cada jugador puede tener hasta **2 espectadores** que observan su partida en tiempo real.
 - El servidor solo debe abrirse una vez por partida.
