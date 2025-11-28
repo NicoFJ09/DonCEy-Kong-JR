@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class GameServer {
     private ServerSocket serverSocket;
-    private volatile boolean running;
+    private volatile Boolean running;
     private Integer nextClientId;
 
     private Map<Integer, NetworkPlayer> players;

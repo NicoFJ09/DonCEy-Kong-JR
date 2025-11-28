@@ -45,7 +45,7 @@ public class Main {
         serverThread.start();
     }
     
-    private static boolean acquireServerLock() {
+    private static Boolean acquireServerLock() {
         try {
             File lockFile = new File(LOCK_FILE);
             lockChannel = FileChannel.open(lockFile.toPath(), 

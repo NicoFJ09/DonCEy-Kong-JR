@@ -8,7 +8,7 @@ public class Player extends NetworkPlayer {
     private List<String> fruits;
     private List<String> crocodiles;
 
-    public Player(int id, String address) {
+    public Player(Integer id, String address) {
         super(id, address);
         this.fruits = new ArrayList<>();
         this.crocodiles = new ArrayList<>();
@@ -34,22 +34,22 @@ public class Player extends NetworkPlayer {
     }
 
     // Remove fruit by index
-    public void removeFruit(int index) {
+    public void removeFruit(Integer index) {
         if (index >= 0 && index < fruits.size()) {
-            fruits.remove(index);
+            fruits.remove(index.intValue());
         }
     }
 
     // Add crocodile to player
-    public void addCrocodile(String crocodileType, int vineCount) {
+    public void addCrocodile(String crocodileType, Integer vineCount) {
         String crocEntry = crocodileType + ", " + vineCount;
         crocodiles.add(crocEntry);
     }
 
     // Remove crocodile from player
-    public void removeCrocodile(int index) {
+    public void removeCrocodile(Integer index) {
         if (index >= 0 && index < crocodiles.size()) {
-            crocodiles.remove(index);
+            crocodiles.remove(index.intValue());
         }
     }
 

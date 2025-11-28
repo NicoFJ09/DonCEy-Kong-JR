@@ -34,27 +34,27 @@ public class GameSession {
     // Admin-spawned fruit tracking
     // Maps fruit ID -> SpawnedFruit
     private Map<Integer, SpawnedFruit> adminFruits;
-    private int nextFruitId;
-    
+    private Integer nextFruitId;
+
     // Initial fruits spawned at session start (persist across level resets)
     private Map<Integer, SpawnedFruit> initialFruits;
-    
+
     /**
      * Represents a fruit spawned by admin panel
      */
     public static class SpawnedFruit {
-        public int id;
-        public int vineId;
-        public int positionY;
+        public Integer id;
+        public Integer vineId;
+        public Integer positionY;
         public String type;  // "Mango- 200 pts", etc.
-        
-        public SpawnedFruit(int id, int vineId, int positionY, String type) {
+
+        public SpawnedFruit(Integer id, Integer vineId, Integer positionY, String type) {
             this.id = id;
             this.vineId = vineId;
             this.positionY = positionY;
             this.type = type;
         }
-        
+
         @Override
         public String toString() {
             return type + " (Liana: " + vineId + ", PosY: " + positionY + ")";
@@ -95,16 +95,16 @@ public class GameSession {
      * Client has already shown popup and hidden fruit
      * Server updates score and confirms
      */
-    public synchronized void onFruitCollected(int points) {
+    public synchronized void onFruitCollected(Integer points) {
         if (state != SessionState.PLAYING) {
-            System.out.println("[SESSION] Player #" + playerId + 
+            System.out.println("[SESSION] Player #" + playerId +
                               " collected fruit while not playing (ignored)");
             return;
         }
-        
+
         score += points;
-        
-        System.out.println("[SESSION] Player #" + playerId + 
+
+        System.out.println("[SESSION] Player #" + playerId +
                           " collected fruit +" + points + " points (Total: " + score + ")");
     }
     
@@ -189,8 +189,8 @@ public class GameSession {
         this.level = 1;
         this.speedMultiplier = 1.0f;
         this.state = SessionState.PLAYING;
-        
-        System.out.println("[SESSION] Player #" + playerId + 
+
+        System.out.println("[SESSION] Player #" + playerId +
                           " session reset - Lives: 3, Score: 0, Level: 1");
     }
     
@@ -214,40 +214,40 @@ public class GameSession {
      * @param isInitial If true, fruit is saved to initialFruits for respawning on level reset
      * @return Fruit ID assigned
      */
-    public synchronized int spawnAdminFruit(int vineId, int positionY, String type, boolean isInitial) {
-        int fruitId = nextFruitId++;
+    public synchronized Integer spawnAdminFruit(Integer vineId, Integer positionY, String type, Boolean isInitial) {
+        Integer fruitId = nextFruitId++;
         SpawnedFruit fruit = new SpawnedFruit(fruitId, vineId, positionY, type);
         adminFruits.put(fruitId, fruit);
-        
+
         // If initial fruit, save to initialFruits for respawning
         if (isInitial) {
             initialFruits.put(fruitId, fruit);
         }
-        
-        System.out.println("[SESSION] Player #" + playerId + 
-                          " admin fruit spawned: ID=" + fruitId + 
-                          ", vine=" + vineId + ", posY=" + positionY + 
-                          ", type=" + type + 
+
+        System.out.println("[SESSION] Player #" + playerId +
+                          " admin fruit spawned: ID=" + fruitId +
+                          ", vine=" + vineId + ", posY=" + positionY +
+                          ", type=" + type +
                           (isInitial ? " [INITIAL]" : " [RUNTIME]"));
-        
+
         return fruitId;
     }
-    
+
     /**
      * Spawn fruit via admin panel (default: runtime spawned, not persistent)
      * @return Fruit ID assigned
      */
-    public synchronized int spawnAdminFruit(int vineId, int positionY, String type) {
+    public synchronized Integer spawnAdminFruit(Integer vineId, Integer positionY, String type) {
         return spawnAdminFruit(vineId, positionY, type, false);
     }
-    
+
     /**
      * Remove fruit by ID
      */
-    public synchronized boolean removeAdminFruit(int fruitId) {
+    public synchronized Boolean removeAdminFruit(Integer fruitId) {
         SpawnedFruit removed = adminFruits.remove(fruitId);
         if (removed != null) {
-            System.out.println("[SESSION] Player #" + playerId + 
+            System.out.println("[SESSION] Player #" + playerId +
                               " admin fruit removed: ID=" + fruitId);
             return true;
         }
@@ -270,11 +270,11 @@ public class GameSession {
     public Float getSpeedMultiplier() { return speedMultiplier; }
     public SessionState getState() { return state; }
     
-    public boolean isGameOver() {
+    public Boolean isGameOver() {
         return state == SessionState.GAME_OVER;
     }
-    
-    public boolean isPlaying() {
+
+    public Boolean isPlaying() {
         return state == SessionState.PLAYING;
     }
     

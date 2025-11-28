@@ -172,7 +172,7 @@
 
 // Player spawn point in BLOCKS (converted to pixels in code)
 #define PLAYER_SPAWN_X_BLOCK 0    // x = 0 blocks (0px) - left border
-#define PLAYER_SPAWN_Y_BLOCK 34   // y = 34 blocks (816px) - 2 blocks above spawn platform (864px)
+#define PLAYER_SPAWN_Y_BLOCK 32   // y = 34 blocks (768px) - 2 blocks above spawn platform (864px)
 
 // Hand offset for vine grabbing (sprite-specific, hands not centered)
 #define HAND_OFFSET_FROM_CENTER 16.0f

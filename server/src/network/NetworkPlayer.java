@@ -35,7 +35,7 @@ public class NetworkPlayer {
     
     // === Spectator Management ===
     
-    public boolean canAcceptSpectator() {
+    public Boolean canAcceptSpectator() {
         return spectatorIds.size() < Config.SPECTATORS_PER_PLAYER;
     }
 

@@ -28,11 +28,11 @@ public class MapData {
      * Matches client's PlatformDef struct
      */
     public static class Platform {
-        public int xBlock;
-        public int yBlock;
-        public int widthBlocks;
+        public Integer xBlock;
+        public Integer yBlock;
+        public Integer widthBlocks;
 
-        public Platform(int xBlock, int yBlock, int widthBlocks) {
+        public Platform(Integer xBlock, Integer yBlock, Integer widthBlocks) {
             this.xBlock = xBlock;
             this.yBlock = yBlock;
             this.widthBlocks = widthBlocks;
@@ -44,11 +44,11 @@ public class MapData {
      * Matches client's ColumnDef struct
      */
     public static class Column {
-        public int xBlock;
-        public int yBlock;
-        public boolean wide;
+        public Integer xBlock;
+        public Integer yBlock;
+        public Boolean wide;
 
-        public Column(int xBlock, int yBlock, boolean wide) {
+        public Column(Integer xBlock, Integer yBlock, Boolean wide) {
             this.xBlock = xBlock;
             this.yBlock = yBlock;
             this.wide = wide;
@@ -60,10 +60,10 @@ public class MapData {
      * Matches client's VineHeight struct
      */
     public static class VineHeight {
-        public int yTopBlock;
-        public int heightBlocks;
+        public Integer yTopBlock;
+        public Integer heightBlocks;
 
-        public VineHeight(int yTopBlock, int heightBlocks) {
+        public VineHeight(Integer yTopBlock, Integer heightBlocks) {
             this.yTopBlock = yTopBlock;
             this.heightBlocks = heightBlocks;
         }
@@ -74,10 +74,10 @@ public class MapData {
      * Matches client's VineGroupDef struct
      */
     public static class VineGroup {
-        public int xBlock;
+        public Integer xBlock;
         public List<VineHeight> heights;
 
-        public VineGroup(int xBlock, List<VineHeight> heights) {
+        public VineGroup(Integer xBlock, List<VineHeight> heights) {
             this.xBlock = xBlock;
             this.heights = heights;
         }
@@ -93,7 +93,7 @@ public class MapData {
      * @param yBlock Y position in blocks
      * @param widthBlocks Width in blocks
      */
-    public void addPlatform(int xBlock, int yBlock, int widthBlocks) {
+    public void addPlatform(Integer xBlock, Integer yBlock, Integer widthBlocks) {
         platforms.add(new Platform(xBlock, yBlock, widthBlocks));
     }
 
@@ -103,7 +103,7 @@ public class MapData {
      * @param yBlock Y position in blocks (top of grass)
      * @param wide true for wide grass/stem, false for normal
      */
-    public void addColumn(int xBlock, int yBlock, boolean wide) {
+    public void addColumn(Integer xBlock, Integer yBlock, Boolean wide) {
         columns.add(new Column(xBlock, yBlock, wide));
     }
 
@@ -112,7 +112,7 @@ public class MapData {
      * @param xBlock X position in blocks
      * @param heights List of vine heights for this group
      */
-    public void addVineGroup(int xBlock, List<VineHeight> heights) {
+    public void addVineGroup(Integer xBlock, List<VineHeight> heights) {
         vineGroups.add(new VineGroup(xBlock, heights));
     }
 
@@ -131,7 +131,7 @@ public class MapData {
 
         // Platforms array
         json.append("\"platforms\":[");
-        for (int i = 0; i < platforms.size(); i++) {
+        for (Integer i = 0; i < platforms.size(); i++) {
             Platform p = platforms.get(i);
             json.append("{");
             json.append("\"xBlock\":").append(p.xBlock).append(",");
@@ -144,7 +144,7 @@ public class MapData {
 
         // Columns array
         json.append("\"columns\":[");
-        for (int i = 0; i < columns.size(); i++) {
+        for (Integer i = 0; i < columns.size(); i++) {
             Column c = columns.get(i);
             json.append("{");
             json.append("\"xBlock\":").append(c.xBlock).append(",");
@@ -157,12 +157,12 @@ public class MapData {
 
         // Vine groups array
         json.append("\"vineGroups\":[");
-        for (int i = 0; i < vineGroups.size(); i++) {
+        for (Integer i = 0; i < vineGroups.size(); i++) {
             VineGroup vg = vineGroups.get(i);
             json.append("{");
             json.append("\"xBlock\":").append(vg.xBlock).append(",");
             json.append("\"heights\":[");
-            for (int j = 0; j < vg.heights.size(); j++) {
+            for (Integer j = 0; j < vg.heights.size(); j++) {
                 VineHeight vh = vg.heights.get(j);
                 json.append("{");
                 json.append("\"yTopBlock\":").append(vh.yTopBlock).append(",");

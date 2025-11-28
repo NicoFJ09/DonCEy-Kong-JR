@@ -14,7 +14,7 @@ public class ClientHandler extends Thread {
     
     private BufferedReader input;
     private PrintWriter output;
-    private volatile boolean running;
+    private volatile Boolean running;
 
     private enum ClientType {
         PLAYER,
@@ -61,7 +61,7 @@ public class ClientHandler extends Thread {
                     break;
                 }
                 
-                boolean returnToLobby = false;
+                Boolean returnToLobby = false;
                 if (type == ClientType.PLAYER) {
                     returnToLobby = handlePlayerSession();
                 } else {
@@ -260,9 +260,9 @@ public class ClientHandler extends Thread {
             try {
                 String[] parts = message.split(":");
                 if (parts.length >= 3) {
-                    int fruitId = Integer.parseInt(parts[1]);
-                    int points = Integer.parseInt(parts[2]);
-                    
+                    Integer fruitId = Integer.parseInt(parts[1]);
+                    Integer points = Integer.parseInt(parts[2]);
+
                     // Update score
                     session.onFruitCollected(points);
                     String scoreMsg = "SCORE_UPDATE:" + session.getScore();
