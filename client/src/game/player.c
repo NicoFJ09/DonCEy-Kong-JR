@@ -849,57 +849,6 @@ void player_render(Player* player) {
         DrawRectangle(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, player_color);
     }
 
-// ============================================================
-// NETWORK STATE SERIALIZATION
-// ============================================================
-
-/**
- * Serialize player state to string for network transmission
- * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
- */
-void player_serialize_state(Player* player, char* buffer, int buffer_size) {
-    snprintf(buffer, buffer_size, "%.1f:%.1f:%.1f:%.1f:%d:%d:%d:%d:%d:%d",
-             player->x,
-             player->y,
-             player->velocity_x,
-             player->velocity_y,
-             (int)player->state,
-             (int)player->direction,
-             player->climbing ? 1 : 0,
-             player->attached_vine_id,
-             player->lateral_position,
-             player->current_frame);
-}
-
-/**
- * Deserialize player state from network message
- * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
- */
-void player_deserialize_state(Player* player, const char* state_string) {
-    int state, dir, climbing, vine_id, lateral_pos, frame;
-    
-    int parsed = sscanf(state_string, "%f:%f:%f:%f:%d:%d:%d:%d:%d:%d",
-                        &player->x,
-                        &player->y,
-                        &player->velocity_x,
-                        &player->velocity_y,
-                        &state,
-                        &dir,
-                        &climbing,
-                        &vine_id,
-                        &lateral_pos,
-                        &frame);
-    
-    if (parsed == 10) {
-        player->state = (PlayerState)state;
-        player->direction = (Direction)dir;
-        player->climbing = climbing != 0;
-        player->attached_vine_id = vine_id;
-        player->lateral_position = lateral_pos;
-        player->current_frame = frame;
-    }
-}
-
 #if DEBUG_MODE
     // Debug: draw sprite bounding box (full size)
     DrawRectangleLines(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, BLUE);
@@ -974,7 +923,7 @@ void player_serialize_state(Player* player, char* buffer, int buffer_size) {
  */
 void player_deserialize_state(Player* player, const char* state_string) {
     int state, dir, climbing, vine_id, lateral_pos, frame;
-    
+
     int parsed = sscanf(state_string, "%f:%f:%f:%f:%d:%d:%d:%d:%d:%d",
                         &player->x,
                         &player->y,
@@ -986,7 +935,7 @@ void player_deserialize_state(Player* player, const char* state_string) {
                         &vine_id,
                         &lateral_pos,
                         &frame);
-    
+
     if (parsed == 10) {
         player->state = (PlayerState)state;
         player->direction = (Direction)dir;
@@ -996,4 +945,3 @@ void player_deserialize_state(Player* player, const char* state_string) {
         player->current_frame = frame;
     }
 }
-
