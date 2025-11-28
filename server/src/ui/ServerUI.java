@@ -230,9 +230,9 @@ public class ServerUI extends JFrame {
                         
                         // Send SPAWN_ENEMY command with client vine ID
                         String command = "SPAWN_ENEMY:" + enemyType + ":" + clientVineId;
-                        server.sendMessageToClient(selectedPlayerId, command);
+                        server.sendMessageToPlayerAndSpectators(selectedPlayerId, command);
                         
-                        System.out.println("✓ Sent to Player #" + selectedPlayerId + ": " + command);
+                        System.out.println("✓ Sent to Player #" + selectedPlayerId + " (+ spectators): " + command);
                     }
                 } catch (Exception ex) {
                     System.err.println("Error spawning enemy: " + ex.getMessage());
@@ -400,12 +400,12 @@ public class ServerUI extends JFrame {
                             String listEntry = fruitType + " (" + selectedVine + ", PosY: " + positionY + ", ID: " + fruitId + ")";
                             fruitListModel.addElement(listEntry);
                             
-                            // Send SPAWN_FRUIT command to client
+                            // Send SPAWN_FRUIT command to player AND spectators
                             // Format: "SPAWN_FRUIT:vineId:positionY:type:fruitId"
                             String command = "SPAWN_FRUIT:" + clientVineId + ":" + posY + ":" + fruitType + ":" + fruitId;
-                            server.sendMessageToClient(selectedPlayerId, command);
+                            server.sendMessageToPlayerAndSpectators(selectedPlayerId, command);
                             
-                            System.out.println("✓ Sent to Player #" + selectedPlayerId + ": " + command);
+                            System.out.println("✓ Sent to Player #" + selectedPlayerId + " (+ spectators): " + command);
                         }
                     }
                 } catch (Exception ex) {
@@ -490,11 +490,11 @@ public class ServerUI extends JFrame {
                             // Remove from UI list
                             fruitListModel.remove(selectedIndex);
                             
-                            // Send REMOVE_FRUIT command to client
+                            // Send REMOVE_FRUIT command to player AND spectators
                             String command = "REMOVE_FRUIT:" + fruitId;
-                            server.sendMessageToClient(selectedPlayerId, command);
+                            server.sendMessageToPlayerAndSpectators(selectedPlayerId, command);
                             
-                            System.out.println("✓ Sent to Player #" + selectedPlayerId + ": " + command);
+                            System.out.println("✓ Sent to Player #" + selectedPlayerId + " (+ spectators): " + command);
                         } else {
                             System.err.println("✗ Failed to remove fruit ID " + fruitId + " from session");
                         }

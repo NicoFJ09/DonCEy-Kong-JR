@@ -246,6 +246,15 @@ public class ClientHandler extends Thread {
             return false;
         }
         
+        // ========================================
+        // PLAYER STATE SYNC (forward to spectators)
+        // ========================================
+        if (message.startsWith("PLAYER_STATE:")) {
+            // Forward player state to all spectators watching this player
+            server.sendMessageToSpectators(id, message);
+            return true;  // Don't process further
+        }
+        
         // FRUIT_COLLECTED:fruitId:points
         if (message.startsWith("FRUIT_COLLECTED:")) {
             try {
@@ -256,7 +265,12 @@ public class ClientHandler extends Thread {
                     
                     // Update score
                     session.onFruitCollected(points);
-                    sendMessage("SCORE_UPDATE:" + session.getScore());
+                    String scoreMsg = "SCORE_UPDATE:" + session.getScore();
+                    sendMessage(scoreMsg);
+                    
+                    // Also send FRUIT_COLLECTED and SCORE_UPDATE to spectators
+                    server.sendMessageToSpectators(id, message);  // Send original FRUIT_COLLECTED for animations
+                    server.sendMessageToSpectators(id, scoreMsg);
                     
                     // Remove fruit from admin tracking (won't respawn on death)
                     if (session.removeAdminFruit(fruitId)) {
@@ -289,11 +303,17 @@ public class ClientHandler extends Thread {
                         String gameOverMsg = "GAME_OVER:" + session.getScore();
                         sendMessage(gameOverMsg);
                         System.out.println("[HANDLER] ☠️ Sent GAME_OVER to Player #" + id + ": " + gameOverMsg);
+                        
+                        // Also send to spectators so they know player got game over
+                        server.sendMessageToSpectators(id, gameOverMsg);
                     } else {
                         // Only send lives update if NOT game over
                         String livesMsg = "LIVES_UPDATE:" + session.getLives();
                         sendMessage(livesMsg);
                         System.out.println("[HANDLER] Sent LIVES_UPDATE to Player #" + id + ": " + livesMsg);
+                        
+                        // Also send to spectators
+                        server.sendMessageToSpectators(id, livesMsg);
                         
                         // Reset level (will restore admin fruits)
                         session.resetLevel();

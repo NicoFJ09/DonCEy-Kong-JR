@@ -160,7 +160,7 @@ static int dk_current_frame = 0;
 static float mario_animation_time = 0.0f;
 static int mario_current_frame = 0;
 
-static void render_goal_objects(Level* level, float deltaTime) {
+void render_goal_objects(Level* level, float deltaTime) {
     // Update Donkey Kong animation (7 frames, slower animation)
     dk_animation_time += deltaTime;
     if (dk_animation_time >= 0.15f) {  // 6.67 fps animation
@@ -213,6 +213,8 @@ static void render_goal_objects(Level* level, float deltaTime) {
         DrawTexturePro(mario->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
     }
 }
+
+
 
 // ============================================================
 // SERVER MESSAGE HANDLER
@@ -398,6 +400,10 @@ int show_player_screen(int client_id, Connection* conn) {
 
         bool level_active = true;
         
+        // Player state sync - send every N frames to reduce network load
+        int sync_counter = 0;
+        const int SYNC_INTERVAL = 2;  // Send every 2 frames (~30 updates/sec at 60fps)
+        
         // Level loop - runs until level complete, death, or quit
         while (level_active && !WindowShouldClose()) {
             // Always get deltaTime for animations (even when paused)
@@ -430,6 +436,17 @@ int show_player_screen(int client_id, Connection* conn) {
 
                 // Update physics and animation
                 player_update(&player, deltaTime);
+                
+                // Send player state to server (for spectators) every N frames
+                sync_counter++;
+                if (sync_counter >= SYNC_INTERVAL) {
+                    sync_counter = 0;
+                    char state_buffer[256];
+                    player_serialize_state(&player, state_buffer, sizeof(state_buffer));
+                    char message[512];
+                    snprintf(message, sizeof(message), "%s%s", PLAYER_STATE_UPDATE, state_buffer);
+                    connection_send(conn, message);
+                }
                 
                 // Update fruit popups
                 fruit_update_popups(g_current_level, deltaTime);
@@ -488,7 +505,7 @@ int show_player_screen(int client_id, Connection* conn) {
                 // Process any pending admin commands from server
                 // Commands are queued by message_listener thread, processed here in main thread
                 // ============================================================
-                message_listener_process_admin_commands((struct Level*)g_current_level, conn);
+                message_listener_process_admin_commands(g_current_level, conn);
                 
                 // ============================================================
                 // AUTOMATIC ENEMY SPAWNING (COMMENTED OUT - NOW ADMIN CONTROLLED)

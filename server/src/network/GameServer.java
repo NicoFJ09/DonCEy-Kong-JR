@@ -288,6 +288,55 @@ public class GameServer {
     }
     
     /**
+     * Send message to player AND all spectators watching that player
+     * Used for admin commands (SPAWN_ENEMY, SPAWN_FRUIT, REMOVE_FRUIT)
+     * @param playerId Player ID to send to
+     * @param message Message to send
+     */
+    public synchronized void sendMessageToPlayerAndSpectators(Integer playerId, String message) {
+        // Send to player
+        sendMessageToClient(playerId, message);
+        
+        // Find and send to all spectators watching this player
+        List<Integer> watchingSpectators = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : spectators.entrySet()) {
+            if (entry.getValue().equals(playerId)) {
+                watchingSpectators.add(entry.getKey());
+            }
+        }
+        
+        // Send to each spectator
+        for (Integer spectatorId : watchingSpectators) {
+            sendMessageToClient(spectatorId, message);
+        }
+        
+        if (!watchingSpectators.isEmpty()) {
+            System.out.println("  ✓ Also sent to " + watchingSpectators.size() + " spectator(s)");
+        }
+    }
+    
+    /**
+     * Send message ONLY to spectators watching a specific player
+     * Used for player state sync (PLAYER_STATE updates)
+     * @param playerId Player ID being watched
+     * @param message Message to send
+     */
+    public synchronized void sendMessageToSpectators(Integer playerId, String message) {
+        // Find all spectators watching this player
+        List<Integer> watchingSpectators = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : spectators.entrySet()) {
+            if (entry.getValue().equals(playerId)) {
+                watchingSpectators.add(entry.getKey());
+            }
+        }
+        
+        // Send to each spectator
+        for (Integer spectatorId : watchingSpectators) {
+            sendMessageToClient(spectatorId, message);
+        }
+    }
+    
+    /**
      * Set UI reference for admin panel updates
      * @param ui ServerUI instance
      */

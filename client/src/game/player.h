@@ -84,4 +84,21 @@ void player_handle_input(Player* player);
  */
 void player_reset(Player* player, float spawn_x, float spawn_y);
 
+/**
+ * Serialize player state to string for network transmission
+ * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
+ * @param player Player to serialize
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ */
+void player_serialize_state(Player* player, char* buffer, int buffer_size);
+
+/**
+ * Deserialize player state from network message
+ * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
+ * @param player Player to update
+ * @param state_string State string (without "PLAYER_STATE:" prefix)
+ */
+void player_deserialize_state(Player* player, const char* state_string);
+
 #endif

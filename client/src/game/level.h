@@ -12,7 +12,7 @@
 /**
  * Fruit - Collectible objects that award points
  */
-typedef struct {
+typedef struct Level {
     int id;           // Unique identifier
     float x, y;       // Position in pixels
     int vine_id;      // ID of vine this fruit is attached to

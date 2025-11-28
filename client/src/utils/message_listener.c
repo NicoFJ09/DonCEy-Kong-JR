@@ -204,7 +204,7 @@ void message_listener_stop(pthread_t thread_id) {
 // To be called from main thread (player_screen.c)
 // ============================================================
 
-void message_listener_process_admin_commands(struct Level* level, Connection* conn) {
+void message_listener_process_admin_commands(Level* level, Connection* conn) {
     if (!level) {
         return;  // Can't process commands without a level
     }
@@ -243,10 +243,10 @@ void message_listener_process_admin_commands(struct Level* level, Connection* co
                     bool success = false;
                     
                     if (strcmp(type, ENEMY_TYPE_RED) == 0) {
-                        success = enemy_spawn_red_at_vine_id(empty_slot, level, vine_id);
+                        success = enemy_spawn_red_at_vine_id(empty_slot, (struct Level*)level, vine_id);
                     }
                     else if (strcmp(type, ENEMY_TYPE_BLUE) == 0) {
-                        success = enemy_spawn_blue_at_vine_id(empty_slot, level, vine_id);
+                        success = enemy_spawn_blue_at_vine_id(empty_slot, (struct Level*)level, vine_id);
                     }
                     else {
                         printf("[ADMIN] Error: Unknown enemy type '%s'\n", type);

@@ -1,9 +1,14 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Isrc -O2
-RAYLIB_FLAGS = -lraylib -lm
+RAYLIB_FLAGS = -lraylib
 
 ifeq ($(OS),Windows_NT)
-    LDFLAGS = -lws2_32 $(RAYLIB_FLAGS) -lopengl32 -lgdi32 -lwinmm
+    # On Windows use WinSock + raylib and common system libs. Add winpthread here
+    # to avoid passing multiple -l flags on the command line (PowerShell quoting).
+    # Also add the raylib library search path for local dev (adjust if raylib is installed elsewhere)
+    # Add raylib include path for Windows builds
+    CFLAGS += -IC:\raylib\include
+    LDFLAGS = -Lc:\raylib\lib -lws2_32 $(RAYLIB_FLAGS) -lopengl32 -lgdi32 -lwinmm -lwinpthread -lm
     TARGET = build/client.exe
     RM = cmd /C "if exist build rmdir /S /Q build"
     MKDIR = cmd /C "if not exist build mkdir build && if not exist build\obj mkdir build\obj"
@@ -12,7 +17,7 @@ else
     ifeq ($(UNAME_S),Darwin)
         LDFLAGS = $(RAYLIB_FLAGS) -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
     else
-        LDFLAGS = $(RAYLIB_FLAGS) -lpthread -ldl -lrt -lX11
+        LDFLAGS = $(RAYLIB_FLAGS) -lpthread -ldl -lrt -lX11 -lm
     endif
     TARGET = build/client
     RM = rm -rf build
@@ -146,6 +151,12 @@ $(OBJ_DIR)/enemy.o: src/game/enemy.c src/game/enemy.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/fruit.o: src/game/fruit.c src/game/fruit.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/spectator_state.o: src/game/spectator_state.c src/game/spectator_state.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/spectator_protocol.o: src/game/spectator_protocol.c src/game/spectator_protocol.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/ip_input_screen.o: src/game/screens/ip_input_screen.c src/game/screens/ip_input_screen.h

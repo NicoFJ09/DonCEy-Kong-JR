@@ -34,6 +34,7 @@ void message_listener_stop(pthread_t thread_id);
  * @param level Current level (for spawning entities)
  * @param conn Connection (for sending confirmations - Phase 2/3)
  */
-void message_listener_process_admin_commands(struct Level* level, Connection* conn);
+#include "../game/level.h"
+void message_listener_process_admin_commands(Level* level, Connection* conn);
 
 #endif

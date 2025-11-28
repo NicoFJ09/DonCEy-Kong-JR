@@ -52,6 +52,13 @@
 #define UPDATE_GAME_OVER "GAME_OVER:"
 
 // ============================================================
+// PLAYER STATE SYNC (Client -> Server -> Spectators)
+// Format: PLAYER_STATE:x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame
+// ============================================================
+
+#define PLAYER_STATE_UPDATE "PLAYER_STATE:"
+
+// ============================================================
 // ADMIN COMMANDS (Server → Client)
 // Admin panel controls for spawning/removing entities
 // ============================================================
@@ -111,6 +118,8 @@
 // ============================================================
 // GAME CONSTANTS
 // ============================================================
+
+#define PROTO_GAME_STATE "GAME_STATE:"
 
 // Level dimensions - must match UI window dimensions
 #define LEVEL_WIDTH 1200   // 50 blocks * 24px
