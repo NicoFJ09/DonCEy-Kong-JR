@@ -398,6 +398,10 @@ int show_player_screen(int client_id, Connection* conn) {
 
         bool level_active = true;
         
+        // Player state sync - send every N frames to reduce network load
+        int sync_counter = 0;
+        const int SYNC_INTERVAL = 2;  // Send every 2 frames (~30 updates/sec at 60fps)
+        
         // Level loop - runs until level complete, death, or quit
         while (level_active && !WindowShouldClose()) {
             // Always get deltaTime for animations (even when paused)
@@ -430,6 +434,17 @@ int show_player_screen(int client_id, Connection* conn) {
 
                 // Update physics and animation
                 player_update(&player, deltaTime);
+                
+                // Send player state to server (for spectators) every N frames
+                sync_counter++;
+                if (sync_counter >= SYNC_INTERVAL) {
+                    sync_counter = 0;
+                    char state_buffer[256];
+                    player_serialize_state(&player, state_buffer, sizeof(state_buffer));
+                    char message[512];
+                    snprintf(message, sizeof(message), "%s%s", PLAYER_STATE_UPDATE, state_buffer);
+                    connection_send(conn, message);
+                }
                 
                 // Update fruit popups
                 fruit_update_popups(g_current_level, deltaTime);

@@ -228,7 +228,7 @@ public class ServerUI extends JFrame {
                         // Determine enemy type (RED or BLUE)
                         String enemyType = crocodileType.contains("Rojo") ? "RED" : "BLUE";
                         
-                        // Send SPAWN_ENEMY command to player AND spectators
+                        // Send SPAWN_ENEMY command with client vine ID
                         String command = "SPAWN_ENEMY:" + enemyType + ":" + clientVineId;
                         server.sendMessageToPlayerAndSpectators(selectedPlayerId, command);
                         

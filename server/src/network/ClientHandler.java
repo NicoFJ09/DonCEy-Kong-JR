@@ -246,6 +246,15 @@ public class ClientHandler extends Thread {
             return false;
         }
         
+        // ========================================
+        // PLAYER STATE SYNC (forward to spectators)
+        // ========================================
+        if (message.startsWith("PLAYER_STATE:")) {
+            // Forward player state to all spectators watching this player
+            server.sendMessageToSpectators(id, message);
+            return true;  // Don't process further
+        }
+        
         // FRUIT_COLLECTED:fruitId:points
         if (message.startsWith("FRUIT_COLLECTED:")) {
             try {

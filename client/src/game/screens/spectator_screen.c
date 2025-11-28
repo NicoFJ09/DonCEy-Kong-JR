@@ -5,6 +5,7 @@
 #include "../../game/level.h"
 #include "../../game/fruit.h"
 #include "../../game/enemy.h"
+#include "../../game/player.h"  // For player rendering
 #include "raylib.h"
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +15,29 @@
 // SPECTATOR SCREEN
 // Uses same listener/admin commands as player — simpler!
 // ============================================================
+
+// Shared player state (updated by message listener thread)
+static Player g_spectator_player;
+static bool g_player_state_received = false;
+
+// Message callback to handle player state updates
+static void spectator_message_callback(const char* message, void* user_data) {
+    (void)user_data;
+    
+    // PLAYER_STATE:x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame
+    if (strncmp(message, PLAYER_STATE_UPDATE, strlen(PLAYER_STATE_UPDATE)) == 0) {
+        const char* state_data = message + strlen(PLAYER_STATE_UPDATE);
+        player_deserialize_state(&g_spectator_player, state_data);
+        g_player_state_received = true;
+        return;
+    }
+    
+    // PLAYER_LEFT_SESSION:playerId
+    if (strncmp(message, PROTO_PLAYER_LEFT_SESSION, strlen(PROTO_PLAYER_LEFT_SESSION)) == 0) {
+        printf("[SPECTATOR] Player left session\n");
+        return;
+    }
+}
 
 bool show_spectator_screen(Connection* conn, int player_id, int client_id, char* kick_message, int kick_message_size) {
     printf("\n[SPECTATOR] Starting spectator mode\n");
@@ -43,9 +67,16 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
     Level* prev_level = g_current_level;
     g_current_level = level;
     
+    // Initialize spectator player (for rendering)
+    player_init(&g_spectator_player, 0, 0);
+    g_player_state_received = false;
+    
     // Start the normal listener (same as player uses)
     pthread_t listener = message_listener_start(conn);
     printf("[SPECTATOR] Message listener started\n");
+    
+    // Set callback to receive player state updates
+    message_listener_set_callback(spectator_message_callback, NULL);
     
     // Debug counter to show we're processing
     int frame_count = 0;
@@ -112,6 +143,11 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
             // Render level (same as player): map, fruits, enemies
             level_render(level);
             fruit_render(level);
+            
+            // Render player if we've received state
+            if (g_player_state_received) {
+                player_render(&g_spectator_player);
+            }
             
             // Render all active enemies
             for (int j = 0; j < level->max_enemies; j++) {

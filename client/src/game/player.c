@@ -140,9 +140,6 @@ void player_reset(Player* player, float spawn_x, float spawn_y) {
 
 // Check if a specific lateral position would collide with platforms
 // Returns true if the given lateral_pos would put player hitbox inside a platform
-
-#define collision_position_fix 0.5f  // Minimum separation required (pixels)
-
 static bool would_collide_at_position(Player* player, int lateral_pos) {
     if (!g_current_level) return false;
     
@@ -187,20 +184,19 @@ static bool would_collide_at_position(Player* player, int lateral_pos) {
     float collision_top = player->y + COLLISION_OFFSET_Y;
     float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
 
+    // Check against all platforms
     for (int p = 0; p < g_current_level->platform_count; p++) {
         Platform* platform = &g_current_level->platforms[p];
         float platform_width_px = platform->width_blocks * PLATFORM_BLOCK_SIZE;
         float platform_bottom = platform->y + PLATFORM_BLOCK_SIZE;
 
-        // Collision box must be completely clear of platform
-        bool would_collide = (
-            collision_right > platform->x + collision_position_fix &&                      // Right edge past platform left + margin
-            collision_left < platform->x + platform_width_px - collision_position_fix &&  // Left edge before platform right - margin
-            collision_bottom > platform->y + collision_position_fix &&                   // Bottom edge past platform top + margin
-            collision_top < platform_bottom - collision_position_fix                    // Top edge before platform bottom - margin
-        );
+        // Check if collision box would overlap with platform
+        bool horizontal_overlap = (collision_right > platform->x && 
+                                  collision_left < platform->x + platform_width_px);
+        bool vertical_overlap = (collision_bottom > platform->y && 
+                                collision_top < platform_bottom);
 
-        if (would_collide) {
+        if (horizontal_overlap && vertical_overlap) {
             return true;  // Would collide!
         }
     }
@@ -652,18 +648,17 @@ void player_update(Player* player, float deltaTime) {
                 collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
             }
 
-            // Check if player is horizontally aligned with platform (STRICT: use epsilon)
-            bool horizontally_aligned = (collision_right > platform->x + collision_position_fix &&
-                                        collision_left < platform->x + platform_width_px - collision_position_fix);
+            // Check if player is horizontally aligned with platform
+            bool horizontally_aligned = (collision_right > platform->x &&
+                                        collision_left < platform->x + platform_width_px);
 
-            // Check if player is vertically aligned with platform (STRICT: use epsilon)
-            bool vertically_aligned = (collision_bottom > platform->y + collision_position_fix &&
-                                      collision_top < platform_bottom - collision_position_fix);
+            // Check if player is vertically aligned with platform
+            bool vertically_aligned = (collision_bottom > platform->y &&
+                                      collision_top < platform_bottom);
 
             if (horizontally_aligned) {
                 // TOP collision - player lands ON top of platform
-                // STRICT: collision must be within tight tolerance (0.1-1.5px)
-                if (collision_bottom >= platform->y - collision_position_fix &&
+                if (collision_bottom >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
                     collision_bottom <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_y >= 0) {
 
@@ -684,8 +679,8 @@ void player_update(Player* player, float deltaTime) {
                 }
 
                 // BOTTOM collision - player hits bottom of platform (blocks upward movement)
-                // Prevents climbing through platforms from below 
-                if (collision_top <= platform_bottom + collision_position_fix &&
+                // This prevents climbing through platforms from below
+                if (collision_top <= platform_bottom + PLATFORM_COLLISION_TOLERANCE &&
                     collision_top >= platform_bottom - PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_y < 0) {
 
@@ -699,24 +694,24 @@ void player_update(Player* player, float deltaTime) {
 
             if (vertically_aligned && !player->climbing) {
                 // LEFT side collision - player hits left edge of platform (only when NOT climbing)
-                if (collision_right >= platform->x - collision_position_fix &&
+                if (collision_right >= platform->x - PLATFORM_COLLISION_TOLERANCE &&
                     collision_right <= platform->x + PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_x > 0) {
 
-                    // Push player back to left of platform to ensure full separation
-                    player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH - collision_position_fix;
+                    // Push player back to left of platform
+                    player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH;
                     player->velocity_x = 0;
                     // Continue checking platforms - we might still be standing on another platform
                     continue;
                 }
 
                 // RIGHT side collision - player hits right edge of platform (only when NOT climbing)
-                if (collision_left <= platform->x + platform_width_px + collision_position_fix &&
+                if (collision_left <= platform->x + platform_width_px + PLATFORM_COLLISION_TOLERANCE &&
                     collision_left >= platform->x + platform_width_px - PLATFORM_COLLISION_TOLERANCE &&
                     player->velocity_x < 0) {
 
-                    // Push player back to right of platform to ensure full separation
-                    player->x = platform->x + platform_width_px - COLLISION_OFFSET_X + collision_position_fix;
+                    // Push player back to right of platform
+                    player->x = platform->x + platform_width_px - COLLISION_OFFSET_X;
                     player->velocity_x = 0;
                     // Continue checking platforms - we might still be standing on another platform
                     continue;
@@ -854,6 +849,57 @@ void player_render(Player* player) {
         DrawRectangle(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, player_color);
     }
 
+// ============================================================
+// NETWORK STATE SERIALIZATION
+// ============================================================
+
+/**
+ * Serialize player state to string for network transmission
+ * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
+ */
+void player_serialize_state(Player* player, char* buffer, int buffer_size) {
+    snprintf(buffer, buffer_size, "%.1f:%.1f:%.1f:%.1f:%d:%d:%d:%d:%d:%d",
+             player->x,
+             player->y,
+             player->velocity_x,
+             player->velocity_y,
+             (int)player->state,
+             (int)player->direction,
+             player->climbing ? 1 : 0,
+             player->attached_vine_id,
+             player->lateral_position,
+             player->current_frame);
+}
+
+/**
+ * Deserialize player state from network message
+ * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
+ */
+void player_deserialize_state(Player* player, const char* state_string) {
+    int state, dir, climbing, vine_id, lateral_pos, frame;
+    
+    int parsed = sscanf(state_string, "%f:%f:%f:%f:%d:%d:%d:%d:%d:%d",
+                        &player->x,
+                        &player->y,
+                        &player->velocity_x,
+                        &player->velocity_y,
+                        &state,
+                        &dir,
+                        &climbing,
+                        &vine_id,
+                        &lateral_pos,
+                        &frame);
+    
+    if (parsed == 10) {
+        player->state = (PlayerState)state;
+        player->direction = (Direction)dir;
+        player->climbing = climbing != 0;
+        player->attached_vine_id = vine_id;
+        player->lateral_position = lateral_pos;
+        player->current_frame = frame;
+    }
+}
+
 #if DEBUG_MODE
     // Debug: draw sprite bounding box (full size)
     DrawRectangleLines(player->x, player->y, PLAYER_WIDTH, PLAYER_HEIGHT, BLUE);
@@ -900,4 +946,54 @@ void player_render(Player* player) {
 #endif
 }
 
+// ============================================================
+// NETWORK STATE SERIALIZATION
+// ============================================================
+
+/**
+ * Serialize player state to string for network transmission
+ * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
+ */
+void player_serialize_state(Player* player, char* buffer, int buffer_size) {
+    snprintf(buffer, buffer_size, "%.1f:%.1f:%.1f:%.1f:%d:%d:%d:%d:%d:%d",
+             player->x,
+             player->y,
+             player->velocity_x,
+             player->velocity_y,
+             (int)player->state,
+             (int)player->direction,
+             player->climbing ? 1 : 0,
+             player->attached_vine_id,
+             player->lateral_position,
+             player->current_frame);
+}
+
+/**
+ * Deserialize player state from network message
+ * Format: "x:y:vx:vy:state:dir:climbing:vineId:lateralPos:frame"
+ */
+void player_deserialize_state(Player* player, const char* state_string) {
+    int state, dir, climbing, vine_id, lateral_pos, frame;
+    
+    int parsed = sscanf(state_string, "%f:%f:%f:%f:%d:%d:%d:%d:%d:%d",
+                        &player->x,
+                        &player->y,
+                        &player->velocity_x,
+                        &player->velocity_y,
+                        &state,
+                        &dir,
+                        &climbing,
+                        &vine_id,
+                        &lateral_pos,
+                        &frame);
+    
+    if (parsed == 10) {
+        player->state = (PlayerState)state;
+        player->direction = (Direction)dir;
+        player->climbing = climbing != 0;
+        player->attached_vine_id = vine_id;
+        player->lateral_position = lateral_pos;
+        player->current_frame = frame;
+    }
+}
 
