@@ -2,6 +2,7 @@
 #include "../../utils/constants.h"
 #include "../../utils/font_manager.h"
 #include "../../utils/message_listener.h"
+#include "../../rendering/sprite_manager.h"  // For DK/Mario sprites
 #include "../../game/level.h"
 #include "../../game/fruit.h"
 #include "../../game/enemy.h"
@@ -10,6 +11,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+
+// ============================================================
+// GOAL OBJECTS RENDERING (DK and Mario) - SHARED WITH PLAYER
+// ============================================================
+
+// Use the same render function from player_screen.c
+extern void render_goal_objects(Level* level, float deltaTime);
 
 // ============================================================
 // SPECTATOR SCREEN
@@ -22,6 +30,10 @@ static bool g_player_state_received = false;
 static volatile bool g_spectator_should_exit = false;  // Set when player leaves/disconnects
 static char g_spectator_exit_reason[256] = "";
 
+// Spectator state (only score and lives, no HUD)
+static int g_spectator_score = 0;
+static int g_spectator_lives = 3;
+
 // Message callback to handle player state updates and game events
 static void spectator_message_callback(const char* message, void* user_data) {
     (void)user_data;
@@ -31,6 +43,58 @@ static void spectator_message_callback(const char* message, void* user_data) {
         const char* state_data = message + strlen(PLAYER_STATE_UPDATE);
         player_deserialize_state(&g_spectator_player, state_data);
         g_player_state_received = true;
+        return;
+    }
+    
+    // SCORE_UPDATE:value
+    if (strncmp(message, "SCORE_UPDATE:", 13) == 0) {
+        int new_score = atoi(message + 13);
+        g_spectator_score = new_score;
+        g_spectator_player.score = new_score;
+        printf("[SPECTATOR] Score updated: %d\n", new_score);
+        return;
+    }
+    
+    // LIVES_UPDATE:value (same as player_screen.c)
+    if (strncmp(message, "LIVES_UPDATE:", 13) == 0) {
+        int new_lives = atoi(message + 13);
+        g_spectator_lives = new_lives;
+        g_spectator_player.lives = new_lives;  // Sync with player object
+        printf("[SPECTATOR] Lives updated: %d\n", new_lives);
+        return;
+    }
+    
+    // LEVEL_UPDATE:level:lives:speed - Player completed level, reset everything
+    if (strncmp(message, "LEVEL_UPDATE:", 13) == 0) {
+        int level, lives;
+        float speed;
+        if (sscanf(message + 13, "%d:%d:%f", &level, &lives, &speed) == 3) {
+            g_spectator_lives = lives;
+            g_spectator_player.lives = lives;
+            
+            // Clear all enemies and fruits (same as player does)
+            extern Level* g_current_level;
+            if (g_current_level) {
+                level_reset(g_current_level);
+                printf("[SPECTATOR] Level complete! Cleared enemies/fruits for Level %d\n", level);
+            }
+        }
+        return;
+    }
+    
+    // FRUIT_COLLECTED:fruitId:points - Handle fruit collection for popup animations
+    if (strncmp(message, "FRUIT_COLLECTED:", 16) == 0) {
+        // Parse: fruitId:points
+        int fruit_id, points;
+        if (sscanf(message + 16, "%d:%d", &fruit_id, &points) == 2) {
+            printf("[SPECTATOR] Player collected fruit ID=%d for %d points\n", fruit_id, points);
+            
+            // Remove the fruit from spectator's view 
+            extern Level* g_current_level;
+            if (g_current_level) {
+                fruit_remove_by_id(g_current_level, fruit_id);
+            }
+        }
         return;
     }
     
@@ -61,7 +125,7 @@ static void spectator_message_callback(const char* message, void* user_data) {
         return;
     }
     
-    // GAME_OVER:score - Player got game over (optional: show notification)
+    // GAME_OVER:score - Player got game over 
     if (strncmp(message, UPDATE_GAME_OVER, strlen(UPDATE_GAME_OVER)) == 0) {
         printf("[SPECTATOR] Player got GAME OVER\n");
         // Don't exit - player might continue playing
@@ -104,6 +168,10 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
     // Initialize spectator player (for rendering)
     player_init(&g_spectator_player, 0, 0);
     g_player_state_received = false;
+    
+    // Reset spectator state
+    g_spectator_score = 0;
+    g_spectator_lives = 3;
     
     // Start the normal listener (same as player uses)
     pthread_t listener = message_listener_start(conn);
@@ -177,6 +245,10 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
             
             const char* quit_text = "Press Q to quit";
             font_manager_draw_text(quit_text, 20, 50, UI_FONT_SIZE_ERROR, UI_COLOR_TEXT);
+ 
+            char score_lives_text[64];
+            snprintf(score_lives_text, sizeof(score_lives_text), "Score: %d  Lives: %d", g_spectator_score, g_spectator_lives);
+            font_manager_draw_text(score_lives_text, 350, 50, UI_FONT_SIZE_ERROR, UI_COLOR_SELECTED);
             
             char spectating_text[64];
             snprintf(spectating_text, sizeof(spectating_text), "Watching Player #%d", player_id);
@@ -187,6 +259,9 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
             // Render level (same as player): map, fruits, enemies
             level_render(level);
             fruit_render(level);
+            
+            // Render DK cage and Mario (goal objects) - pass deltaTime for animation
+            render_goal_objects(level, deltaTime);
             
             // Render player if we've received state
             if (g_player_state_received) {
@@ -204,7 +279,7 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
             fruit_render_popups(level);
             
             // Show spectator info
-            const char* spec_text = "SPECTATOR MODE - Watching Admin Spawns";
+            const char* spec_text = "SPECTATOR MODE - Watching Game State";
             int text_width2 = font_manager_measure_text(spec_text, UI_FONT_SIZE_SMALL);
             font_manager_draw_text(spec_text, (UI_WINDOW_WIDTH - text_width2) / 2, UI_WINDOW_HEIGHT - 30, UI_FONT_SIZE_SMALL, YELLOW);
         EndDrawing();

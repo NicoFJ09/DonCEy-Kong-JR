@@ -265,7 +265,12 @@ public class ClientHandler extends Thread {
                     
                     // Update score
                     session.onFruitCollected(points);
-                    sendMessage("SCORE_UPDATE:" + session.getScore());
+                    String scoreMsg = "SCORE_UPDATE:" + session.getScore();
+                    sendMessage(scoreMsg);
+                    
+                    // Also send FRUIT_COLLECTED and SCORE_UPDATE to spectators
+                    server.sendMessageToSpectators(id, message);  // Send original FRUIT_COLLECTED for animations
+                    server.sendMessageToSpectators(id, scoreMsg);
                     
                     // Remove fruit from admin tracking (won't respawn on death)
                     if (session.removeAdminFruit(fruitId)) {

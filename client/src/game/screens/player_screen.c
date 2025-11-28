@@ -160,7 +160,7 @@ static int dk_current_frame = 0;
 static float mario_animation_time = 0.0f;
 static int mario_current_frame = 0;
 
-static void render_goal_objects(Level* level, float deltaTime) {
+void render_goal_objects(Level* level, float deltaTime) {
     // Update Donkey Kong animation (7 frames, slower animation)
     dk_animation_time += deltaTime;
     if (dk_animation_time >= 0.15f) {  // 6.67 fps animation
@@ -213,6 +213,8 @@ static void render_goal_objects(Level* level, float deltaTime) {
         DrawTexturePro(mario->texture, source, dest, (Vector2){0, 0}, 0, WHITE);
     }
 }
+
+
 
 // ============================================================
 // SERVER MESSAGE HANDLER
