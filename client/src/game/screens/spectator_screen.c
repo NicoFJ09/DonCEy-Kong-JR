@@ -19,8 +19,10 @@
 // Shared player state (updated by message listener thread)
 static Player g_spectator_player;
 static bool g_player_state_received = false;
+static volatile bool g_spectator_should_exit = false;  // Set when player leaves/disconnects
+static char g_spectator_exit_reason[256] = "";
 
-// Message callback to handle player state updates
+// Message callback to handle player state updates and game events
 static void spectator_message_callback(const char* message, void* user_data) {
     (void)user_data;
     
@@ -32,9 +34,37 @@ static void spectator_message_callback(const char* message, void* user_data) {
         return;
     }
     
-    // PLAYER_LEFT_SESSION:playerId
+    // PLAYER_LEFT_SESSION:playerId - Player exited to menu
     if (strncmp(message, PROTO_PLAYER_LEFT_SESSION, strlen(PROTO_PLAYER_LEFT_SESSION)) == 0) {
-        printf("[SPECTATOR] Player left session\n");
+        printf("[SPECTATOR] Player left session - returning to menu\n");
+        snprintf(g_spectator_exit_reason, sizeof(g_spectator_exit_reason), 
+                 "Player returned to menu");
+        g_spectator_should_exit = true;
+        return;
+    }
+    
+    // PLAYER_DISCONNECTED:playerId - Player disconnected completely
+    if (strncmp(message, PROTO_PLAYER_DISCONNECTED, strlen(PROTO_PLAYER_DISCONNECTED)) == 0) {
+        printf("[SPECTATOR] Player disconnected - returning to menu\n");
+        snprintf(g_spectator_exit_reason, sizeof(g_spectator_exit_reason), 
+                 "Player disconnected");
+        g_spectator_should_exit = true;
+        return;
+    }
+    
+    // SERVER_SHUTDOWN - Server closed
+    if (strcmp(message, PROTO_SERVER_SHUTDOWN) == 0) {
+        printf("[SPECTATOR] Server shutdown - disconnecting\n");
+        snprintf(g_spectator_exit_reason, sizeof(g_spectator_exit_reason), 
+                 "Server shutdown");
+        g_spectator_should_exit = true;
+        return;
+    }
+    
+    // GAME_OVER:score - Player got game over (optional: show notification)
+    if (strncmp(message, UPDATE_GAME_OVER, strlen(UPDATE_GAME_OVER)) == 0) {
+        printf("[SPECTATOR] Player got GAME OVER\n");
+        // Don't exit - player might continue playing
         return;
     }
 }
@@ -46,6 +76,10 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
 
     bool voluntary_exit = false;
     bool running = true;
+    
+    // Reset spectator exit flags
+    g_spectator_should_exit = false;
+    g_spectator_exit_reason[0] = '\0';
     
     // Create level from server map
     if (!conn->map_loaded || !conn->map_json) {
@@ -83,6 +117,16 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
     
     // Main loop
     while (running && conn->connected && !WindowShouldClose()) {
+        // Check if we should exit due to player disconnect/leaving
+        if (g_spectator_should_exit) {
+            printf("[SPECTATOR] Exiting: %s\n", g_spectator_exit_reason);
+            if (kick_message && kick_message_size > 0) {
+                snprintf(kick_message, kick_message_size, "%s", g_spectator_exit_reason);
+            }
+            running = false;
+            break;
+        }
+        
         // Get deltaTime for animations
         float deltaTime = GetFrameTime();
         
@@ -167,9 +211,12 @@ bool show_spectator_screen(Connection* conn, int player_id, int client_id, char*
     }
 
     // Cleanup
+    message_listener_set_callback(NULL, NULL);  // Clear callback
     message_listener_stop(listener);
     level_destroy(level);
     g_current_level = prev_level;
+    g_player_state_received = false;
+    g_spectator_should_exit = false;
     printf("[SPECTATOR] Cleanup complete\n");
 
     return voluntary_exit;

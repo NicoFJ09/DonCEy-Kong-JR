@@ -298,11 +298,17 @@ public class ClientHandler extends Thread {
                         String gameOverMsg = "GAME_OVER:" + session.getScore();
                         sendMessage(gameOverMsg);
                         System.out.println("[HANDLER] ☠️ Sent GAME_OVER to Player #" + id + ": " + gameOverMsg);
+                        
+                        // Also send to spectators so they know player got game over
+                        server.sendMessageToSpectators(id, gameOverMsg);
                     } else {
                         // Only send lives update if NOT game over
                         String livesMsg = "LIVES_UPDATE:" + session.getLives();
                         sendMessage(livesMsg);
                         System.out.println("[HANDLER] Sent LIVES_UPDATE to Player #" + id + ": " + livesMsg);
+                        
+                        // Also send to spectators
+                        server.sendMessageToSpectators(id, livesMsg);
                         
                         // Reset level (will restore admin fruits)
                         session.resetLevel();
