@@ -132,7 +132,7 @@
 
 // Platform constants
 #define PLATFORM_BLOCK_SIZE 24
-#define PLATFORM_COLLISION_TOLERANCE 10
+#define PLATFORM_COLLISION_TOLERANCE 5  // Reduced from 10 to prevent false snapping
 
 // Vine constants - Native 24px blocks, no scaling
 #define VINE_SPRITE_HEIGHT 24    // Height per vine block (matches platform blocks)
@@ -178,7 +178,7 @@
 #define HAND_OFFSET_FROM_CENTER 16.0f
 
 // Game loop
-#define MAX_DELTA_TIME 0.1f  // 100ms max to prevent physics explosion
+#define MAX_DELTA_TIME 0.033f  // Cap at ~30fps (33ms) to prevent collision tunneling
 
 // UI Layout
 #define UI_MENU_SPACING 60

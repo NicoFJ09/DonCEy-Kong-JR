@@ -614,15 +614,19 @@ int show_player_screen(int client_id, Connection* conn) {
                 }
                 
                 // Check if player fell in water (same as enemy collision)
-                // Player stops at Y=816 due to ground collision
-                // Set threshold lower to avoid false positives when walking on bottom platform
-                float water_check = 850.0f;  // Safely below normal ground, but above water surface
-                if (player.state != STATE_DYING && player.y >= water_check && player.velocity_y > 0) {
+                // Water level is at 888px, player spawn is at 768px
+                // Only trigger if player is BELOW water surface and falling
+                float water_surface = WATER_LEVEL;  // 888.0f
+                if (player.state != STATE_DYING &&
+                    player.y + PLAYER_HEIGHT >= water_surface &&
+                    player.velocity_y > 0 &&
+                    player.death_timer < 0.0f) {  // Only if not just respawned (prevent instant death)
+
                     // Player death by drowning (server will update lives)
                     player.state = STATE_DYING;
                     player.death_timer = 0.0f;
                     printf("[PLAYER] Drowned! Lives remaining: %d\n", player.lives);
-                    
+
                     // Notify server
                     // CRITICAL: Only send if not game over (prevents old messages after rejoin)
                     if (!game_over) {

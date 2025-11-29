@@ -96,12 +96,12 @@ void player_init(Player* player, float x, float y) {
     player->climbing = false;
     player->attached_vine_id = -1;
     player->lateral_position = 0;
-    player->state = STATE_IDLE;
+    player->state = STATE_FALLING;  // Start falling to allow proper landing
     player->direction = DIR_RIGHT;
     player->animation_time = 0;
     player->current_frame = 0;
-    player->death_timer = 0;
-    
+    player->death_timer = -1.0f;  // -1 = normal gameplay
+
     // Game state
     player->lives = 3;
     player->score = 0;
@@ -124,12 +124,12 @@ void player_reset(Player* player, float spawn_x, float spawn_y) {
     player->climbing = false;
     player->attached_vine_id = -1;
     player->lateral_position = 0;
-    player->state = STATE_IDLE;
+    player->state = STATE_FALLING;  // Start in falling state to allow proper landing
     player->direction = DIR_RIGHT;
     player->animation_time = 0;
     player->current_frame = 0;
-    player->death_timer = 0;
-    
+    player->death_timer = -1.0f;  // -1 = normal gameplay (not just died)
+
     printf("[PLAYER] Reset to spawn position (%.0f, %.0f) - Lives: %d, Score: %d\n",
            spawn_x, spawn_y, player->lives, player->score);
 }
@@ -596,6 +596,9 @@ void player_update(Player* player, float deltaTime) {
         }
     }
     
+    // Store previous position for collision detection
+    float prev_y = player->y;
+
     // Update position
     if (!player->climbing) {
         // Normal movement - apply velocity
@@ -657,12 +660,20 @@ void player_update(Player* player, float deltaTime) {
                                       collision_top < platform_bottom);
 
             if (horizontally_aligned) {
-                // TOP collision - player lands ON top of platform
-                if (collision_bottom >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
-                    collision_bottom <= platform->y + PLATFORM_COLLISION_TOLERANCE &&
-                    player->velocity_y >= 0) {
+                // TOP collision - player lands ON top of platform (falling DOWN)
+                // Use swept collision to prevent tunneling at high speeds
+                float prev_collision_bottom = prev_y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
 
-                    // Adjust player position to account for collision offset
+                // Check if we crossed the platform surface from above
+                bool crossed_from_above = (prev_collision_bottom <= platform->y) &&
+                                         (collision_bottom >= platform->y);
+
+                // Also check if we're already overlapping (safety net for slow movement)
+                bool overlapping = (collision_bottom >= platform->y - PLATFORM_COLLISION_TOLERANCE &&
+                                  collision_bottom <= platform->y + PLATFORM_COLLISION_TOLERANCE);
+
+                if ((crossed_from_above || overlapping) && player->velocity_y >= 0) {
+                    // Player is landing on platform from above
                     player->y = platform->y - COLLISION_OFFSET_Y - COLLISION_HEIGHT;
                     player->velocity_y = 0;
 
@@ -680,11 +691,18 @@ void player_update(Player* player, float deltaTime) {
 
                 // BOTTOM collision - player hits bottom of platform (blocks upward movement)
                 // This prevents climbing through platforms from below
-                if (collision_top <= platform_bottom + PLATFORM_COLLISION_TOLERANCE &&
-                    collision_top >= platform_bottom - PLATFORM_COLLISION_TOLERANCE &&
-                    player->velocity_y < 0) {
+                float prev_collision_top = prev_y + COLLISION_OFFSET_Y;
 
-                    // Adjust player position to account for collision offset
+                // Check if we crossed the platform bottom from below
+                bool crossed_from_below = (prev_collision_top >= platform_bottom) &&
+                                         (collision_top <= platform_bottom);
+
+                // Also check if we're already overlapping
+                bool overlapping_bottom = (collision_top <= platform_bottom + PLATFORM_COLLISION_TOLERANCE &&
+                                         collision_top >= platform_bottom - PLATFORM_COLLISION_TOLERANCE);
+
+                if ((crossed_from_below || overlapping_bottom) && player->velocity_y < 0) {
+                    // Player hit bottom of platform while moving up
                     player->y = platform_bottom - COLLISION_OFFSET_Y;
                     player->velocity_y = 0;
                     // Stay on vine, just blocked by platform
@@ -732,14 +750,22 @@ void player_update(Player* player, float deltaTime) {
                 float collision_left = player->x + COLLISION_OFFSET_X;
                 float collision_right = player->x + COLLISION_OFFSET_X + COLLISION_WIDTH;
                 float collision_bottom = player->y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
+                bool horizontally_aligned = (collision_right > column->x &&
+                                           collision_left < column->x + column->grass_width);
 
-                if (collision_bottom >= grass_top - PLATFORM_COLLISION_TOLERANCE &&
-                    collision_bottom <= grass_top + PLATFORM_COLLISION_TOLERANCE &&
-                    collision_right > column->x &&
-                    collision_left < column->x + column->grass_width &&
-                    player->velocity_y >= 0) {
+                // Swept collision for grass (same as platforms)
+                float prev_collision_bottom = prev_y + COLLISION_OFFSET_Y + COLLISION_HEIGHT;
 
-                    // Adjust player position to account for collision offset
+                // Check if we crossed the grass surface from above
+                bool crossed_from_above = (prev_collision_bottom <= grass_top) &&
+                                         (collision_bottom >= grass_top);
+
+                // Also check if we're already overlapping (safety net)
+                bool overlapping = (collision_bottom >= grass_top - PLATFORM_COLLISION_TOLERANCE &&
+                                  collision_bottom <= grass_top + PLATFORM_COLLISION_TOLERANCE);
+
+                if (horizontally_aligned && (crossed_from_above || overlapping) && player->velocity_y >= 0) {
+                    // Player is landing on grass from above
                     player->y = grass_top - COLLISION_OFFSET_Y - COLLISION_HEIGHT;
                     player->velocity_y = 0;
                     player->on_ground = true;
