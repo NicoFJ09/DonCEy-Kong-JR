@@ -372,7 +372,7 @@ int show_player_screen(int client_id, Connection* conn) {
            game_over ? "true" : "false", player_lives, player_score);
     
     // Main game loop - continues until out of lives or quit
-    while (!game_over && !WindowShouldClose()) {
+    while (!game_over && !WindowShouldClose() && conn->connected) {
         // Create/recreate level for each attempt
         g_current_level = level_create_from_json(conn->map_json);
         if (!g_current_level) {
@@ -405,7 +405,7 @@ int show_player_screen(int client_id, Connection* conn) {
         const int SYNC_INTERVAL = 2;  // Send every 2 frames (~30 updates/sec at 60fps)
         
         // Level loop - runs until level complete, death, or quit
-        while (level_active && !WindowShouldClose()) {
+        while (level_active && !WindowShouldClose() && conn->connected) {
             // Always get deltaTime for animations (even when paused)
             float deltaTime = GetFrameTime();
             

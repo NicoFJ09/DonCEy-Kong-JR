@@ -26,8 +26,8 @@ bool game_flow_run(void) {
 
     char server_ip[256];
     Connection* conn = NULL;
-    
-    bool got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), false);
+
+    bool got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), NULL);
     
     if (!got_ip) {
         printf("User closed window during IP input\n");
@@ -46,8 +46,8 @@ bool game_flow_run(void) {
         
         if (!conn) {
             printf("Connection failed!\n");
-            
-            got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), true);
+
+            got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), "");
             
             if (!got_ip) {
                 printf("User closed window\n");
@@ -176,20 +176,26 @@ bool game_flow_run(void) {
                     
                     // Player screen
                     int final_score = show_player_screen(conn->client_id, conn);
-                    
+
                     // Stop listener
                     message_listener_stop(listener_thread);
                     printf("DEBUG: Message listener stopped\n");
-                    
-                    // Show lose screen with final score
-                    show_lose_screen(final_score);
-                    
-                    // Send DISCONNECT and return to title
-                    printf("DEBUG: Returning to title - sending DISCONNECT\n");
-                    if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
-                        printf("ERROR: Failed to send DISCONNECT\n");
+
+                    // Only show lose screen if connection is still active
+                    // (If server disconnected, we'll show IP input screen instead)
+                    if (conn->connected) {
+                        // Show lose screen with final score
+                        show_lose_screen(final_score);
+
+                        // Send DISCONNECT and return to title
+                        printf("DEBUG: Returning to title - sending DISCONNECT\n");
+                        if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
+                            printf("ERROR: Failed to send DISCONNECT\n");
+                        }
+                        printf("DEBUG: Ready to return to title screen\n");
+                    } else {
+                        printf("DEBUG: Server disconnected during gameplay - skipping lose screen\n");
                     }
-                    printf("DEBUG: Ready to return to title screen\n");
                     
                 } else if (strncmp(buffer, PROTO_REJECTED, strlen(PROTO_REJECTED)) == 0) {
                     const char* reason = buffer + strlen(PROTO_REJECTED);
@@ -284,24 +290,31 @@ bool game_flow_run(void) {
                             // Enter spectator screen with kick message buffer
                             char kick_message[256] = "";
                             bool voluntary = show_spectator_screen(conn, player_id, conn->client_id, kick_message, sizeof(kick_message));
-                            
-                            // Always send DISCONNECT to properly exit session (whether voluntary or kicked)
-                            printf("DEBUG: Exiting spectator session - sending DISCONNECT\n");
-                            if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
-                                printf("ERROR: Failed to send DISCONNECT\n");
-                                break;
-                            }
-                            
-                            if (voluntary) {
-                                printf("DEBUG: Spectator left voluntarily\n");
-                            } else {
-                                printf("DEBUG: Spectator was kicked: %s\n", kick_message);
-                                // Set error message to display in player selection
-                                if (strlen(kick_message) > 0) {
-                                    snprintf(error_message, sizeof(error_message), "%s", kick_message);
-                                    show_error = true;
-                                    error_display_time = GetTime();
+
+                            // Only send DISCONNECT if connection is still active
+                            if (conn->connected) {
+                                // Send DISCONNECT to properly exit session (whether voluntary or kicked)
+                                printf("DEBUG: Exiting spectator session - sending DISCONNECT\n");
+                                if (!connection_send_immediate(conn, CMD_DISCONNECT)) {
+                                    printf("ERROR: Failed to send DISCONNECT\n");
+                                    break;
                                 }
+
+                                if (voluntary) {
+                                    printf("DEBUG: Spectator left voluntarily\n");
+                                } else {
+                                    printf("DEBUG: Spectator was kicked: %s\n", kick_message);
+                                    // Set error message to display in player selection
+                                    if (strlen(kick_message) > 0) {
+                                        snprintf(error_message, sizeof(error_message), "%s", kick_message);
+                                        show_error = true;
+                                        error_display_time = GetTime();
+                                    }
+                                }
+                            } else {
+                                printf("DEBUG: Server disconnected during spectator session\n");
+                                // Break out of spectate loop to trigger disconnect handling
+                                break;
                             }
                             
                             printf("DEBUG: Ready to return to player selection\n");
@@ -341,24 +354,32 @@ bool game_flow_run(void) {
         printf("\n⚠ Lost connection to server\n");
         connection_close(conn);
         conn = NULL;
-        
-        // Show IP input again with error message
-        got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), true);
-        
-        if (!got_ip) {
-            printf("User closed window\n");
-            game_running = false;
-        } else {
+
+        // Loop until successfully reconnected or user closes window
+        bool first_reconnect_attempt = true;
+        while (!conn && game_running) {
+            // Show IP input again with error message
+            // First time: "Server disconnected", subsequent times: default "Could not connect"
+            const char* error_msg = first_reconnect_attempt ? "Server disconnected" : "";
+            got_ip = show_ip_input_screen(server_ip, sizeof(server_ip), error_msg);
+            first_reconnect_attempt = false;
+
+            if (!got_ip) {
+                printf("User closed window\n");
+                game_running = false;
+                break;
+            }
+
             // Try to reconnect
             printf("\nAttempting reconnection to %s:%d...\n", server_ip, SERVER_PORT);
             conn = connection_create(server_ip, SERVER_PORT);
-            
+
             if (!conn) {
                 printf("Reconnection failed!\n");
-                // Will loop back to show IP input again
+                // Loop will show IP input again with "Could not connect" error
             } else {
                 printf("✓ Reconnected successfully!\n");
-                
+
                 // Read initial CLIENT_ID from server
                 char buffer[BUFFER_SIZE];
                 if (connection_receive(conn, buffer, BUFFER_SIZE)) {

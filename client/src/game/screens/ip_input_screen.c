@@ -14,7 +14,7 @@ typedef struct {
     int cursor_pos;
     int cursor_blink_counter;
     bool show_cursor;
-    bool show_error;
+    const char* error_message;  // NULL = no error, "" = default "Could not connect", or custom message
 } InputState;
 
 // ============================================================
@@ -51,7 +51,7 @@ static void handle_text_input(InputState* state) {
                 i++;
             }
             state->text[state->cursor_pos] = '\0';
-            state->show_error = false;
+            state->error_message = NULL;
         }
     }
     
@@ -63,7 +63,7 @@ static void handle_text_input(InputState* state) {
                 state->text[state->cursor_pos] = (char)key;
                 state->cursor_pos++;
                 state->text[state->cursor_pos] = '\0';
-                state->show_error = false;
+                state->error_message = NULL;
             }
         }
         key = GetCharPressed();
@@ -75,12 +75,12 @@ static void handle_text_input(InputState* state) {
         if (backspace_hold_frames == 1 && state->cursor_pos > 0) {
             state->cursor_pos--;
             state->text[state->cursor_pos] = '\0';
-            state->show_error = false;
+            state->error_message = NULL;
         } else if (backspace_hold_frames > 15 && state->cursor_pos > 0) {
             if (backspace_hold_frames % 2 == 0) {
                 state->cursor_pos--;
                 state->text[state->cursor_pos] = '\0';
-                state->show_error = false;
+                state->error_message = NULL;
             }
         }
     } else {
@@ -138,20 +138,23 @@ static void draw_ip_input_screen(InputState* state) {
         }
     }
     
-    // ERROR MESSAGE - NEW (centered below box)
-    if (state->show_error) {
-        const char* error_msg = "Could not connect";
+    // ERROR MESSAGE (centered below box)
+    if (state->error_message != NULL) {
+        // Use custom message if provided, otherwise default
+        const char* error_msg = (strlen(state->error_message) > 0) ?
+            state->error_message : "Could not connect";
+
         int error_width = font_manager_measure_text(error_msg, UI_FONT_SIZE_ERROR);
         int error_x = (UI_WINDOW_WIDTH - error_width) / 2;
         int error_y = input_y + UI_INPUT_BOX_HEIGHT + 20;
         font_manager_draw_text(error_msg, error_x, error_y, UI_FONT_SIZE_ERROR, RED);
     }
-    
+
     // Instruction (same position as before, but moves down if error shown)
     const char* instruction = "Press ENTER to connect";
     int instruction_width = font_manager_measure_text(instruction, UI_FONT_SIZE_ERROR);
     int instruction_x = (UI_WINDOW_WIDTH - instruction_width) / 2;
-    int instruction_y = state->show_error ? 
+    int instruction_y = (state->error_message != NULL) ?
         input_y + UI_INPUT_BOX_HEIGHT + 60 :
         input_y + UI_INPUT_BOX_HEIGHT + 30;
     font_manager_draw_text(instruction, instruction_x, instruction_y, UI_FONT_SIZE_ERROR, GRAY);
@@ -161,21 +164,21 @@ static void draw_ip_input_screen(InputState* state) {
 // IP INPUT SCREEN
 // ============================================================
 
-bool show_ip_input_screen(char* ip_buffer, size_t buffer_size, bool show_error) {
+bool show_ip_input_screen(char* ip_buffer, size_t buffer_size, const char* error_message) {
     // Initialize
     InputState state = {0};
-    
-    // If retrying, keep previous IP
-    if (show_error && strlen(ip_buffer) > 0) {
+
+    // If retrying with error, keep previous IP
+    if (error_message != NULL && strlen(ip_buffer) > 0) {
         strncpy(state.text, ip_buffer, UI_INPUT_MAX_CHARS);
         state.cursor_pos = strlen(state.text);
     } else {
         strcpy(state.text, "127.0.0.1");
         state.cursor_pos = strlen(state.text);
     }
-    
+
     state.show_cursor = true;
-    state.show_error = show_error;
+    state.error_message = error_message;
     
     bool done = false;
     bool success = false;

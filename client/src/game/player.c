@@ -597,6 +597,7 @@ void player_update(Player* player, float deltaTime) {
     }
     
     // Store previous position for collision detection
+    float prev_x = player->x;
     float prev_y = player->y;
 
     // Update position
@@ -710,27 +711,75 @@ void player_update(Player* player, float deltaTime) {
                 }
             }
 
-            if (vertically_aligned && !player->climbing) {
-                // LEFT side collision - player hits left edge of platform (only when NOT climbing)
-                if (collision_right >= platform->x - PLATFORM_COLLISION_TOLERANCE &&
-                    collision_right <= platform->x + PLATFORM_COLLISION_TOLERANCE &&
-                    player->velocity_x > 0) {
+            if (vertically_aligned) {
+                // LEFT side collision - player hits left edge of platform
+                // Calculate previous collision box position to use swept collision
+                float prev_collision_left, prev_collision_right;
 
+                if (player->climbing) {
+                    float player_center_x = prev_x + PLAYER_WIDTH / 2;
+                    if (player->lateral_position == -1) {
+                        prev_collision_left = prev_x + COLLISION_OFFSET_X;
+                        prev_collision_right = player_center_x;
+                    } else if (player->lateral_position == 1) {
+                        prev_collision_left = player_center_x;
+                        prev_collision_right = prev_x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                    } else {
+                        prev_collision_left = prev_x + COLLISION_OFFSET_X;
+                        prev_collision_right = prev_x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                    }
+                } else {
+                    prev_collision_left = prev_x + COLLISION_OFFSET_X;
+                    prev_collision_right = prev_x + COLLISION_OFFSET_X + COLLISION_WIDTH;
+                }
+
+                // Check if we crossed the left edge from left to right
+                bool crossed_left_edge = (prev_collision_right <= platform->x) &&
+                                        (collision_right >= platform->x);
+
+                // Also check if we're already overlapping (safety net)
+                bool overlapping_left = (collision_right >= platform->x - PLATFORM_COLLISION_TOLERANCE &&
+                                        collision_right <= platform->x + PLATFORM_COLLISION_TOLERANCE);
+
+                if ((crossed_left_edge || overlapping_left) && player->velocity_x > 0) {
                     // Push player back to left of platform
-                    player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH;
-                    player->velocity_x = 0;
+                    if (player->climbing) {
+                        // When climbing, adjust based on lateral position
+                        if (player->lateral_position == 1 || player->lateral_position == 0) {
+                            // Right side or center collision box active
+                            player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH;
+                        }
+                        // Left side (-1) doesn't collide with left edges (only left half has collision)
+                    } else {
+                        player->x = platform->x - COLLISION_OFFSET_X - COLLISION_WIDTH;
+                        player->velocity_x = 0;
+                    }
                     // Continue checking platforms - we might still be standing on another platform
                     continue;
                 }
 
-                // RIGHT side collision - player hits right edge of platform (only when NOT climbing)
-                if (collision_left <= platform->x + platform_width_px + PLATFORM_COLLISION_TOLERANCE &&
-                    collision_left >= platform->x + platform_width_px - PLATFORM_COLLISION_TOLERANCE &&
-                    player->velocity_x < 0) {
+                // RIGHT side collision - player hits right edge of platform
+                // Check if we crossed the right edge from right to left
+                bool crossed_right_edge = (prev_collision_left >= platform->x + platform_width_px) &&
+                                         (collision_left <= platform->x + platform_width_px);
 
+                // Also check if we're already overlapping
+                bool overlapping_right = (collision_left <= platform->x + platform_width_px + PLATFORM_COLLISION_TOLERANCE &&
+                                         collision_left >= platform->x + platform_width_px - PLATFORM_COLLISION_TOLERANCE);
+
+                if ((crossed_right_edge || overlapping_right) && player->velocity_x < 0) {
                     // Push player back to right of platform
-                    player->x = platform->x + platform_width_px - COLLISION_OFFSET_X;
-                    player->velocity_x = 0;
+                    if (player->climbing) {
+                        // When climbing, adjust based on lateral position
+                        if (player->lateral_position == -1 || player->lateral_position == 0) {
+                            // Left side or center collision box active
+                            player->x = platform->x + platform_width_px - COLLISION_OFFSET_X;
+                        }
+                        // Right side (1) doesn't collide with right edges (only right half has collision)
+                    } else {
+                        player->x = platform->x + platform_width_px - COLLISION_OFFSET_X;
+                        player->velocity_x = 0;
+                    }
                     // Continue checking platforms - we might still be standing on another platform
                     continue;
                 }

@@ -14,6 +14,7 @@
     #include <sys/socket.h>
     #include <sys/types.h>
     #include <sys/select.h>
+    #include <signal.h>  // For signal handling
 #endif
 
 // ============================================================
@@ -35,6 +36,11 @@ bool connection_init(void) {
         printf("Error: WSAStartup failed\n");
         return false;
     }
+    #else
+    // Ignore SIGPIPE - we'll handle send errors with return codes instead
+    // This prevents the process from being killed when writing to a closed socket
+    signal(SIGPIPE, SIG_IGN);
+    printf("✓ SIGPIPE ignored (send errors will be handled gracefully)\n");
     #endif
     return true;
 }
