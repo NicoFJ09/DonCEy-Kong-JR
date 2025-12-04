@@ -33,8 +33,8 @@ public class ServerUI extends JFrame {
     private void initializeUI() {
         setTitle("DonCEy Kong Jr - Server");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        int x = 1600;
-        int y = 1000;
+        int x = 1200;
+        int y = 912;
         setSize(x, y);
         setResizable(false);
         setLocationRelativeTo(null);
@@ -68,23 +68,23 @@ public class ServerUI extends JFrame {
         
         JPanel leftPanel = new JPanel(new BorderLayout(5, 5));
         leftPanel.setBackground(Color.WHITE);
-        leftPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        leftPanel.setBounds(0, 20, 395, 120); // Posicionar con coordenadas
+        leftPanel.setBorder(BorderFactory.createEmptyBorder(7, 7, 7, 7));
+        leftPanel.setBounds(0, 18, 296, 109);
 
         JLabel titleLabel = new JLabel("Jugadores Conectados a [IP: " + server.getNetworkIP() + "]");
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        titleLabel.setBounds(25, 10, 400, 25); // Posicionar en x=200
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        titleLabel.setBounds(19, 9, 300, 23);
         mainPanel.add(titleLabel);
 
         playerSelectedLabel = new JLabel("Jugador Seleccionado: Ninguno");
-        playerSelectedLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
-        playerSelectedLabel.setBounds(25, 160, 400, 25);
+        playerSelectedLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        playerSelectedLabel.setBounds(19, 146, 300, 23);
         mainPanel.add(playerSelectedLabel);
 
         playerListModel = new DefaultListModel<>();
         playerList = new JList<>(playerListModel);
-        playerList.setFont(new Font("Arial", Font.PLAIN, 15));
-        playerList.setBorder(new LineBorder(new Color(139, 69, 19), 3));
+        playerList.setFont(new Font("Arial", Font.PLAIN, 11));
+        playerList.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         playerList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         playerList.setBackground(new Color(240, 240, 240));
         
@@ -120,19 +120,19 @@ public class ServerUI extends JFrame {
         
         JScrollPane scrollPane = new JScrollPane(playerList);
         leftPanel.add(scrollPane, BorderLayout.CENTER);
-        leftPanel.setBounds(20, 40, 395, 120);
+        leftPanel.setBounds(15, 36, 296, 109);
         mainPanel.add(leftPanel);
-        
+
         // Separador horixontal 1
         JPanel separatorBottom = new JPanel();
         separatorBottom.setBackground(new Color(46,111,64));
-        separatorBottom.setBounds(0, 200, 430, 8);
+        separatorBottom.setBounds(0, 182, 323, 7);
         mainPanel.add(separatorBottom);
-        
+
         // Separador vertical posicionado a la derecha
         JPanel separator = new JPanel();
         separator.setBackground(new Color(46,111,64));
-        separator.setBounds(430, 0, 10, y);
+        separator.setBounds(323, 0, 7, y);
         mainPanel.add(separator);        
 
         //_____________________________________________________________
@@ -140,27 +140,27 @@ public class ServerUI extends JFrame {
         //                      COCODRILOS
         //_____________________________________________________________
         JLabel secondLabel = new JLabel("Agregue Cocodrilos");
-        secondLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        secondLabel.setBounds(120, 220, 200, 25);
+        secondLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        secondLabel.setBounds(90, 201, 150, 23);
         mainPanel.add(secondLabel);
-        
+
         //para los tipos de cocodrilos
         JLabel typeLabel = new JLabel("Tipo de Cocodrilo:");
-        typeLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        typeLabel.setBounds(25, 265, 200, 25);
+        typeLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        typeLabel.setBounds(19, 242, 150, 23);
         mainPanel.add(typeLabel);
 
         JComboBox<String> crocodileTypeCombo = new JComboBox<>(new String[]{"Cocodrilo Rojo", "Cocodrilo Azul"});
-        crocodileTypeCombo.setFont(new Font("Arial", Font.PLAIN, 16));
+        crocodileTypeCombo.setFont(new Font("Arial", Font.PLAIN, 12));
         crocodileTypeCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         crocodileTypeCombo.setBackground(Color.WHITE);
-        crocodileTypeCombo.setBounds(230, 265, 150, 30);
+        crocodileTypeCombo.setBounds(145, 242, 161, 27);
         mainPanel.add(crocodileTypeCombo);
 
         //para el numero de liana
         JLabel vineLabel = new JLabel("Numero de Lianas:");
-        vineLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        vineLabel.setBounds(25, 310, 200, 25);
+        vineLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        vineLabel.setBounds(19, 283, 150, 23);
         mainPanel.add(vineLabel);
 
         // Map DefaultMap vine numbers to actual client IDs
@@ -177,17 +177,17 @@ public class ServerUI extends JFrame {
 
         // Dropdown shows DefaultMap vine numbers (what admin sees visually)
         JComboBox<String> vineCountCombo = new JComboBox<>(new String[]{"Liana 1", "Liana 2", "Liana 4", "Liana 5", "Liana 6", "Liana 7", "Liana 9"});
-        vineCountCombo.setFont(new Font("Arial", Font.PLAIN, 16));
+        vineCountCombo.setFont(new Font("Arial", Font.PLAIN, 12));
         vineCountCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         vineCountCombo.setBackground(Color.WHITE);
-        vineCountCombo.setBounds(230, 310, 150, 30);
+        vineCountCombo.setBounds(160, 283, 100, 27);
         mainPanel.add(vineCountCombo);
 
         JButton addButton = new JButton("Agregar Cocodrilo");
         addButton.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         addButton.setBackground(new Color(211, 182, 131));
-        addButton.setFont(new Font("Arial", Font.BOLD, 15));
-        addButton.setBounds(120, 360, 180, 40);
+        addButton.setFont(new Font("Arial", Font.BOLD, 11));
+        addButton.setBounds(90, 328, 135, 36);
         addButton.setOpaque(true);
         addButton.setBorderPainted(true);
         addButton.setContentAreaFilled(true);
@@ -246,7 +246,7 @@ public class ServerUI extends JFrame {
 
         JPanel cocodrileSeparator = new JPanel();
         cocodrileSeparator.setBackground(new Color(46,111,64));
-        cocodrileSeparator.setBounds(0, 415, 430, 8);
+        cocodrileSeparator.setBounds(0, 378, 323, 7);
         mainPanel.add(cocodrileSeparator);
 
         //_____________________________________________________________
@@ -255,23 +255,23 @@ public class ServerUI extends JFrame {
         //_____________________________________________________________
 
         JLabel fruitsLabel = new JLabel("Agregue Frutas");
-        fruitsLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        fruitsLabel.setBounds(145, 435, 200, 25);
+        fruitsLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        fruitsLabel.setBounds(109, 397, 150, 23);
         mainPanel.add(fruitsLabel);
 
         //para los tipos de frutas
         JLabel tipoFruta = new JLabel("Tipo de Fruta:");
-        tipoFruta.setFont(new Font("Arial", Font.BOLD, 16));
-        tipoFruta.setBounds(25, 480, 200, 25);
+        tipoFruta.setFont(new Font("Arial", Font.BOLD, 12));
+        tipoFruta.setBounds(19, 438, 150, 23);
         mainPanel.add(tipoFruta);
 
         JComboBox<String> fruitPointsCombo = new JComboBox<>(new String[]{"Mango 800 pts", "Banana 400 pts", "Manzana 200 pts"});
         fruitPointsCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
-        fruitPointsCombo.setFont(new Font("Arial", Font.PLAIN, 16));
+        fruitPointsCombo.setFont(new Font("Arial", Font.PLAIN, 12));
         fruitPointsCombo.setBackground(Color.WHITE);
-        fruitPointsCombo.setBounds(230, 475, 165, 30);
+        fruitPointsCombo.setBounds(140, 433, 161, 27);
         mainPanel.add(fruitPointsCombo);
-    
+
         // Map ALL DefaultMap vine numbers (1-11) to actual client IDs
         Map<String, Integer> fruitVineMapping = new HashMap<>();
         fruitVineMapping.put("Liana 1", 1);     // DefaultMap Vine 1 → Client ID 1
@@ -289,20 +289,20 @@ public class ServerUI extends JFrame {
         // Fruits: ALL visible vines (11 vines total - no physics restrictions)
         JComboBox<String> vineCountCombo2 = new JComboBox<>(new String[]{"Liana 1", "Liana 2", "Liana 3", "Liana 4", "Liana 5", "Liana 6", "Liana 7", "Liana 8", "Liana 9", "Liana 10", "Liana 11"});
         vineCountCombo2.setBorder(new LineBorder(new Color(139, 69, 19), 2));
-        vineCountCombo2.setFont(new Font("Arial", Font.PLAIN, 15));
+        vineCountCombo2.setFont(new Font("Arial", Font.PLAIN, 12));
         vineCountCombo2.setBackground(Color.WHITE);
-        vineCountCombo2.setBounds(230, 520, 150, 30);
+        vineCountCombo2.setBounds(165, 474, 107, 27);
         mainPanel.add(vineCountCombo2);
 
         JLabel vineLabel3 = new JLabel("Numero de Lianas:");
-        vineLabel3.setFont(new Font("Arial", Font.BOLD, 16));
-        vineLabel3.setBounds(25, 520, 200, 25);
+        vineLabel3.setFont(new Font("Arial", Font.BOLD, 12));
+        vineLabel3.setBounds(19, 474, 150, 23);
         mainPanel.add(vineLabel3);
 
         //para el la posicion en y de la fruta
         JLabel positionYLabel = new JLabel("Posicion de Fruta:");
-        positionYLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
-        positionYLabel.setBounds(25, 565, 200, 25);
+        positionYLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        positionYLabel.setBounds(19, 515, 150, 23);
         mainPanel.add(positionYLabel);
 
         // Map to store position ranges for ALL DefaultMap vines (used for fruits)
@@ -324,9 +324,9 @@ public class ServerUI extends JFrame {
 
         JComboBox<String> positionYCombo = new JComboBox<>();
         positionYCombo.setBorder(new LineBorder(new Color(139, 69, 19), 2));
-        positionYCombo.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        positionYCombo.setFont(new Font("SansSerif", Font.PLAIN, 12));
         positionYCombo.setBackground(Color.WHITE);
-        positionYCombo.setBounds(230, 565, 150, 30);
+        positionYCombo.setBounds(170, 515, 75, 27);
         mainPanel.add(positionYCombo);
 
         // Listener to update position options when vine count changes
@@ -354,8 +354,8 @@ public class ServerUI extends JFrame {
         JButton addFruitButton = new JButton("Agregar Fruta");
         addFruitButton.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         addFruitButton.setBackground(new Color(211, 182, 131));
-        addFruitButton.setFont(new Font("Arial", Font.BOLD, 15));
-        addFruitButton.setBounds(120, 610, 180, 40);
+        addFruitButton.setFont(new Font("Arial", Font.BOLD, 11));
+        addFruitButton.setBounds(90, 556, 135, 36);
         addFruitButton.setOpaque(true);
         addFruitButton.setBorderPainted(true);
         addFruitButton.setContentAreaFilled(true);
@@ -420,7 +420,7 @@ public class ServerUI extends JFrame {
 
         JPanel fruitSeparator = new JPanel();
         fruitSeparator.setBackground(new Color(46,111,64));
-        fruitSeparator.setBounds(0, 662, 430, 8);
+        fruitSeparator.setBounds(0, 604, 323, 7);
         mainPanel.add(fruitSeparator);
 
         //_____________________________________________________________
@@ -429,27 +429,27 @@ public class ServerUI extends JFrame {
         //_____________________________________________________________
 
         JLabel removeLabel = new JLabel("Elimine Frutas");
-        removeLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        removeLabel.setBounds(145, 682, 200, 25);
+        removeLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        removeLabel.setBounds(109, 622, 150, 23);
         mainPanel.add(removeLabel);
 
         // Lista de frutas dinámicas
         fruitListModel = new DefaultListModel<>();
         fruitList = new JList<>(fruitListModel);
-        fruitList.setFont(new Font("Arial", Font.PLAIN, 14));
+        fruitList.setFont(new Font("Arial", Font.PLAIN, 10));
         fruitList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         fruitList.setBackground(new Color(240, 240, 240));
-        fruitList.setBorder(new LineBorder(new Color(139, 69, 19), 3));
+        fruitList.setBorder(new LineBorder(new Color(139, 69, 19), 2));
 
         JScrollPane fruitScrollPane = new JScrollPane(fruitList);
-        fruitScrollPane.setBounds(20, 720, 290, 200);
+        fruitScrollPane.setBounds(15, 657, 218, 182);
         mainPanel.add(fruitScrollPane);
 
         JButton removeButton = new JButton("Eliminar");
         removeButton.setBorder(new LineBorder(new Color(139, 69, 19), 2));
         removeButton.setBackground(new Color(211, 182, 131));
-        removeButton.setFont(new Font("Arial", Font.BOLD, 15));
-        removeButton.setBounds(320, 790, 98, 40);
+        removeButton.setFont(new Font("Arial", Font.BOLD, 11));
+        removeButton.setBounds(240, 721, 74, 36);
         removeButton.setOpaque(true);
         removeButton.setBorderPainted(true);
         removeButton.setContentAreaFilled(true);
@@ -534,222 +534,222 @@ public class ServerUI extends JFrame {
         String assetsBasePath = "assets";
         
         
-        // plataformas - Primera fila de plataformas
+        // plataformas - Primera fila de plataformas (scaled by 0.75 for x, 0.912 for y)
         for (int i = 0; i < 25; i++) {
-            addPlatform(mainPanel, assetsBasePath, 440 + (i * 25), 180, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 330 + (i * 19), 164, 19, 23);
         }
         for (int i = 0; i < 13; i++) {
-            addPlatform(mainPanel, assetsBasePath, 1065 + (i * 25), 200, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 799 + (i * 19), 182, 19, 23);
         }
 
         for (int i = 0; i < 13; i++) {
-            addPlatform(mainPanel, assetsBasePath, 1240 + (i * 25), 470, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 930 + (i * 19), 429, 19, 23);
         }
         for (int i = 0; i < 12; i++) {
-            addPlatform(mainPanel, assetsBasePath, 440 + (i * 25), 890, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 330 + (i * 19), 812, 19, 23);
         }
         //las del medio
         for (int i = 0; i < 5; i++) {
-            addPlatform(mainPanel, assetsBasePath, 670 + (i * 25), 420, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 503 + (i * 19), 383, 19, 23);
         }
         for (int i = 0; i < 8; i++) {
-            addPlatform(mainPanel, assetsBasePath, 670 + (i * 25), 595, 25, 25);
+            addPlatform(mainPanel, assetsBasePath, 503 + (i * 19), 543, 19, 23);
         }
         
 
         //bases
-        addBase(mainPanel, assetsBasePath, 1445, 795, 110, 30);
-        addStem(mainPanel, assetsBasePath, 1475, 820, 50, 95);
+        addBase(mainPanel, assetsBasePath, 1084, 725, 83, 27);
+        addStem(mainPanel, assetsBasePath, 1106, 748, 38, 87);
 
-        addBase(mainPanel, assetsBasePath, 1270, 830, 105, 30);
-        addStem(mainPanel, assetsBasePath, 1296, 835, 50, 80);
+        addBase(mainPanel, assetsBasePath, 953, 757, 79, 27);
+        addStem(mainPanel, assetsBasePath, 972, 762, 38, 73);
 
-        addBase(mainPanel, assetsBasePath, 1092, 860, 85, 30);
-        addStem(mainPanel, assetsBasePath, 1122, 885, 30, 30);
+        addBase(mainPanel, assetsBasePath, 819, 784, 64, 27);
+        addStem(mainPanel, assetsBasePath, 842, 807, 23, 27);
 
-        addBase(mainPanel, assetsBasePath, 910, 820, 105, 30);
-        addStem(mainPanel, assetsBasePath, 937, 835, 50, 80);
+        addBase(mainPanel, assetsBasePath, 683, 748, 79, 27);
+        addStem(mainPanel, assetsBasePath, 703, 762, 38, 73);
 
 
         //lianas despues de plataformas
         for (int i = 0; i < 8; i++) {
-            int baseY = 205 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 580, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 580, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 580, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 580, baseY, 30, 27);
-            addVineBox(mainPanel, 580, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 580, baseY + 54, 30, 27);
+            int baseY = 187 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 435, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 435, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 435, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 435, baseY, 23, 25);
+            addVineBox(mainPanel, 435, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 435, baseY + 50, 23, 25);
         }
 
         JLabel vineNumber1 = new JLabel("[1]");
-        vineNumber1.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber1.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber1.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber1.setBounds(535, 854, 120, 20);
+        vineNumber1.setBounds(401, 779, 90, 18);
         mainPanel.add(vineNumber1);
 
         for (int i = 0; i < 7; i++) {
-            int baseY = 205 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 640, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 640, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 640, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 640, baseY, 30, 27);
-            addVineBox(mainPanel, 640, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 640, baseY + 54, 30, 27);
+            int baseY = 187 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 480, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 480, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 480, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 480, baseY, 23, 25);
+            addVineBox(mainPanel, 480, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 480, baseY + 50, 23, 25);
         }
 
         JLabel vineNumber2 = new JLabel("[2]");
-        vineNumber2.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber2.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber2.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber2.setBounds(595, 780, 120, 20);
+        vineNumber2.setBounds(446, 711, 90, 18);
         mainPanel.add(vineNumber2);
 
         for (int i = 0; i < 6; i++) {
-            int baseY = 205 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 900, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 900, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 900, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 900, baseY, 30, 27);
-            addVineBox(mainPanel, 900, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 900, baseY + 54, 30, 27);
+            int baseY = 187 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 675, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 675, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 675, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 675, baseY, 23, 25);
+            addVineBox(mainPanel, 675, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 675, baseY + 50, 23, 25);
         }
 
         JLabel vineNumber3 = new JLabel("[4]");
-        vineNumber3.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber3.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber3.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber3.setBounds(855, 700, 120, 20);
+        vineNumber3.setBounds(641, 638, 90, 18);
         mainPanel.add(vineNumber3);
 
         for (int i = 0; i < 3; i++) {
-            int baseY = 205 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1010, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1010, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1010, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1010, baseY, 30, 27);
-            addVineBox(mainPanel, 1010, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1010, baseY + 54, 30, 27);
+            int baseY = 187 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 758, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 758, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 758, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 758, baseY, 23, 25);
+            addVineBox(mainPanel, 758, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 758, baseY + 50, 23, 25);
         }
 
         JLabel vineNumber4 = new JLabel("[5]");
-        vineNumber4.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber4.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber4.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber4.setBounds(966, 454, 120, 20);
+        vineNumber4.setBounds(725, 414, 90, 18);
         mainPanel.add(vineNumber4);
 
         for (int i = 0; i < 3; i++) {
-            int baseY = 225 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1090, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1090, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1090, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1090, baseY, 30, 27);
-            addVineBox(mainPanel, 1090, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1090, baseY + 54, 30, 27);
+            int baseY = 205 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 818, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 818, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 818, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 818, baseY, 23, 25);
+            addVineBox(mainPanel, 818, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 818, baseY + 50, 23, 25);
         }
 
         JLabel vineNumber5 = new JLabel("[6]");
-        vineNumber5.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber5.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber5.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber5.setBounds(1045, 473, 120, 20);
+        vineNumber5.setBounds(784, 431, 90, 18);
         mainPanel.add(vineNumber5);
 
         for (int i = 0; i < 4; i++) {
-            int baseY = 225 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1200, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1200, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1200, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1200, baseY, 30, 27);
-            addVineBox(mainPanel, 1200, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1200, baseY + 54, 30, 27);
+            int baseY = 205 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 900, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 900, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 900, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 900, baseY, 23, 25);
+            addVineBox(mainPanel, 900, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 900, baseY + 50, 23, 25);
         }
         JLabel vineNumber6 = new JLabel("[7]");
-        vineNumber6.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber6.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber6.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber6.setBounds(1155, 554, 120, 20);
+        vineNumber6.setBounds(866, 505, 90, 18);
         mainPanel.add(vineNumber6);
 
         for (int i = 0; i < 5; i++) {
-            int baseY = 445 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 700, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 700, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 700, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 700, baseY, 30, 27);
-            addVineBox(mainPanel, 700, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 700, baseY + 54, 30, 27);
+            int baseY = 406 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 525, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 525, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 525, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 525, baseY, 23, 25);
+            addVineBox(mainPanel, 525, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 525, baseY + 50, 23, 25);
         }
         JLabel vineNumber7 = new JLabel("[3]");
-        vineNumber7.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber7.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber7.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber7.setBounds(655, 855, 120, 20);
+        vineNumber7.setBounds(491, 780, 90, 18);
         mainPanel.add(vineNumber7);        
 
         for (int i = 0; i < 2; i++) {
-            int baseY = 495 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1273, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1273, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1273, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1273, baseY, 30, 27);
-            addVineBox(mainPanel, 1273, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1273, baseY + 54, 30, 27);
+            int baseY = 451 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 955, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 955, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 955, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 955, baseY, 23, 25);
+            addVineBox(mainPanel, 955, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 955, baseY + 50, 23, 25);
         }
-        
+
         JLabel vineNumber11 = new JLabel("[8]");
-        vineNumber11.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber11.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber11.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber11.setBounds(1229, 660, 120, 20);
+        vineNumber11.setBounds(922, 602, 90, 18);
         mainPanel.add(vineNumber11);
 
         for (int i = 0; i < 6; i++) {
-            int baseY = 225 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1360, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1360, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1360, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1360, baseY, 30, 27);
-            addVineBox(mainPanel, 1360, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1360, baseY + 54, 30, 27);
+            int baseY = 205 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 1020, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 1020, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 1020, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 1020, baseY, 23, 25);
+            addVineBox(mainPanel, 1020, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 1020, baseY + 50, 23, 25);
         }
         JLabel vineNumber10 = new JLabel("[9]");
-        vineNumber10.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber10.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber10.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber10.setBounds(1315, 715, 120, 20);
+        vineNumber10.setBounds(986, 652, 90, 18);
         mainPanel.add(vineNumber10);
 
 
         for (int i = 0; i < 7; i++) {
-            int baseY = 0 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1440, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1440, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1440, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1440, baseY, 30, 27);
-            addVineBox(mainPanel, 1440, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1440, baseY + 54, 30, 27);
+            int baseY = 0 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 1080, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 1080, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 1080, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 1080, baseY, 23, 25);
+            addVineBox(mainPanel, 1080, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 1080, baseY + 50, 23, 25);
         }
         JLabel vineNumber9 = new JLabel("[10]");
-        vineNumber9.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber9.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber9.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber9.setBounds(1395, 570, 120, 20);
+        vineNumber9.setBounds(1046, 520, 90, 18);
         mainPanel.add(vineNumber9);
 
         for (int i = 0; i < 8; i++) {
-            int baseY = 0 + (i * 81);
-            addVine1(mainPanel, assetsBasePath, 1500, baseY, 30, 27);
-            addVine2(mainPanel, assetsBasePath, 1500, baseY + 27, 30, 27);
-            addVine3(mainPanel, assetsBasePath, 1500, baseY + 54, 30, 27);
-            addVineBox(mainPanel, 1500, baseY, 30, 27);
-            addVineBox(mainPanel, 1500, baseY + 27, 30, 27);
-            addVineBox(mainPanel, 1500, baseY + 54, 30, 27);
+            int baseY = 0 + (i * 74);
+            addVine1(mainPanel, assetsBasePath, 1125, baseY, 23, 25);
+            addVine2(mainPanel, assetsBasePath, 1125, baseY + 25, 23, 25);
+            addVine3(mainPanel, assetsBasePath, 1125, baseY + 50, 23, 25);
+            addVineBox(mainPanel, 1125, baseY, 23, 25);
+            addVineBox(mainPanel, 1125, baseY + 25, 23, 25);
+            addVineBox(mainPanel, 1125, baseY + 50, 23, 25);
         }
         JLabel vineNumber8 = new JLabel("[11]");
-        vineNumber8.setFont(new Font("Arial", Font.BOLD, 12));
+        vineNumber8.setFont(new Font("Arial", Font.BOLD, 9));
         vineNumber8.setHorizontalAlignment(SwingConstants.CENTER);
-        vineNumber8.setBounds(1455, 650, 120, 20);
+        vineNumber8.setBounds(1091, 593, 90, 18);
         mainPanel.add(vineNumber8);
 
 
-        //aditional 
+        //aditional
         for (int i = 0; i < 46; i++) {
-            addWater(mainPanel, assetsBasePath, 440 + (i * 25), 915, 25, 25);
+            addWater(mainPanel, assetsBasePath, 330 + (i * 19), 834, 19, 23);
         }
-        addDonkeyJr(mainPanel, assetsBasePath, 430, 840, 90, 50);
+        addDonkeyJr(mainPanel, assetsBasePath, 323, 766, 68, 46);
 
 
         outerPanel.add(mainPanel, BorderLayout.CENTER);
